@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 380" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="ja" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#C55A11"/>
+    </marker>
+  </defs>
+
+  <text x="490" y="32" text-anchor="middle" font-size="21" font-weight="bold" fill="#1F4E78">Del código fuente a la ejecución: la JVM</text>
+
+  <!-- .java -->
+  <rect x="30" y="80" width="180" height="100" rx="12" fill="#DDEBF7" stroke="#1F4E78" stroke-width="2"/>
+  <text x="120" y="115" text-anchor="middle" font-size="28">📄</text>
+  <text x="120" y="143" text-anchor="middle" font-size="15" font-weight="bold" fill="#1F4E78">Hola.java</text>
+  <text x="120" y="164" text-anchor="middle" font-size="12" fill="#444">código fuente (texto)</text>
+
+  <!-- compilador -->
+  <rect x="270" y="80" width="180" height="100" rx="12" fill="#FFF2CC" stroke="#BF8F00" stroke-width="2"/>
+  <text x="360" y="115" text-anchor="middle" font-size="28">⚙️</text>
+  <text x="360" y="143" text-anchor="middle" font-size="15" font-weight="bold" fill="#7F6000">javac</text>
+  <text x="360" y="164" text-anchor="middle" font-size="12" fill="#444">compilador</text>
+
+  <!-- bytecode -->
+  <rect x="510" y="80" width="180" height="100" rx="12" fill="#FCE4D6" stroke="#C55A11" stroke-width="2"/>
+  <text x="600" y="115" text-anchor="middle" font-size="28">🧩</text>
+  <text x="600" y="143" text-anchor="middle" font-size="15" font-weight="bold" fill="#9C4A0E">Hola.class</text>
+  <text x="600" y="164" text-anchor="middle" font-size="12" fill="#444">bytecode (portable)</text>
+
+  <!-- JVM -->
+  <rect x="750" y="80" width="200" height="100" rx="12" fill="#E2EFDA" stroke="#2E8B57" stroke-width="2"/>
+  <text x="850" y="115" text-anchor="middle" font-size="28">🚀</text>
+  <text x="850" y="143" text-anchor="middle" font-size="15" font-weight="bold" fill="#1E6B41">JVM</text>
+  <text x="850" y="164" text-anchor="middle" font-size="12" fill="#444">ejecuta el bytecode</text>
+
+  <g stroke="#C55A11" stroke-width="2.5" fill="none">
+    <line x1="212" y1="130" x2="268" y2="130" marker-end="url(#ja)"/>
+    <line x1="452" y1="130" x2="508" y2="130" marker-end="url(#ja)"/>
+    <line x1="692" y1="130" x2="748" y2="130" marker-end="url(#ja)"/>
+  </g>
+
+  <!-- sistemas -->
+  <text x="850" y="215" text-anchor="middle" font-size="13" font-weight="bold" fill="#1E6B41">el MISMO .class corre en</text>
+  <g text-anchor="middle" font-size="13" fill="#333">
+    <rect x="700" y="228" width="90" height="34" rx="8" fill="#F2F2F2" stroke="#BFBFBF"/><text x="745" y="250">🐧 Linux</text>
+    <rect x="800" y="228" width="90" height="34" rx="8" fill="#F2F2F2" stroke="#BFBFBF"/><text x="845" y="250">🪟 Windows</text>
+    <rect x="900" y="228" width="60" height="34" rx="8" fill="#F2F2F2" stroke="#BFBFBF"/><text x="930" y="250">🍎 Mac</text>
+  </g>
+
+  <!-- atajo JDK 25 -->
+  <rect x="30" y="270" width="660" height="80" rx="10" fill="#E2EFDA" stroke="#2E8B57" stroke-width="2"/>
+  <text x="55" y="298" font-size="14" font-weight="bold" fill="#1E6B41">⚡ Atajo del JDK 25:</text>
+  <text x="55" y="322" font-size="13.5" fill="#333" font-family="monospace">java Hola.java</text>
+  <text x="200" y="322" font-size="13" fill="#444">← compila y ejecuta en un solo paso, sin generar .class</text>
+  <text x="55" y="342" font-size="12.5" fill="#555">Perfecto para aprender y para scripts. En proyectos reales, Maven/Gradle hacen el trabajo.</text>
+</svg>

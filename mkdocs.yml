@@ -1,0 +1,264 @@
+site_name: DWES · Desarrollo Web en Entorno Servidor
+site_description: 2.º DAW · Módulo 0613 · Curso 2026-2027
+site_author: Iván Jiménez
+site_url: https://ivanjimenez.github.io/campusdevfp/dwes2627
+theme:
+  name: material
+  language: es
+  # Tipografía del sistema: la web carga igual de bien sin conexión y no
+  # depende de Google Fonts. El juego de fuentes está en stylesheets/extra.css.
+  font: false
+  palette:
+    # OJO: la primera entrada es la que el servidor deja escrita en el HTML,
+    # antes de que corra ningún JavaScript. Si no lleva «scheme», Material usa
+    # su índigo por defecto y la página se ve AZUL durante un instante, hasta
+    # que el navegador resuelve la preferencia y salta al esquema del curso.
+    # Por eso las tres entradas declaran esquema.
+    #
+    # Sigue la preferencia del sistema
+    - media: "(prefers-color-scheme)"
+      scheme: dwes
+      toggle:
+        icon: material/brightness-auto
+        name: Seguir el sistema
+    # Modo claro
+    - media: "(prefers-color-scheme: light)"
+      scheme: dwes
+      toggle:
+        icon: material/weather-night
+        name: Modo oscuro
+    # Modo oscuro
+    - media: "(prefers-color-scheme: dark)"
+      scheme: dwes-dark
+      toggle:
+        icon: material/weather-sunny
+        name: Modo claro
+  features:
+    # Navegación lateral plegable en vez de pestañas: con 9 unidades las
+    # pestañas de arriba se amontonan y hay que apuntar con el ratón.
+    - navigation.indexes
+    - navigation.tracking
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    # ── código ──
+    - content.code.copy         # botón de copiar en cada bloque
+    - content.code.annotate     # anotaciones (1) desplegables dentro del código
+    - content.code.select       # seleccionar solo el código, sin los números de línea
+    - content.tabs.link         # las pestañas se sincronizan en toda la página
+    - content.tooltips
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list          # necesario para ``` { .java .annotate }
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      permalink_title: Enlace a esta sección
+      toc_depth: 3
+
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.tilde
+  - pymdownx.keys
+  - pymdownx.smartsymbols
+  - pymdownx.details         # ??? y ???+ para las soluciones plegables
+  - pymdownx.snippets
+  - pymdownx.critic
+  - pymdownx.inlinehilite
+
+  # Iconos :material-*: como SVG. SIN esta extensión salen como texto literal
+  # en todas las tablas comparativas del curso.
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+  # Casillas de los objetivos de unidad
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+      use_pygments: true
+
+  - pymdownx.tabbed:
+      alternate_style: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify {kwds: {case: lower}}
+
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+extra_css:
+  - stylesheets/extra.css
+  - stylesheets/print.css
+
+extra_javascript:
+  - javascripts/impresion.js
+
+plugins:
+  - search:
+      lang: es
+  # print-site debe declararse SIEMPRE el último
+  - print-site:
+      add_to_navigation: true
+      print_page_title: "Curso completo · versión imprimible"
+      print_page_basename: curso-completo
+      add_print_site_banner: true
+      print_site_banner_template: "docs/assets/banner-impresion.html"
+      add_table_of_contents: true
+      toc_title: "Índice del curso"
+      toc_depth: 3
+      add_full_urls: false
+      enumerate_headings: true
+      enumerate_headings_depth: 2
+      enumerate_figures: false
+      add_cover_page: true
+      cover_page_template: "docs/assets/portada.html"
+      include_css: true
+
+nav:
+  - index.md
+  - Comprobar tu trabajo: comprobar-tu-trabajo.md
+  - Chuleta del examen (1.er trim.): chuleta-examen-1t.md
+  - Entorno de trabajo:
+    - entorno/index.md
+    - IntelliJ IDEA: entorno/intellij.md
+    - Alternativa con VS Code: entorno/vscode.md
+    - Manual de Maven: entorno/maven.md
+    - Manual de Gradle: entorno/gradle.md
+    - "La consola: Java, Maven y Gradle": entorno/consola.md
+    - "Chuleta de comandos: Maven y Gradle": entorno/comandos.md
+
+  - 1.er trimestre · 80 h:
+    - UT1 · RA1 · Arquitecturas y tecnologías:
+      - ut1/index.md
+      - 1. El viaje de una petición: ut1/01-el-viaje-de-una-peticion.md
+      - 2. Cliente y servidor: ut1/02-cliente-y-servidor.md
+      - 3. Arquitecturas y MVC: ut1/03-arquitecturas-y-mvc.md
+      - 4. HTTP a fondo: ut1/04-http-y-apis.md
+      - 5. APIs a fondo: ut1/05-apis-a-fondo.md
+      - 6. Web dinámica y lenguajes: ut1/06-web-dinamica-y-lenguajes.md
+      - 7. Java en 2026: ut1/07-java-en-2026.md
+      - 8. Servidores y despliegue: ut1/08-servidores-y-despliegue.md
+      - 9. Seguridad y monitorización: ut1/09-seguridad-y-logs.md
+      - 10. Resumen y autoevaluación: ut1/10-resumen-y-autoevaluacion.md
+      - Chuleta: ut1/chuleta.md
+      - Prácticas guiadas: ut1/practicas.md
+      - Caso HuertoVecino (formativa): ut1/practica-evaluable.md
+      - Batería de ejercicios: ut1/ejercicios.md
+      - Autoevaluación (tests): ut1/autoevaluacion.md
+      - Preparar el examen: ut1/examen.md
+    - UT2 · RA2 · Java moderno:
+      - ut2/index.md
+      - 1. Primeros pasos: ut2/01-primeros-pasos.md
+      - 2. Sintaxis y tipos: ut2/02-sintaxis-y-tipos.md
+      - 3. POO en Java: ut2/03-poo-en-java.md
+      - 4. Colecciones y funcional: ut2/04-colecciones-y-funcional.md
+      - 5. Excepciones y Optional: ut2/05-excepciones-y-optional.md
+      - 6. Proyectos y testing: ut2/06-proyectos-y-testing.md
+      - Chuleta de Java 25: ut2/chuleta.md
+      - Prácticas guiadas: ut2/practicas.md
+      - Batería de ejercicios: ut2/ejercicios.md
+      - Autoevaluación (tests): ut2/autoevaluacion.md
+      - Preparar el examen: ut2/examen.md
+    - UT3 · RA3 · Datos, ficheros y JSON:
+      - ut3/index.md
+      - 1. Estructuras de datos: ut3/01-estructuras-de-datos.md
+      - 2. Ficheros: ut3/02-ficheros.md
+      - 3. JSON y Jackson: ut3/03-json-y-jackson.md
+      - 4. Fechas y validación: ut3/04-fechas-y-validacion.md
+      - 5. Repositorio y capas: ut3/05-repositorio-y-capas.md
+      - Chuleta: ut3/chuleta.md
+      - Reto con tests: ut3/practicas.md
+      - Batería de ejercicios: ut3/ejercicios.md
+      - Batería de test: ut3/autoevaluacion.md
+      - Preparar el examen: ut3/examen.md
+    - UT4 · RA5 · Capas con Spring Boot:
+      - ut4/index.md
+      - 1. Spring Boot: ut4/01-spring-boot.md
+      - 2. Inyección de dependencias: ut4/02-inyeccion-dependencias.md
+      - 3. Las capas en Spring: ut4/03-capas-en-spring.md
+      - 4. DTO y validación: ut4/04-dto-y-validacion.md
+      - 5. Errores y configuración: ut4/05-errores-y-configuracion.md
+      - 6. Testing en Spring: ut4/06-testing-en-spring.md
+      - Chuleta: ut4/chuleta.md
+      - Reto con tests: ut4/practicas.md
+      - Batería de ejercicios: ut4/ejercicios.md
+      - Preparar el examen: ut4/examen.md
+    - UT5 · RA6 · Acceso a datos (JPA):
+      - ut5/index.md
+      - 1. Qué hace JPA por debajo: ut5/01-que-hace-jpa-por-debajo.md
+      - 2. Entidades y mapeo: ut5/02-entidades-y-mapeo.md
+      - 3. Spring Data JPA: ut5/03-spring-data-jpa.md
+      - 4. Relaciones: ut5/04-relaciones.md
+      - 5. Transacciones e integridad: ut5/05-transacciones.md
+      - 6. De H2 a producción: ut5/06-produccion.md
+      - Chuleta: ut5/chuleta.md
+      - Reto con tests: ut5/practicas.md
+      - Batería de ejercicios: ut5/ejercicios.md
+      - Preparar el examen: ut5/examen.md
+    - UT6 · RA7 · Servicios web:
+      - ut6/index.md
+      - 1. Diseño de APIs REST: ut6/01-diseno-rest.md
+      - 2. Respuestas y errores: ut6/02-respuestas-y-errores.md
+      - 3. Paginación y búsqueda: ut6/03-paginacion-y-busqueda.md
+      - 4. Documentación OpenAPI: ut6/04-documentacion-openapi.md
+      - 5. GraphQL: ut6/05-graphql.md
+      - 6. WebSockets y tiempo real: ut6/06-websockets.md
+      - 7. Testing de APIs: ut6/07-testing-apis.md
+      - 8. Consumir APIs: ut6/08-consumir-apis.md
+      - Chuleta: ut6/chuleta.md
+      - Reto con tests: ut6/practicas.md
+      - Batería de ejercicios: ut6/ejercicios.md
+      - Preparar el examen: ut6/examen.md
+
+  - 2.º trimestre · 80 h:
+    - UT7 · RA4 · Estado, sesiones y seguridad:
+      - ut7/index.md
+      - 1. El estado en la web: ut7/01-estado-en-la-web.md
+      - 2. Cookies y almacenamiento: ut7/02-cookies.md
+      - 3. Autenticación con Spring Security y JWT: ut7/03-autenticacion.md
+      - "4. Sesión o token: elegir": ut7/04-sesion-o-token.md
+      - Chuleta: ut7/chuleta.md
+      - Reto con tests: ut7/practicas.md
+      - Batería de ejercicios: ut7/ejercicios.md
+      - Preparar el examen: ut7/examen.md
+    - UT8 · RA8 · Páginas dinámicas (Thymeleaf):
+      - ut8/index.md
+      - "1. Servidor o cliente": ut8/01-servidor-o-cliente.md
+      - 2. Thymeleaf esencial: ut8/02-thymeleaf-esencial.md
+      - 3. Fragmentos y layouts: ut8/03-fragmentos-y-layouts.md
+      - 4. Formularios y validación: ut8/04-formularios-y-validacion.md
+      - 5. Modificar la página sin recargar: ut8/05-contenido-dinamico.md
+      - 6. Vistas con seguridad e idiomas: ut8/06-vistas-seguridad-e-idiomas.md
+      - 7. Probar y desplegar vistas: ut8/07-probar-y-desplegar-vistas.md
+      - Chuleta: ut8/chuleta.md
+      - Reto con tests: ut8/practicas.md
+      - Batería de ejercicios: ut8/ejercicios.md
+      - Preparar el examen: ut8/examen.md
+    - UT9 · RA9 · Aplicaciones híbridas:
+      - ut9/index.md
+      - 1. Qué es una aplicación híbrida: ut9/01-aplicaciones-hibridas.md
+      - 2. Consumir servicios de terceros: ut9/02-consumir-servicios-externos.md
+      - 3. Crear tu propio repositorio: ut9/03-crear-tu-repositorio.md
+      - 4. Librerías y dependencias: ut9/04-librerias-y-dependencias.md
+      - 5. Analítica y cuadros de mando: ut9/05-analitica-y-cuadros-de-mando.md
+      - 6. Probar, documentar y desplegar: ut9/06-probar-documentar-desplegar.md
+      - Chuleta: ut9/chuleta.md
+      - Reto con tests: ut9/practicas.md
+      - Batería de ejercicios: ut9/ejercicios.md
+      - Preparar el examen: ut9/examen.md

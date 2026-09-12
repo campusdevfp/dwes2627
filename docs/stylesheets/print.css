@@ -1,0 +1,153 @@
+/* ==========================================================================
+   DWES · Estilos de impresión
+   Pensado para la página /print_page/ (Ctrl+P → Guardar como PDF).
+   ========================================================================== */
+
+@media print {
+
+  /* --- Página --- */
+  @page {
+    size: A4;
+    margin: 18mm 16mm 20mm 16mm;
+  }
+  @page :first { margin-top: 25mm; }
+
+  /* Siempre en claro: imprimir en oscuro gasta tóner y se lee peor */
+  :root,
+  [data-md-color-scheme="dwes"],
+  [data-md-color-scheme="dwes-dark"] {
+    --md-default-bg-color:  #ffffff !important;
+    --md-default-fg-color:  #000000de !important;
+    --md-typeset-color:     #14171a !important;
+    --md-typeset-a-color:   #00514a !important;
+    --md-code-bg-color:     #f6f7f8 !important;
+    --md-code-fg-color:     #1c1f24 !important;
+    --dwes-borde:           #cfd6da !important;
+    --dwes-tabla-cabecera:  #eef1f2 !important;
+    --dwes-tabla-alterna:   #fafbfb !important;
+    --dwes-cita-fondo:      #f4f7f7 !important;
+
+    /* Diagramas: aunque se esté navegando en modo oscuro, en papel van claros */
+    --md-mermaid-edge-color:                   #4a5760 !important;
+    --md-mermaid-node-bg-color:                #eef4f3 !important;
+    --md-mermaid-node-fg-color:                #00514a !important;
+    --md-mermaid-label-bg-color:               #ffffff !important;
+    --md-mermaid-label-fg-color:               #14171a !important;
+    --md-mermaid-sequence-actor-bg-color:      #eef4f3 !important;
+    --md-mermaid-sequence-actor-fg-color:      #00514a !important;
+    --md-mermaid-sequence-actor-border-color:  #00695f !important;
+    --md-mermaid-sequence-actor-line-color:    #a9bcb9 !important;
+    --md-mermaid-sequence-actorman-bg-color:   #eef4f3 !important;
+    --md-mermaid-sequence-actorman-line-color: #00695f !important;
+    --md-mermaid-sequence-box-bg-color:        #f4f7f7 !important;
+    --md-mermaid-sequence-box-fg-color:        #14171a !important;
+    --md-mermaid-sequence-label-bg-color:      #00695f !important;
+    --md-mermaid-sequence-label-fg-color:      #ffffff !important;
+    --md-mermaid-sequence-loop-bg-color:       #ffffff !important;
+    --md-mermaid-sequence-loop-fg-color:       #14171a !important;
+    --md-mermaid-sequence-loop-border-color:   #b26500 !important;
+    --md-mermaid-sequence-message-fg-color:    #14171a !important;
+    --md-mermaid-sequence-message-line-color:  #4a5760 !important;
+    --md-mermaid-sequence-note-bg-color:       #fff6e8 !important;
+    --md-mermaid-sequence-note-fg-color:       #6b3d00 !important;
+    --md-mermaid-sequence-note-border-color:   #e0a860 !important;
+    --md-mermaid-sequence-number-bg-color:     #00695f !important;
+    --md-mermaid-sequence-number-fg-color:     #ffffff !important;
+  }
+  body { background: #fff !important; }
+
+  /* --- Fuera todo lo que no es contenido --- */
+  .md-header, .md-tabs, .md-sidebar, .md-footer,
+  .md-nav, .md-search, .md-top, .md-dialog,
+  .md-content__button, .md-source, .md-feedback,
+  .headerlink, .md-skip {
+    display: none !important;
+  }
+  .md-main__inner, .md-content, .md-grid {
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* --- Tipografía impresa --- */
+  .md-typeset {
+    font-size: 9.6pt;
+    line-height: 1.45;
+    color: #14171a;
+  }
+  .md-typeset h1 {
+    font-size: 19pt;
+    break-before: page;
+    padding-top: .2em;
+    border-bottom: 2px solid #00695f;
+  }
+  .md-typeset h1:first-of-type { break-before: avoid; }
+  .md-typeset h2 { font-size: 13.5pt; break-after: avoid; margin-top: 1.4em; }
+  .md-typeset h3 { font-size: 11.5pt; break-after: avoid; }
+  .md-typeset h4 { font-size: 10.5pt; break-after: avoid; }
+  .md-typeset p, .md-typeset li { orphans: 3; widows: 3; }
+
+  /* --- Código: que no se corte y que no se salga del papel --- */
+  .md-typeset pre, .md-typeset pre > code {
+    white-space: pre-wrap !important;
+    word-break: break-word;
+    overflow: visible !important;
+    max-height: none !important;
+    font-size: 8.2pt;
+    line-height: 1.35;
+    background: #f6f7f8 !important;
+    border: 1px solid #dde2e5 !important;
+  }
+  .md-typeset pre { break-inside: avoid; }
+  .md-typeset .highlight span { color: inherit !important; }   /* ahorra tóner */
+  .md-typeset code { background: #f2f4f5 !important; font-size: 8.6pt; }
+  .md-clipboard { display: none !important; }
+
+  /* --- Tablas --- */
+  .md-typeset table:not([class]) {
+    break-inside: auto;
+    font-size: 8.4pt;
+    border: 1px solid #cfd6da !important;
+  }
+  .md-typeset table:not([class]) tr { break-inside: avoid; }
+  .md-typeset table:not([class]) thead { display: table-header-group; }
+
+  /* --- Soluciones de los ejercicios: SIEMPRE abiertas en papel --- */
+  .md-typeset details { break-inside: avoid; }
+  .md-typeset details > summary { list-style: none; }
+  .md-typeset details > summary::marker,
+  .md-typeset details > summary::-webkit-details-marker { display: none; }
+
+  /* --- Admonitions --- */
+  .md-typeset .admonition {
+    break-inside: avoid;
+    border: 1px solid #cfd6da !important;
+    border-left: 3px solid #00695f !important;
+    box-shadow: none !important;
+  }
+
+  /* --- Diagramas --- */
+  .md-typeset .mermaid {
+    break-inside: avoid;
+    background: #fff !important;
+    border: 1px solid #dde2e5 !important;
+    page-break-inside: avoid;
+  }
+  .md-typeset .mermaid svg { max-width: 100% !important; height: auto !important; }
+  .md-typeset img { max-width: 100% !important; break-inside: avoid; }
+
+  /* --- Enlaces: mostrar la URL solo si es externa --- */
+  .md-typeset a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 7.5pt;
+    color: #5a6b73;
+    word-break: break-all;
+  }
+  .md-typeset a[href^="#"]::after { content: ""; }
+
+  /* --- print-site: índice y separación por unidad --- */
+  #print-site-page .print-page-toc { break-after: page; }
+  .print-page-toc-title { font-size: 16pt; }
+}
+
+/* Fuera de la impresión: el botón de imprimir en la barra superior */
+.md-header__button.dwes-print { cursor: pointer; }

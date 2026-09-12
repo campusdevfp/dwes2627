@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1F4E78"/>
+    </marker>
+    <marker id="arrback" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2E8B57"/>
+    </marker>
+  </defs>
+
+  <text x="490" y="34" text-anchor="middle" font-size="22" font-weight="bold" fill="#1F4E78">El viaje de una petición web</text>
+
+  <!-- Cajas principales -->
+  <g text-anchor="middle">
+    <!-- Navegador -->
+    <rect x="20" y="120" width="150" height="90" rx="12" fill="#DDEBF7" stroke="#1F4E78" stroke-width="2"/>
+    <text x="95" y="155" font-size="30">🧑‍💻</text>
+    <text x="95" y="182" font-size="15" font-weight="bold" fill="#1F4E78">Navegador</text>
+    <text x="95" y="200" font-size="12" fill="#444">(cliente)</text>
+
+    <!-- DNS -->
+    <rect x="215" y="40" width="140" height="70" rx="12" fill="#FFF2CC" stroke="#BF8F00" stroke-width="2"/>
+    <text x="285" y="68" font-size="24">📖</text>
+    <text x="285" y="93" font-size="14" font-weight="bold" fill="#7F6000">DNS</text>
+
+    <!-- Servidor web -->
+    <rect x="400" y="120" width="150" height="90" rx="12" fill="#E2EFDA" stroke="#2E8B57" stroke-width="2"/>
+    <text x="475" y="155" font-size="30">🚪</text>
+    <text x="475" y="182" font-size="15" font-weight="bold" fill="#1E6B41">Servidor web</text>
+    <text x="475" y="200" font-size="12" fill="#444">Nginx / Apache</text>
+
+    <!-- Backend -->
+    <rect x="610" y="120" width="150" height="90" rx="12" fill="#FCE4D6" stroke="#C55A11" stroke-width="2"/>
+    <text x="685" y="155" font-size="30">⚙️</text>
+    <text x="685" y="182" font-size="15" font-weight="bold" fill="#9C4A0E">Backend</text>
+    <text x="685" y="200" font-size="12" fill="#444">Spring Boot (Java)</text>
+
+    <!-- BD -->
+    <rect x="820" y="120" width="140" height="90" rx="12" fill="#E4DFEC" stroke="#5B4A87" stroke-width="2"/>
+    <text x="890" y="155" font-size="30">🗄️</text>
+    <text x="890" y="182" font-size="15" font-weight="bold" fill="#4A3C6E">Base de datos</text>
+    <text x="890" y="200" font-size="12" fill="#444">PostgreSQL</text>
+  </g>
+
+  <!-- Flechas de ida (azul) -->
+  <g stroke="#1F4E78" stroke-width="2.5" fill="none">
+    <path d="M 130 118 Q 160 70 213 72" marker-end="url(#arr)"/>
+    <path d="M 357 75 Q 400 80 440 118" marker-end="url(#arr)"/>
+    <line x1="172" y1="150" x2="398" y2="150" marker-end="url(#arr)"/>
+    <line x1="552" y1="150" x2="608" y2="150" marker-end="url(#arr)"/>
+    <line x1="762" y1="150" x2="818" y2="150" marker-end="url(#arr)"/>
+  </g>
+
+  <!-- Flechas de vuelta (verde) -->
+  <g stroke="#2E8B57" stroke-width="2.5" fill="none" stroke-dasharray="7 4">
+    <line x1="818" y1="185" x2="762" y2="185" marker-end="url(#arrback)"/>
+    <line x1="608" y1="185" x2="552" y2="185" marker-end="url(#arrback)"/>
+    <line x1="398" y1="185" x2="172" y2="185" marker-end="url(#arrback)"/>
+  </g>
+
+  <!-- Etiquetas numeradas -->
+  <g font-size="12.5" fill="#1F4E78">
+    <text x="130" y="60" font-weight="bold">① ¿IP de wallapop.com?</text>
+    <text x="368" y="55" font-weight="bold">② 34.249.x.x</text>
+    <text x="240" y="140" font-weight="bold">③ GET / (HTTPS)</text>
+    <text x="556" y="140" font-weight="bold">④ proxy</text>
+    <text x="765" y="140" font-weight="bold">⑤ query</text>
+  </g>
+  <g font-size="12.5" fill="#2E8B57">
+    <text x="768" y="205" font-weight="bold">⑥ datos</text>
+    <text x="556" y="205" font-weight="bold">⑦ respuesta</text>
+    <text x="235" y="205" font-weight="bold">⑧ HTML / JSON</text>
+  </g>
+
+  <!-- Nota inferior -->
+  <rect x="130" y="255" width="720" height="70" rx="10" fill="#F2F2F2" stroke="#BFBFBF"/>
+  <text x="490" y="283" text-anchor="middle" font-size="14" fill="#333">
+    <tspan font-weight="bold" fill="#1F4E78">⑨ El navegador renderiza la respuesta.</tspan>  Todo el viaje tarda unos 100–500 ms.
+  </text>
+  <text x="490" y="308" text-anchor="middle" font-size="13" fill="#555">La caché y los CDN acortan el viaje: lo ya descargado no se vuelve a pedir (304) o llega desde un servidor cercano.</text>
+</svg>

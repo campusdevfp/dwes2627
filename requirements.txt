@@ -1,0 +1,5 @@
+# Dependencias del sitio de documentación
+#   pip install -r requirements.txt
+#   mkdocs serve
+mkdocs-material>=9.5
+mkdocs-print-site-plugin>=2.5

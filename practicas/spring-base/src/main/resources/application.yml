@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: practicas
+
+  # ── UT5 ── Base de datos de trabajo.
+  # En memoria: se crea al arrancar y desaparece al parar. Para las prácticas
+  # sobra; en la UT5 tema 6 verás por qué en producción esto no vale.
+  datasource:
+    url: jdbc:h2:mem:practicas
+    username: sa
+    password: ''
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true          # mira el log: aquí se ve el N+1
+    open-in-view: false     # desactivado a propósito (UT5 tema 4)
+  h2:
+    console:
+      enabled: true         # http://localhost:8080/h2-console

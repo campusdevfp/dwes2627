@@ -1,0 +1,654 @@
+/* ==========================================================================
+   DWES · Tema teal + ámbar
+   Paleta propia para Material for MkDocs, en modo claro y oscuro.
+   ========================================================================== */
+
+/* ---------- 1. PALETA ---------- */
+
+/* Modo claro */
+[data-md-color-scheme="dwes"] {
+  /* Le dice al NAVEGADOR que estamos en claro: pinta así las barras de
+     desplazamiento, los controles de formulario y el fondo antes de que
+     llegue la hoja de estilos. Sin esto, en modo oscuro del sistema hay un
+     parpadeo antes del primer pintado. */
+  color-scheme: light;
+
+  --md-primary-fg-color:        #00695f;
+  --md-primary-fg-color--light: #00897b;
+  --md-primary-fg-color--dark:  #004d40;
+  --md-primary-bg-color:        #ffffff;
+  --md-primary-bg-color--light: #ffffffb3;
+
+  --md-accent-fg-color:         #b26500;
+  --md-accent-fg-color--transparent: #b2650014;
+  --md-accent-bg-color:         #ffffff;
+
+  --md-default-bg-color:        #fdfdfd;
+  --md-default-fg-color:        #1c1f24de;
+  --md-default-fg-color--light: #1c1f2499;
+  --md-default-fg-color--lighter: #1c1f2452;
+  --md-default-fg-color--lightest: #1c1f241f;
+
+  --md-typeset-color:           #1c1f24;
+  --md-typeset-a-color:         #00695f;
+
+  /* Código */
+  --md-code-bg-color:           #f4f6f8;
+  --md-code-fg-color:           #24292f;
+  --md-code-hl-comment-color:   #6a737d;
+  --md-code-hl-keyword-color:   #b1276b;
+  --md-code-hl-string-color:    #0a6e4a;
+  --md-code-hl-number-color:    #b26500;
+  --md-code-hl-function-color:  #6f42c1;
+  --md-code-hl-name-color:      #24292f;
+
+  /* Tokens propios usados más abajo */
+  --dwes-borde:                 #e0e5e9;
+  --dwes-borde-fuerte:          #c6d0d6;
+  --dwes-tabla-cabecera:        #eef3f4;
+  --dwes-tabla-alterna:         #f8fafb;
+  --dwes-cita-fondo:            #f2f7f7;
+}
+
+/* Modo oscuro */
+[data-md-color-scheme="dwes-dark"] {
+  color-scheme: dark;
+
+  --md-primary-fg-color:        #1b2027;
+  --md-primary-fg-color--light: #263039;
+  --md-primary-fg-color--dark:  #12161b;
+  --md-primary-bg-color:        #e3e6ea;
+  --md-primary-bg-color--light: #e3e6eab3;
+
+  --md-accent-fg-color:         #ffb74d;
+  --md-accent-fg-color--transparent: #ffb74d1f;
+  --md-accent-bg-color:         #14181d;
+
+  --md-default-bg-color:        #14181d;
+  --md-default-bg-color--light: #1b2027;
+  --md-default-fg-color:        #e3e6eade;
+  --md-default-fg-color--light: #e3e6ea99;
+  --md-default-fg-color--lighter: #e3e6ea52;
+  --md-default-fg-color--lightest: #e3e6ea1f;
+
+  --md-typeset-color:           #dfe3e8;
+  --md-typeset-a-color:         #4db6ac;
+
+  --md-code-bg-color:           #1b2027;
+  --md-code-fg-color:           #dfe3e8;
+  --md-code-hl-comment-color:   #8b98a5;
+  --md-code-hl-keyword-color:   #ff8fc0;
+  --md-code-hl-string-color:    #7ee0b0;
+  --md-code-hl-number-color:    #ffb74d;
+  --md-code-hl-function-color:  #c8a2ff;
+  --md-code-hl-name-color:      #dfe3e8;
+
+  --md-footer-bg-color:         #0f1318;
+  --md-footer-bg-color--dark:   #0b0e12;
+
+  --dwes-borde:                 #2a323b;
+  --dwes-borde-fuerte:          #3a444f;
+  --dwes-tabla-cabecera:        #1e242b;
+  --dwes-tabla-alterna:         #181d23;
+  --dwes-cita-fondo:            #182126;
+}
+
+/* En oscuro la barra superior es sobria; el teal se reserva para acentos */
+[data-md-color-scheme="dwes-dark"] .md-header,
+[data-md-color-scheme="dwes-dark"] .md-tabs {
+  background-color: #10151a;
+  border-bottom: 1px solid var(--dwes-borde);
+}
+[data-md-color-scheme="dwes-dark"] .md-tabs__link--active,
+[data-md-color-scheme="dwes-dark"] .md-nav__link--active {
+  color: #4db6ac;
+}
+
+/* ---------- 2. TIPOGRAFÍA Y RITMO ---------- */
+
+/* Tipografía del sistema: sin descargas, funciona al 100 % sin conexión */
+:root {
+  --dwes-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+               "Liberation Sans", Arial, sans-serif;
+  --dwes-mono: "SF Mono", "JetBrains Mono", "Cascadia Code", "Fira Code",
+               Menlo, Consolas, "Liberation Mono", monospace;
+  --md-text-font-family: var(--dwes-sans);
+  --md-code-font-family: var(--dwes-mono);
+}
+
+.md-typeset {
+  font-size: .78rem;
+  line-height: 1.72;
+  letter-spacing: .002em;
+}
+
+/* Ancho de lectura cómodo: sin esto las tablas anchas estiran el texto */
+.md-grid { max-width: 68rem; }
+
+.md-typeset h1 {
+  font-weight: 600;
+  font-size: 1.85rem;
+  letter-spacing: -.022em;
+  line-height: 1.22;
+  color: var(--md-default-fg-color);
+  margin: 0 0 1.4rem;
+  padding-bottom: .7rem;
+  border-bottom: 1px solid var(--dwes-borde);
+}
+.md-typeset h2 {
+  font-weight: 600;
+  font-size: 1.28rem;
+  letter-spacing: -.014em;
+  line-height: 1.3;
+  margin: 2.6rem 0 .9rem;
+  color: var(--md-default-fg-color);
+}
+.md-typeset h3 {
+  font-weight: 600;
+  font-size: 1.02rem;
+  letter-spacing: -.008em;
+  margin: 1.9rem 0 .6rem;
+  color: var(--md-default-fg-color);
+}
+.md-typeset h4 {
+  font-weight: 600;
+  font-size: .86rem;
+  text-transform: none;
+  letter-spacing: .01em;
+  color: var(--md-default-fg-color--light);
+  margin: 1.5rem 0 .5rem;
+}
+
+.md-typeset p { margin: 0 0 1.05em; }
+.md-typeset strong { font-weight: 650; color: var(--md-default-fg-color); }
+
+/* Enlaces discretos: subrayado fino que solo se enciende al pasar por encima */
+.md-typeset a {
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--md-typeset-a-color) 32%, transparent);
+  transition: border-color .15s, color .15s;
+}
+.md-typeset a:hover {
+  color: var(--md-accent-fg-color);
+  border-bottom-color: var(--md-accent-fg-color);
+}
+.md-typeset a.headerlink,
+.md-typeset a.md-button,
+.md-typeset .tabbed-labels a,
+.md-typeset .md-annotation a { border-bottom: none; }
+
+/* Separadores finos entre bloques mayores */
+.md-typeset hr {
+  border-bottom: 1px solid var(--dwes-borde);
+  margin: 2.4rem 0;
+}
+
+.md-typeset ul li,
+.md-typeset ol li { margin-bottom: .38em; }
+.md-typeset ul li::marker { color: var(--md-default-fg-color--lighter); }
+.md-typeset ol li::marker { color: var(--md-default-fg-color--light); font-weight: 600; }
+
+/* Cita destacada de apertura de cada tema */
+.md-typeset blockquote {
+  border-left: 3px solid var(--md-primary-fg-color);
+  background: var(--dwes-cita-fondo);
+  border-radius: 0 .2rem .2rem 0;
+  padding: .55rem .95rem;
+  color: var(--md-default-fg-color);
+  margin: 1.15em 0;
+}
+.md-typeset blockquote > :last-child { margin-bottom: 0; }
+[data-md-color-scheme="dwes-dark"] .md-typeset blockquote {
+  border-left-color: #4db6ac;
+}
+
+/* ---------- 3. CÓDIGO ---------- */
+
+.md-typeset code {
+  font-size: .84em;
+  padding: .12em .38em;
+  border-radius: 4px;
+  border: 1px solid var(--dwes-borde);
+  background: var(--md-code-bg-color);
+}
+.md-typeset a > code { color: inherit; }
+
+.md-typeset .highlight {
+  border: 1px solid var(--dwes-borde);
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 1.1em 0;
+}
+.md-typeset .highlight pre { margin: 0; }
+.md-typeset pre > code {
+  border: none;
+  padding: .85rem 1rem;
+  font-size: .70rem;
+  line-height: 1.62;
+}
+
+/* ------------------------------------------------------------------------
+   NADA DE DESPLAZAMIENTO HORIZONTAL
+
+   Una línea larga no obliga a arrastrar la barra: se ajusta al ancho y la
+   continuación entra sangrada, para que se vea de un vistazo que sigue la
+   línea anterior y no empieza una nueva.
+
+   Los números NO se generan con `linenums` —que monta una <table> aparte y
+   se desalinea en cuanto una línea se parte— sino con un contador CSS sobre
+   los <span> de línea que ya crea `line_spans`. Así el número se queda en su
+   sitio y, además, no se copia al pulsar el botón de copiar.
+   ------------------------------------------------------------------------ */
+
+.md-typeset .highlight pre > code {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+  tab-size: 4;
+}
+
+/* Cada línea, un bloque con sangría francesa */
+.md-typeset .highlight code > span[id^="__span"] {
+  display: block;
+  padding-left: 2.4ch;
+  text-indent: -2.4ch;
+}
+
+/* Con numeración: el número va en un margen propio y la continuación
+   se alinea con el código, nunca debajo del número. */
+.md-typeset .numerado code { counter-reset: linea; }
+.md-typeset .numerado code > span[id^="__span"] {
+  counter-increment: linea;
+  position: relative;
+  padding-left: 4.2ch;
+  text-indent: 0;
+}
+.md-typeset .numerado code > span[id^="__span"]::before {
+  content: counter(linea);
+  position: absolute;
+  left: 0;
+  width: 2.8ch;
+  text-align: right;
+  color: var(--md-default-fg-color--lighter);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  pointer-events: none;
+}
+/* filete tenue que separa la columna de números del código */
+.md-typeset .numerado pre > code {
+  background-image: linear-gradient(to right,
+      var(--dwes-borde) 0, var(--dwes-borde) 1px, transparent 1px);
+  background-position: calc(1rem + 3.4ch) 0;
+  background-repeat: repeat-y;
+  background-size: 1px 100%;
+}
+
+/* Excepción: diagramas ASCII y árboles de directorios, donde partir una
+   línea destrozaría el dibujo. Ahí sí se conserva el desplazamiento. */
+.md-typeset .sinajuste pre > code {
+  white-space: pre;
+  overflow-x: auto;          /* en Material el que desplaza es el <code> */
+}
+.md-typeset .sinajuste code > span[id^="__span"] {
+  display: inline;
+  padding-left: 0;
+  text-indent: 0;
+}
+
+/* Título del fichero */
+.md-typeset .highlight > .filename {
+  background: var(--dwes-tabla-cabecera);
+  border-bottom: 1px solid var(--dwes-borde);
+  font-family: var(--dwes-mono);
+  font-size: .66rem;
+  font-weight: 600;
+  letter-spacing: .01em;
+  color: var(--md-default-fg-color--light);
+  text-align: left;
+}
+
+/* Líneas resaltadas con hl_lines. Material ya calcula la geometría del sangrado
+   a ancho completo; aquí solo se cambian los colores por los del módulo. */
+:root {
+  --md-code-hl-color:        color-mix(in srgb, #b26500 55%, transparent);
+  --md-code-hl-color--light: color-mix(in srgb, #b26500 11%, transparent);
+}
+[data-md-color-scheme="dwes-dark"] {
+  --md-code-hl-color:        color-mix(in srgb, #ffb74d 60%, transparent);
+  --md-code-hl-color--light: color-mix(in srgb, #ffb74d 13%, transparent);
+}
+
+/* Marcador de anotación: círculo teal en vez del punto por defecto */
+.md-typeset .md-annotation__index > ::before {
+  background: var(--md-primary-fg-color);
+}
+.md-typeset .md-annotation__index:hover > ::before {
+  background: var(--md-accent-fg-color);
+}
+[data-md-color-scheme="dwes-dark"] .md-typeset .md-annotation__index > ::before {
+  background: #4db6ac;
+}
+
+/* Botón de copiar, discreto hasta que se necesita */
+.md-clipboard { color: var(--md-default-fg-color--lighter); }
+.md-clipboard:hover { color: var(--md-accent-fg-color); }
+
+/* ---------- 4. TABLAS ---------- */
+
+.md-typeset table:not([class]) {
+  border: 1px solid var(--dwes-borde);
+  border-radius: 6px;
+  box-shadow: none;
+  font-size: .70rem;
+  overflow: hidden;
+}
+.md-typeset table:not([class]) th {
+  background: var(--dwes-tabla-cabecera);
+  color: var(--md-default-fg-color);
+  font-weight: 620;
+  font-size: .66rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: .62em .9em;
+  border-bottom: 1px solid var(--dwes-borde-fuerte);
+}
+.md-typeset table:not([class]) td {
+  padding: .58em .9em;
+  border-top: 1px solid var(--dwes-borde);
+}
+.md-typeset table:not([class]) tr:hover td {
+  background: color-mix(in srgb, var(--md-accent-fg-color) 4%, transparent);
+}
+
+/* ---------- 5. ADMONITIONS Y DESPLEGABLES ---------- */
+
+/* Planas: marco fino y una banda de color a la izquierda. Sin sombras. */
+.md-typeset .admonition,
+.md-typeset details {
+  border: 1px solid var(--dwes-borde);
+  border-left: 3px solid var(--md-accent-fg-color);
+  border-radius: 5px;
+  box-shadow: none;
+  font-size: .74rem;
+  background: var(--md-default-bg-color);
+  margin: 1.2em 0;
+}
+.md-typeset .admonition-title,
+.md-typeset summary {
+  background: var(--dwes-tabla-cabecera);
+  font-weight: 620;
+  letter-spacing: .005em;
+  padding: .5rem .8rem .5rem 2.1rem;
+  border: none;
+}
+.md-typeset .admonition-title::before,
+.md-typeset summary::before { top: .55rem; left: .7rem; }
+.md-typeset summary { cursor: pointer; }
+.md-typeset summary:hover {
+  background: color-mix(in srgb, var(--md-accent-fg-color) 7%, var(--dwes-tabla-cabecera));
+}
+
+/* Un color por tipo, sin estridencias */
+.md-typeset .admonition.tip,     .md-typeset details.tip     { border-left-color: #00695f; }
+.md-typeset .admonition.note,    .md-typeset details.note    { border-left-color: #2c5678; }
+.md-typeset .admonition.info,    .md-typeset details.info    { border-left-color: #2c6e8f; }
+.md-typeset .admonition.success, .md-typeset details.success { border-left-color: #2f7d4f; }
+.md-typeset .admonition.warning, .md-typeset details.warning { border-left-color: #b26500; }
+.md-typeset .admonition.danger,  .md-typeset details.danger  { border-left-color: #a8342a; }
+.md-typeset .admonition.bug,     .md-typeset details.bug     { border-left-color: #8e3b8e; }
+.md-typeset .admonition.example, .md-typeset details.example { border-left-color: #5b5bd6; }
+
+/* Las soluciones de los ejercicios llevan el teal del módulo */
+.md-typeset details.success { border-left-color: #2f7d4f; }
+[data-md-color-scheme="dwes-dark"] .md-typeset details:not([class]) {
+  border-left-color: #4db6ac;
+}
+
+/* ---------- 6. PESTAÑAS ---------- */
+
+.md-typeset .tabbed-set { margin: 1.2em 0; }
+.md-typeset .tabbed-labels {
+  border-bottom: 1px solid var(--dwes-borde);
+  box-shadow: none;
+}
+.md-typeset .tabbed-labels > label {
+  font-size: .70rem;
+  font-weight: 620;
+  letter-spacing: .01em;
+  padding: .5rem .9rem;
+  color: var(--md-default-fg-color--light);
+}
+.md-typeset .tabbed-set > input:checked + label {
+  color: var(--md-primary-fg-color);
+  border-color: var(--md-primary-fg-color);
+}
+[data-md-color-scheme="dwes-dark"] .md-typeset .tabbed-set > input:checked + label {
+  color: #4db6ac;
+  border-color: #4db6ac;
+}
+
+/* ---------- 7. DETALLES DE NAVEGACIÓN ---------- */
+
+.md-typeset .md-button { border-radius: .2rem; }
+.md-nav__title {
+  font-weight: 640;
+  font-size: .66rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--md-default-fg-color--light);
+}
+.md-nav { font-size: .70rem; }
+.md-search__form { border-radius: .2rem; }
+.md-header { box-shadow: none; border-bottom: 1px solid var(--dwes-borde); }
+
+/* Ancla de los encabezados: discreta hasta el hover */
+.md-typeset .headerlink { opacity: 0; transition: opacity .2s; }
+.md-typeset h1:hover .headerlink,
+.md-typeset h2:hover .headerlink,
+.md-typeset h3:hover .headerlink,
+.md-typeset h4:hover .headerlink { opacity: .5; }
+
+/* Barra de desplazamiento discreta */
+* { scrollbar-width: thin; scrollbar-color: var(--dwes-borde-fuerte) transparent; }
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-thumb { background: var(--dwes-borde-fuerte); border-radius: 5px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* Casillas de los objetivos de unidad */
+.md-typeset .task-list-control .task-list-indicator::before {
+  background: var(--md-primary-fg-color);
+}
+
+/* ==========================================================================
+   7. MERMAID
+   Material renderiza los diagramas leyendo estas variables, así que basta
+   con definirlas por esquema para que se vean bien en claro y en oscuro.
+   ========================================================================== */
+
+[data-md-color-scheme="dwes"] {
+  --md-mermaid-font-family:                   var(--md-text-font-family), sans-serif;
+
+  --md-mermaid-edge-color:                    #5a6b73;
+  --md-mermaid-node-bg-color:                 #e4efee;
+  --md-mermaid-node-fg-color:                 #00514a;
+  --md-mermaid-label-bg-color:                #fdfdfd;
+  --md-mermaid-label-fg-color:                #1c1f24;
+
+  --md-mermaid-sequence-actor-bg-color:       #e4efee;
+  --md-mermaid-sequence-actor-fg-color:       #00514a;
+  --md-mermaid-sequence-actor-border-color:   #00695f;
+  --md-mermaid-sequence-actor-line-color:     #9fb3b0;
+  --md-mermaid-sequence-actorman-bg-color:    #e4efee;
+  --md-mermaid-sequence-actorman-line-color:  #00695f;
+  --md-mermaid-sequence-box-bg-color:         #f2f7f7;
+  --md-mermaid-sequence-box-fg-color:         #1c1f24;
+  --md-mermaid-sequence-label-bg-color:       #00695f;
+  --md-mermaid-sequence-label-fg-color:       #ffffff;
+  --md-mermaid-sequence-loop-bg-color:        #fdfdfd;
+  --md-mermaid-sequence-loop-fg-color:        #1c1f24;
+  --md-mermaid-sequence-loop-border-color:    #b26500;
+  --md-mermaid-sequence-message-fg-color:     #1c1f24;
+  --md-mermaid-sequence-message-line-color:   #5a6b73;
+  --md-mermaid-sequence-note-bg-color:        #fff4e2;
+  --md-mermaid-sequence-note-fg-color:        #6b3d00;
+  --md-mermaid-sequence-note-border-color:    #e0a860;
+  --md-mermaid-sequence-number-bg-color:      #00695f;
+  --md-mermaid-sequence-number-fg-color:      #ffffff;
+}
+
+[data-md-color-scheme="dwes-dark"] {
+  --md-mermaid-font-family:                   var(--md-text-font-family), sans-serif;
+
+  --md-mermaid-edge-color:                    #8b9aa4;
+  --md-mermaid-node-bg-color:                 #1f2b2c;
+  --md-mermaid-node-fg-color:                 #a7ded6;
+  --md-mermaid-label-bg-color:                #14181d;
+  --md-mermaid-label-fg-color:                #dfe3e8;
+
+  --md-mermaid-sequence-actor-bg-color:       #1f2b2c;
+  --md-mermaid-sequence-actor-fg-color:       #a7ded6;
+  --md-mermaid-sequence-actor-border-color:   #4db6ac;
+  --md-mermaid-sequence-actor-line-color:     #46545c;
+  --md-mermaid-sequence-actorman-bg-color:    #1f2b2c;
+  --md-mermaid-sequence-actorman-line-color:  #4db6ac;
+  --md-mermaid-sequence-box-bg-color:         #182126;
+  --md-mermaid-sequence-box-fg-color:         #dfe3e8;
+  --md-mermaid-sequence-label-bg-color:       #4db6ac;
+  --md-mermaid-sequence-label-fg-color:       #10151a;
+  --md-mermaid-sequence-loop-bg-color:        #14181d;
+  --md-mermaid-sequence-loop-fg-color:        #dfe3e8;
+  --md-mermaid-sequence-loop-border-color:    #ffb74d;
+  --md-mermaid-sequence-message-fg-color:     #dfe3e8;
+  --md-mermaid-sequence-message-line-color:   #8b9aa4;
+  --md-mermaid-sequence-note-bg-color:        #33291a;
+  --md-mermaid-sequence-note-fg-color:        #ffd39b;
+  --md-mermaid-sequence-note-border-color:    #a97c3a;
+  --md-mermaid-sequence-number-bg-color:      #ffb74d;
+  --md-mermaid-sequence-number-fg-color:      #10151a;
+}
+
+/* El contenedor del diagrama: centrado, con aire y sin desbordar en móvil */
+.md-typeset .mermaid {
+  margin: 1.4em 0;
+  padding: .6rem;
+  text-align: center;
+  background: var(--md-code-bg-color);
+  border: 1px solid var(--dwes-borde);
+  border-radius: .25rem;
+  overflow-x: auto;
+}
+.md-typeset .mermaid svg { max-width: 100%; height: auto; }
+
+/* NOTA: Material renderiza cada diagrama dentro de un shadow-root cerrado, así
+   que desde aquí NO se puede dar estilo al SVG. Todo lo que hay dentro se
+   controla con las variables --md-mermaid-* de arriba (que sí atraviesan el
+   shadow-root por ser propiedades personalizadas) y con los classDef escritos
+   en el propio diagrama. Por eso los nodos destacados del curso llevan sus
+   colores en el Markdown:
+       classDef nivelOk fill:#2e7d5b,stroke:#256349,color:#fff
+   Tonos medios con texto blanco: se leen igual de bien en claro y en oscuro. */
+
+
+/* ---------- 8. BARRA LATERAL CON MUCHAS UNIDADES ---------- */
+
+/* Los títulos de unidad, destacados y con aire respecto a sus páginas */
+.md-nav--primary > .md-nav__list > .md-nav__item > .md-nav__link,
+.md-nav--primary > .md-nav__list > .md-nav__item > label.md-nav__link {
+  font-weight: 650;
+  margin-top: .55rem;
+  color: var(--md-default-fg-color);
+}
+
+/* Página activa: barra a la izquierda en vez de solo color */
+.md-nav__link--active {
+  font-weight: 600;
+  border-left: 2px solid var(--md-typeset-a-color);
+  padding-left: .45rem;
+  margin-left: -.6rem;
+}
+
+/* Filas más compactas para que quepan más unidades sin desplazarse */
+.md-nav__item .md-nav__link { padding: .18rem 0; line-height: 1.45; }
+
+/* El índice de la derecha, discreto pero visible */
+.md-nav--secondary .md-nav__title { font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; }
+
+
+/* ==========================================================================
+   9. AVISOS PROPIOS DEL MÓDULO
+   Tipos que Material no trae: reto, analogía y traza. El icono va en línea
+   como SVG (Material Design Icons) mediante máscara CSS: cero dependencias
+   externas, funciona sin conexión y hereda el color del tipo.
+   ========================================================================== */
+
+:root {
+  /* diana: un reto que hay que acertar */
+  --md-admonition-icon--reto: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 2v2.07C7.38 4.53 4.53 7.38 4.07 11H2v2h2.07c.46 3.62 3.31 6.47 6.93 6.93V22h2v-2.07c3.62-.46 6.47-3.31 6.93-6.93H22v-2h-2.07c-.46-3.62-3.31-6.47-6.93-6.93V2m0 4.08V8h2V6.09c2.5.41 4.5 2.41 4.92 4.91H16v2h1.91c-.41 2.5-2.41 4.5-4.91 4.92V16h-2v1.91c-2.5-.41-4.5-2.41-4.92-4.91H8v-2H6.09C6.5 8.5 8.5 6.5 11 6.08Z"/></svg>');
+  /* bombilla: la comparación que hace entender el concepto */
+  --md-admonition-icon--analogia: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9v1Z"/></svg>');
+  /* consola: lo que se ve al ejecutar */
+  --md-admonition-icon--traza: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 14H4V8h16v10M6.5 10.5 9 13l-2.5 2.5L7.9 16.9 11.8 13 7.9 9.1 6.5 10.5M13 15h5v1.5h-5V15Z"/></svg>');
+}
+
+/* — Reto: ejercicio corto intercalado en la teoría — */
+.md-typeset .admonition.reto,
+.md-typeset details.reto { border-left-color: #0f766e; }
+.md-typeset .reto > .admonition-title,
+.md-typeset .reto > summary { background-color: rgba(15,118,110,.10); }
+.md-typeset .reto > .admonition-title::before,
+.md-typeset .reto > summary::before {
+  background-color: #0f766e;
+  -webkit-mask-image: var(--md-admonition-icon--reto);
+          mask-image: var(--md-admonition-icon--reto);
+}
+
+/* — Analogía: la comparación con algo cotidiano — */
+.md-typeset .admonition.analogia,
+.md-typeset details.analogia { border-left-color: #7c3aed; }
+.md-typeset .analogia > .admonition-title,
+.md-typeset .analogia > summary { background-color: rgba(124,58,237,.10); }
+.md-typeset .analogia > .admonition-title::before,
+.md-typeset .analogia > summary::before {
+  background-color: #7c3aed;
+  -webkit-mask-image: var(--md-admonition-icon--analogia);
+          mask-image: var(--md-admonition-icon--analogia);
+}
+
+/* — Traza: la salida real por consola o el SQL que genera Hibernate — */
+.md-typeset .admonition.traza,
+.md-typeset details.traza { border-left-color: #475569; }
+.md-typeset .traza > .admonition-title,
+.md-typeset .traza > summary { background-color: rgba(71,85,105,.09); }
+.md-typeset .traza > .admonition-title::before,
+.md-typeset .traza > summary::before {
+  background-color: #475569;
+  -webkit-mask-image: var(--md-admonition-icon--traza);
+          mask-image: var(--md-admonition-icon--traza);
+}
+.md-typeset .traza pre > code { font-size: .68rem; }
+
+/* — Insignias en línea: dónde se usa cada ejercicio — */
+.tg {
+  display: inline-block; font-size: .64rem; font-weight: 700;
+  line-height: 1; padding: .2em .55em; border-radius: 1em;
+  vertical-align: middle; letter-spacing: .03em; text-transform: uppercase;
+}
+.tg-aula   { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+.tg-examen { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+.tg-casa   { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+[data-md-color-scheme="dwes-dark"] .tg-aula   { background: #14321f; color: #86efac; border-color: #22613c; }
+[data-md-color-scheme="dwes-dark"] .tg-examen { background: #142440; color: #93c5fd; border-color: #1e4076; }
+[data-md-color-scheme="dwes-dark"] .tg-casa   { background: #3a2c0d; color: #fcd34d; border-color: #6b5115; }
+
+
+/* ---------- Selección de texto ---------- */
+
+::selection {
+  background: var(--md-accent-fg-color);
+  color: #fff;
+}
+
+[data-md-color-scheme="dwes-dark"] ::selection {
+  background: var(--md-accent-fg-color);
+  color: #14181d;
+}

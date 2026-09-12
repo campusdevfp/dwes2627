@@ -1,0 +1,8 @@
+id,nombre,categoria,precio,stock
+1,Patinete,movilidad,299.00,4
+2,Casco,seguridad,35.50,20
+
+3,Candado,accesorios,19.95,15
+4,Roto,accesorios,-5.00,3
+5,Luz LED,accesorios,12.00,-2
+6,Bici,movilidad,899.00,2

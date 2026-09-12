@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 430" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#666"/>
+    </marker>
+  </defs>
+
+  <text x="490" y="34" text-anchor="middle" font-size="22" font-weight="bold" fill="#1F4E78">Dos mundos de ejecución</text>
+
+  <!-- Panel CLIENTE -->
+  <rect x="30" y="60" width="400" height="300" rx="14" fill="#DDEBF7" stroke="#1F4E78" stroke-width="2.5"/>
+  <text x="230" y="95" text-anchor="middle" font-size="19" font-weight="bold" fill="#1F4E78">🧑‍💻 CLIENTE (front-end)</text>
+  <text x="230" y="117" text-anchor="middle" font-size="13" fill="#444">se ejecuta en el navegador del usuario</text>
+
+  <g font-size="14" fill="#222">
+    <text x="60" y="152">🔤  <tspan font-weight="bold">HTML · CSS · JavaScript</tspan></text>
+    <text x="60" y="182">🎨  Presentación e interacción</text>
+    <text x="60" y="212">⚡  Feedback inmediato (validación UX)</text>
+    <text x="60" y="242">👁️  El código es <tspan font-weight="bold">visible</tspan> (F12 → Sources)</text>
+    <text x="60" y="272">⚠️  Se puede <tspan font-weight="bold" fill="#C00000">modificar o saltar</tspan></text>
+  </g>
+  <rect x="55" y="295" width="350" height="45" rx="8" fill="#C00000"/>
+  <text x="230" y="323" text-anchor="middle" font-size="14.5" font-weight="bold" fill="#fff">NUNCA confíes en el cliente</text>
+
+  <!-- Panel SERVIDOR -->
+  <rect x="550" y="60" width="400" height="300" rx="14" fill="#E2EFDA" stroke="#2E8B57" stroke-width="2.5"/>
+  <text x="750" y="95" text-anchor="middle" font-size="19" font-weight="bold" fill="#1E6B41">⚙️ SERVIDOR (back-end)</text>
+  <text x="750" y="117" text-anchor="middle" font-size="13" fill="#444">se ejecuta en nuestra infraestructura</text>
+
+  <g font-size="14" fill="#222">
+    <text x="580" y="152">☕  <tspan font-weight="bold">Java · Python · PHP · C# · Node</tspan></text>
+    <text x="580" y="182">🧠  Lógica de negocio (reglas, precios…)</text>
+    <text x="580" y="212">🗄️  Acceso a los datos (BD)</text>
+    <text x="580" y="242">🔒  El código es <tspan font-weight="bold">privado</tspan></text>
+    <text x="580" y="272">🛡️  Seguridad, permisos, revalidación</text>
+  </g>
+  <rect x="575" y="295" width="350" height="45" rx="8" fill="#1E6B41"/>
+  <text x="750" y="323" text-anchor="middle" font-size="14.5" font-weight="bold" fill="#fff">Aquí está la validación que cuenta</text>
+
+  <!-- HTTP entre ambos -->
+  <g stroke="#666" stroke-width="2.5" fill="none">
+    <line x1="432" y1="170" x2="548" y2="170" marker-end="url(#a1)"/>
+    <line x1="548" y1="250" x2="432" y2="250" marker-end="url(#a1)"/>
+  </g>
+  <text x="490" y="158" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#555">petición HTTP</text>
+  <text x="490" y="243" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#555">respuesta</text>
+  <text x="490" y="212" text-anchor="middle" font-size="26">🌐</text>
+
+  <!-- Ejemplo abajo -->
+  <rect x="30" y="378" width="920" height="40" rx="8" fill="#FFF2CC" stroke="#BF8F00"/>
+  <text x="490" y="403" text-anchor="middle" font-size="13.5" fill="#5a4500">
+    <tspan font-weight="bold">Ejemplo:</tspan> el cliente avisa "contraseña demasiado corta" mientras escribes (UX) · el servidor la vuelve a comprobar al recibirla (seguridad)
+  </text>
+</svg>
