@@ -1,4 +1,4 @@
-# DWES · Material del alumno
+# DWES · Curso 26/27 · Material del alumno
 
 **Desarrollo Web en Entorno Servidor — Módulo 0613 · 2.º DAW · 160 h · 8 h semanales**
 
