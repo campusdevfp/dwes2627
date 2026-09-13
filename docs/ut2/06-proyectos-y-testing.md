@@ -15,9 +15,9 @@ Cuando tu aplicación crece necesitas: organizar decenas de ficheros, usar libre
 Los dos hacen lo mismo. En clase verás **Maven** (por ser el más extendido) y Spring Initializr te generará el proyecto.
 
 !!! tip "Manual de referencia"
-    Este tema explica **por qué** hace falta un gestor de proyectos y cómo se usa en el día a día. Para consultar el ciclo de vida completo, los *scopes*, las dependencias transitivas, los perfiles o los errores típicos, tienes el **[manual de Maven](../../entorno/maven/)**.
+    Este tema explica **por qué** hace falta un gestor de proyectos y cómo se usa en el día a día. Para consultar el ciclo de vida completo, los *scopes*, las dependencias transitivas, los perfiles o los errores típicos, tienes el **[manual de Maven](../entorno/maven.md)**.
 
-    Y si te encuentras un proyecto con `build.gradle.kts` —te pasará—, el **[manual de Gradle](../../entorno/gradle/)** traduce cada concepto.
+    Y si te encuentras un proyecto con `build.gradle.kts` —te pasará—, el **[manual de Gradle](../entorno/gradle.md)** traduce cada concepto.
 
 ## 2. Estructura estándar de un proyecto
 

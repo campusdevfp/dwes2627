@@ -10,7 +10,7 @@ Aquí cambia el juego. Dejas de escribir ficheros sueltos y empiezas a construir
     El repositorio guarda en memoria, así que al parar la aplicación los datos desaparecen. Es **deliberado**: esta unidad va de **arquitectura**, no de persistencia. Lo importante es que el servicio y el controlador no sepan **dónde** se guardan los datos — y por eso, en la UT5, podrás cambiar memoria por base de datos sin tocarlos.
 
 !!! danger "Primera unidad con examen práctico"
-    Ya no hay test. La prueba consiste en **construir una aplicación en el ordenador** a partir de un enunciado. Se evalúa con [rúbrica por criterios](examen/). Traducción: hay que programar todos los días, no estudiar la última semana.
+    Ya no hay test. La prueba consiste en **construir una aplicación en el ordenador** a partir de un enunciado. Se evalúa con [rúbrica por criterios](examen.md). Traducción: hay que programar todos los días, no estudiar la última semana.
 
 
 ## Al terminar sabrás hacer
@@ -28,37 +28,37 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 
 | Sesión (55') | En clase | Lectura previa |
 |---|---|---|
-| **S1** | Repaso de capas · qué es Spring Boot y cómo arranca | [1. Spring Boot](01-spring-boot/) §1–2 |
-| **S2** | Crear el proyecto con Initializr · estructura y primer endpoint | [1. Spring Boot](01-spring-boot/) §3–5 |
-| **S3** | IoC: el contenedor y los *beans* | [2. Inyección de dependencias](02-inyeccion-dependencias/) §1–2 |
-| **S4** | Inyección por constructor y estereotipos | [2. Inyección de dependencias](02-inyeccion-dependencias/) §3–4 |
-| **S5** | Varias implementaciones: `@Qualifier`, `@Primary`, `@Profile` | [2. Inyección de dependencias](02-inyeccion-dependencias/) §5–6 |
-| **S6** | Capa de dominio y repositorio | [3. Las capas en Spring](03-capas-en-spring/) §1–2 |
-| **S7** | Capa de servicio: las reglas de negocio | [3. Las capas en Spring](03-capas-en-spring/) §3 |
-| **S8** | Capa de presentación: el controlador | [3. Las capas en Spring](03-capas-en-spring/) §4 |
-| **S9** | **DTO** y mapeadores: no expongas tu dominio | [4. DTO y validación](04-dto-y-validacion/) §1–2 |
-| **S10** | Validación con Bean Validation | [4. DTO y validación](04-dto-y-validacion/) §3–4 |
-| **S11** | Excepciones de dominio y `@RestControllerAdvice` | [5. Errores y configuración](05-errores-y-configuracion/) §1–2 |
-| **S12** | Configuración, perfiles y `application.yml` | [5. Errores y configuración](05-errores-y-configuracion/) §3–4 |
-| **S13** | Tests unitarios con Mockito | [6. Testing en Spring](06-testing-en-spring/) §1–2 |
-| **S14** | Tests de rodaja y de integración | [6. Testing en Spring](06-testing-en-spring/) §3–5 |
-| **S15** | Laboratorio: la batería sobre otro dominio (biblioteca) | [Batería de ejercicios](ejercicios/) |
-| **S16** | Proyecto integrador: montar la aplicación completa | [Reto con tests](practicas/) |
-| **S17** | Repaso, dudas y laboratorio libre | [Preparar el examen](examen/) |
-| **S18** | :material-laptop: **Examen práctico de RA5 (100 %)** | [Preparar el examen](examen/) |
+| **S1** | Repaso de capas · qué es Spring Boot y cómo arranca | [1. Spring Boot](01-spring-boot.md) §1–2 |
+| **S2** | Crear el proyecto con Initializr · estructura y primer endpoint | [1. Spring Boot](01-spring-boot.md) §3–5 |
+| **S3** | IoC: el contenedor y los *beans* | [2. Inyección de dependencias](02-inyeccion-dependencias.md) §1–2 |
+| **S4** | Inyección por constructor y estereotipos | [2. Inyección de dependencias](02-inyeccion-dependencias.md) §3–4 |
+| **S5** | Varias implementaciones: `@Qualifier`, `@Primary`, `@Profile` | [2. Inyección de dependencias](02-inyeccion-dependencias.md) §5–6 |
+| **S6** | Capa de dominio y repositorio | [3. Las capas en Spring](03-capas-en-spring.md) §1–2 |
+| **S7** | Capa de servicio: las reglas de negocio | [3. Las capas en Spring](03-capas-en-spring.md) §3 |
+| **S8** | Capa de presentación: el controlador | [3. Las capas en Spring](03-capas-en-spring.md) §4 |
+| **S9** | **DTO** y mapeadores: no expongas tu dominio | [4. DTO y validación](04-dto-y-validacion.md) §1–2 |
+| **S10** | Validación con Bean Validation | [4. DTO y validación](04-dto-y-validacion.md) §3–4 |
+| **S11** | Excepciones de dominio y `@RestControllerAdvice` | [5. Errores y configuración](05-errores-y-configuracion.md) §1–2 |
+| **S12** | Configuración, perfiles y `application.yml` | [5. Errores y configuración](05-errores-y-configuracion.md) §3–4 |
+| **S13** | Tests unitarios con Mockito | [6. Testing en Spring](06-testing-en-spring.md) §1–2 |
+| **S14** | Tests de rodaja y de integración | [6. Testing en Spring](06-testing-en-spring.md) §3–5 |
+| **S15** | Laboratorio: la batería sobre otro dominio (biblioteca) | [Batería de ejercicios](ejercicios.md) |
+| **S16** | Proyecto integrador: montar la aplicación completa | [Reto con tests](practicas.md) |
+| **S17** | Repaso, dudas y laboratorio libre | [Preparar el examen](examen.md) |
+| **S18** | :material-laptop: **Examen práctico de RA5 (100 %)** | [Preparar el examen](examen.md) |
 
 ## Cómo se evalúa: examen práctico
 
 Desarrollo en el ordenador a partir de un enunciado y un esqueleto de proyecto. Se valora, por criterios: que **funcione**, que las **capas** estén bien separadas, la **inyección de dependencias** correcta, el uso de **DTO y validación**, el **manejo de errores** y los **tests**.
 
-Enunciado de ejemplo, rúbrica completa y consejos: **[preparación del examen](examen/)**.
+Enunciado de ejemplo, rúbrica completa y consejos: **[preparación del examen](examen.md)**.
 
 ## Material
 
 - Reto con tests
     — construimos una aplicación completa, sesión a sesión.
 - Batería de ejercicios — 12 ejercicios resueltos sobre otro dominio (una biblioteca), para comprobar que lo sabes hacer tú y no solo copiar.
-- [Comprobar tu trabajo](../comprobar-tu-trabajo/) — los tests del reto de tu unidad.
+- [Comprobar tu trabajo](../comprobar-tu-trabajo.md) — los tests del reto de tu unidad.
     — pégale tu código y te dice si tus capas aguantan.
 - Chuleta de Spring
     — anotaciones y estructura en una página.

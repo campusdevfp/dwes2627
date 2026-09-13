@@ -2,20 +2,20 @@
 
 > **Reto `ut3-datos-base`**, en GitHub Classroom. Se te entrega un proyecto con las clases creadas, los métodos vacíos y **los tests escritos**. Tu trabajo es ponerlos en verde.
 >
-> Los tests son el enunciado: cada aserción dice qué se espera. Ejecuta `./verificar.sh` para ver el estado de un vistazo, y consulta [cómo se trabaja](../comprobar-tu-trabajo/) si es tu primer reto.
+> Los tests son el enunciado: cada aserción dice qué se espera. Ejecuta `./verificar.sh` para ver el estado de un vistazo, y consulta [cómo se trabaja](../comprobar-tu-trabajo.md) si es tu primer reto.
 
 Debajo tienes las **fases sugeridas** para resolverlo. No es obligatorio seguirlas en orden, pero es el camino más corto.
 
 | # | Práctica | Tema | Qué practicas |
 |---|---|---|---|
-| P1 | Elige la estructura | [1](../01-estructuras-de-datos/) | List/Set/Map/Deque con criterio |
-| P2 | Informe de ventas | [1](../01-estructuras-de-datos/) | `groupingBy`, `Comparator`, estadísticas |
-| P3 | Lector de CSV | [2](../02-ficheros/) | NIO.2, `Files.lines`, parseo |
-| P4 | Escritor y filtro | [2](../02-ficheros/) | Escritura, `try-with-resources` |
-| P5 | De CSV a JSON | [3](../03-json-y-jackson/) | Jackson, serialización |
-| P6 | Consumir JSON externo | [3](../03-json-y-jackson/) | Deserialización, campos desconocidos |
-| P7 | Reservas validadas | [4](../04-fechas-y-validacion/) | `java.time`, validación, regex |
-| P8 | **Catálogo en capas** | [5](../05-repositorio-y-capas/) | Interfaz + repositorio + servicio + test |
+| P1 | Elige la estructura | [1](01-estructuras-de-datos.md) | List/Set/Map/Deque con criterio |
+| P2 | Informe de ventas | [1](01-estructuras-de-datos.md) | `groupingBy`, `Comparator`, estadísticas |
+| P3 | Lector de CSV | [2](02-ficheros.md) | NIO.2, `Files.lines`, parseo |
+| P4 | Escritor y filtro | [2](02-ficheros.md) | Escritura, `try-with-resources` |
+| P5 | De CSV a JSON | [3](03-json-y-jackson.md) | Jackson, serialización |
+| P6 | Consumir JSON externo | [3](03-json-y-jackson.md) | Deserialización, campos desconocidos |
+| P7 | Reservas validadas | [4](04-fechas-y-validacion.md) | `java.time`, validación, regex |
+| P8 | **Catálogo en capas** | [5](05-repositorio-y-capas.md) | Interfaz + repositorio + servicio + test |
 
 ---
 
@@ -201,4 +201,4 @@ Monta el proyecto completo: `Producto` (record) · `ProductoRepositorio` (interf
 
 ## Cómo entrenar para el test
 
-El test de la UT3 pregunta sobre **estas prácticas**: por qué falla un parseo de CSV, qué devuelve un `groupingBy`, qué error da Jackson con un campo extra, qué imprime una fecha tras `plusDays` sin asignar, o en qué capa va cada responsabilidad. Repasa tus soluciones y pide simulacros al [comprobar tu trabajo con los tests](../comprobar-tu-trabajo/).
+El test de la UT3 pregunta sobre **estas prácticas**: por qué falla un parseo de CSV, qué devuelve un `groupingBy`, qué error da Jackson con un campo extra, qué imprime una fecha tras `plusDays` sin asignar, o en qué capa va cada responsabilidad. Repasa tus soluciones y pide simulacros al [comprobar tu trabajo con los tests](../comprobar-tu-trabajo.md).

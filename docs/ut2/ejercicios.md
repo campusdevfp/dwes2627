@@ -259,6 +259,539 @@ Monta un proyecto Maven con la clase `Liga` y escribe cuatro tests con JUnit 5: 
 
 ---
 
+## Taller: escribir Java moderno
+
+!!! reto "Del E13 al E27 se escriben y se ejecutan"
+    La UT2 es la última unidad en la que se aprende **el lenguaje**. Desde la UT4 ya no hay tiempo: se da por sabido.
+
+    Todos se ejecutan con `java Fichero.java`, sin Maven.
+
+### E13 ● — Bloques de texto
+
+Imprime la ficha de un jugador en varias líneas, sin concatenar y sin `\n`.
+
+??? success "Solución"
+
+    ```java
+    void main() {
+        var j = new Jugador("Ana Ruiz", 7, Posicion.BASE, 18);
+
+        var ficha = """
+                +------------------------------+
+                | %-20s #%2d |
+                | %-24s     |
+                | Puntos: %-3d                 |
+                +------------------------------+
+                """.formatted(j.nombre(), j.dorsal(), j.posicion(), j.puntos());
+
+        IO.println(ficha);
+    }
+    ```
+
+    - La **sangría común se quita sola**: se mide desde la línea menos sangrada, incluida la del cierre. Por eso el `"""` final marca el margen izquierdo.
+    - No hacen falta `\n`: los saltos son los del bloque.
+    - `formatted` es `String.format`, pero encadenable.
+
+    Para partir una línea larga en el código **sin** que salga partida, termina con `\` :
+
+    ```java
+    var sql = """
+            SELECT nombre, dorsal \
+            FROM jugador WHERE puntos > ?
+            """;
+    ```
+
+### E14 ● — `var`: cuándo sí y cuándo no
+
+Corrige estos cuatro usos y justifica cada decisión.
+
+```java
+var x = servicio.buscar();
+var lista = new ArrayList<Jugador>();
+var total = calcularMedia(jugadores);
+var i = 0;
+```
+
+??? success "Solución"
+
+    ```java
+    List<Jugador> x = servicio.buscar();   // ni el nombre ni la derecha dicen el tipo
+    var lista = new ArrayList<Jugador>();  // bien: el tipo está a la derecha
+    double total = calcularMedia(...);     // «total» no dice si es double o BigDecimal
+    var i = 0;                             // bien: obvio
+    ```
+
+    **La regla:** `var` cuando el tipo se lee en la misma línea o es evidente. Si para saber qué tienes delante hay que ir a mirar una firma, escribe el tipo.
+
+    Y lo que `var` **no** es: tipado dinámico. El tipo se fija al compilar.
+
+    ```java
+    var i = 0;
+    i = "hola";     // no compila
+    ```
+
+### E15 ●● — `instanceof` con patrón
+
+Reescribe esto sin castings.
+
+```java
+String describir(Object o) {
+    if (o instanceof Jugador) {
+        Jugador j = (Jugador) o;
+        return j.nombre() + " #" + j.dorsal();
+    } else if (o instanceof String) {
+        String s = (String) o;
+        return s.toUpperCase();
+    }
+    return "desconocido";
+}
+```
+
+??? success "Solución"
+
+    ```java
+    String describir(Object o) {
+        if (o instanceof Jugador j) {
+            return "%s #%d".formatted(j.nombre(), j.dorsal());
+        }
+        if (o instanceof String s && !s.isBlank()) {
+            return s.toUpperCase();
+        }
+        return "desconocido";
+    }
+    ```
+
+    La variable del patrón **solo existe donde el patrón se cumple**, así que el compilador impide usarla fuera. Eso elimina el `ClassCastException` por construcción.
+
+    Fíjate en el `&&`: a su derecha el patrón ya se ha cumplido, así que se puede seguir comprobando cosas sobre `s`.
+
+    Con un `record` se puede además **desestructurar**:
+
+    ```java
+    if (o instanceof Jugador(String nombre, int dorsal, var pos, var puntos)) {
+        return "%s #%d".formatted(nombre, dorsal);
+    }
+    ```
+
+### E16 ●● — `switch` con patrones y `sealed`
+
+Modela los eventos de un partido y calcula los puntos de cada uno.
+
+??? success "Solución"
+
+    ```java
+    sealed interface Evento permits Canasta, Falta, Tiempo {}
+
+    record Canasta(String jugador, int puntos) implements Evento {}
+    record Falta(String jugador, boolean tecnica)  implements Evento {}
+    record Tiempo(int minuto)                      implements Evento {}
+
+    int puntosDe(Evento e) {
+        return switch (e) {
+            case Canasta(String jugador, int puntos) when puntos == 3 -> {
+                IO.println("¡Triple de " + jugador + "!");
+                yield 3;
+            }
+            case Canasta c -> c.puntos();
+            case Falta f   -> 0;
+            case Tiempo t  -> 0;
+        };
+    }
+    ```
+
+    Lo importante, y la razón de ser de `sealed`: **no hay `default`**. El compilador sabe que solo existen tres implementaciones y comprueba que están las tres.
+
+    El día que añadas `record Cambio(...) implements Evento`, este `switch` **deja de compilar** y te obliga a decidir qué hacer. Con una cadena de `if` te enterarías en producción.
+
+    `when` añade una condición al patrón, y `yield` devuelve el valor desde un caso con llaves.
+
+### E17 ●● — Comparador con desempate
+
+Ordena por puntos de mayor a menor y, a igualdad, por nombre alfabético.
+
+??? success "Solución"
+
+    ```java
+    var orden = jugadores.stream()
+            .sorted(Comparator.comparingInt(Jugador::puntos).reversed()
+                              .thenComparing(Jugador::nombre))
+            .toList();
+    ```
+
+    El error clásico es poner el `.reversed()` al final:
+
+    ```java
+    // MAL: invierte TODO, incluido el desempate por nombre
+    comparing(Jugador::puntos).thenComparing(Jugador::nombre).reversed()
+    ```
+
+    `reversed()` invierte **el comparador construido hasta ese punto**. Por eso va pegado a lo que quieres invertir.
+
+    Y `comparingInt` evita el autoboxing en cada comparación. Con 20 jugadores da igual; con 200.000 filas, no.
+
+### E18 ●● — Partir en dos con `partitioningBy`
+
+Separa los anotadores (más de 15 puntos) del resto y cuenta cuántos hay en cada grupo.
+
+??? success "Solución"
+
+    ```java
+    Map<Boolean, List<Jugador>> grupos = jugadores.stream()
+            .collect(Collectors.partitioningBy(j -> j.puntos() > 15));
+
+    IO.println("Anotadores: " + grupos.get(true).size());
+    IO.println("Resto:      " + grupos.get(false).size());
+    ```
+
+    Y si solo quieres el recuento:
+
+    ```java
+    Map<Boolean, Long> conteo = jugadores.stream()
+            .collect(Collectors.partitioningBy(j -> j.puntos() > 15, Collectors.counting()));
+    ```
+
+    **Frente a `groupingBy`:** `partitioningBy` siempre devuelve **las dos claves**, aunque un grupo esté vacío. `groupingBy` no crearía la clave del grupo vacío y el `get` daría `null`.
+
+### E19 ●●● — Dos cuentas en una pasada con `teeing`
+
+Calcula en **un solo recorrido** la media de puntos y el nombre del máximo anotador.
+
+??? success "Solución"
+
+    ```java
+    record Resumen(double media, String maximo) {}
+
+    Resumen r = jugadores.stream().collect(Collectors.teeing(
+            Collectors.averagingInt(Jugador::puntos),
+            Collectors.maxBy(Comparator.comparingInt(Jugador::puntos)),
+            (media, mejor) -> new Resumen(media, mejor.map(Jugador::nombre).orElse("—"))));
+    ```
+
+    `teeing` aplica **dos recolectores a la vez** sobre el mismo flujo y combina los resultados. Sin él harían falta dos pasadas.
+
+    Si lo que quieres son estadísticas numéricas, hay algo más simple todavía:
+
+    ```java
+    IntSummaryStatistics est = jugadores.stream()
+            .mapToInt(Jugador::puntos)
+            .summaryStatistics();
+    // getCount(), getSum(), getMin(), getMax(), getAverage()
+    ```
+
+### E20 ●● — `Optional` encadenado
+
+Dado el dorsal, devuelve el nombre en mayúsculas, o `"SIN ASIGNAR"` si no existe o está en blanco.
+
+??? success "Solución"
+
+    ```java
+    String nombrePorDorsal(int dorsal) {
+        return jugadores.stream()
+                .filter(j -> j.dorsal() == dorsal)
+                .findFirst()
+                .map(Jugador::nombre)
+                .filter(n -> !n.isBlank())
+                .map(String::toUpperCase)
+                .orElse("SIN ASIGNAR");
+    }
+    ```
+
+    **Lo que no se hace nunca:**
+
+    ```java
+    if (opt.isPresent()) { return opt.get().toUpperCase(); } else { return "SIN ASIGNAR"; }
+    ```
+
+    Funciona, y es escribir con `Optional` exactamente el mismo `if (x != null)` de siempre. `Optional` está para encadenar.
+
+    `map` frente a `flatMap`: si la función ya devuelve un `Optional`, es `flatMap`; si no, te quedas con un `Optional<Optional<T>>`.
+
+### E21 ●● — Varios recursos en un `try`
+
+Copia las líneas de un fichero a otro en mayúsculas, cerrando los dos recursos.
+
+??? success "Solución"
+
+    ```java
+    void copiarEnMayusculas(Path origen, Path destino) throws IOException {
+        try (var lineas = Files.lines(origen, StandardCharsets.UTF_8);
+             var salida = Files.newBufferedWriter(destino, StandardCharsets.UTF_8)) {
+
+            lineas.map(String::toUpperCase).forEach(l -> {
+                try {
+                    salida.write(l);
+                    salida.newLine();
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
+        }
+    }
+    ```
+
+    1. **Se cierran en orden inverso** al de apertura, y se cierran **todos** aunque uno falle al cerrarse.
+    2. El `try/catch` de dentro del `forEach` es feo pero obligatorio: una lambda no puede propagar una excepción comprobada.
+
+    Si eso te molesta, un bucle lo evita:
+
+    ```java
+    for (var l : (Iterable<String>) lineas::iterator) {
+        salida.write(l.toUpperCase());
+        salida.newLine();
+    }
+    ```
+
+### E22 ●●● — Envolver una excepción sin perder la causa
+
+`cargarPlantilla` falla con `IOException` y quien la llama no debería enterarse de que hay ficheros por medio.
+
+??? success "Solución"
+
+    ```java
+    public class PlantillaNoDisponibleException extends RuntimeException {
+        public PlantillaNoDisponibleException(String mensaje, Throwable causa) {
+            super(mensaje, causa);          // <- la causa, SIEMPRE
+        }
+    }
+
+    List<Jugador> cargarPlantilla(Path fichero) {
+        try {
+            return leer(fichero);
+        } catch (IOException e) {
+            throw new PlantillaNoDisponibleException(
+                    "No se ha podido cargar la plantilla desde " + fichero, e);
+        }
+    }
+    ```
+
+    **Los dos errores típicos:**
+
+    ```java
+    catch (IOException e) { }                       // 1. tragársela
+    catch (IOException e) { e.printStackTrace(); }  // 2. imprimirla y seguir
+    ```
+
+    El primero hace que el fallo desaparezca y el programa continúe con datos a medias. El segundo ensucia la salida y tampoco detiene nada.
+
+    Y el tercero, más sutil: **perder la causa**. Sin la `e`, la traza se corta ahí y pierdes la línea del fallo original. Pasarla cuesta cuatro caracteres.
+
+### E23 ●● — Inmutabilidad de verdad
+
+Este `Equipo` parece inmutable y no lo es. Encuentra el fallo.
+
+```java
+public final class Equipo {
+    private final String nombre;
+    private final List<Jugador> jugadores;
+
+    public Equipo(String nombre, List<Jugador> jugadores) {
+        this.nombre = nombre;
+        this.jugadores = jugadores;
+    }
+    public List<Jugador> jugadores() { return jugadores; }
+}
+```
+
+??? success "Solución"
+
+    Hay **dos** fugas, una en cada dirección:
+
+    ```java
+    var lista = new ArrayList<>(List.of(ana, bruno));
+    var e = new Equipo("Rayo", lista);
+
+    lista.add(carla);          // 1. por el constructor
+    e.jugadores().clear();     // 2. por el getter
+    ```
+
+    El `final` protege la **referencia**, no el contenido de la lista.
+
+    ```java
+    public Equipo(String nombre, List<Jugador> jugadores) {
+        this.nombre = nombre;
+        this.jugadores = List.copyOf(jugadores);   // copia inmutable
+    }
+    ```
+
+    `List.copyOf` hace las dos cosas: copia —así el `add` de fuera ya no le afecta— y devuelve una lista **inmutable**, con lo que el `clear()` lanza `UnsupportedOperationException`.
+
+    Ojo: **no admite nulos**. Si la lista puede traerlos, fíltralos antes.
+
+    Con un `record` pasa lo mismo, y se arregla en el constructor compacto:
+
+    ```java
+    record Equipo(String nombre, List<Jugador> jugadores) {
+        Equipo { jugadores = List.copyOf(jugadores); }
+    }
+    ```
+
+### E24 ●● — `enum` con datos y comportamiento
+
+Modela las posiciones con su número de camiseta y un método que diga si es exterior.
+
+??? success "Solución"
+
+    ```java
+    enum Posicion {
+        BASE(1, true), ESCOLTA(2, true), ALERO(3, true),
+        ALA_PIVOT(4, false), PIVOT(5, false);
+
+        private final int numero;
+        private final boolean exterior;
+
+        Posicion(int numero, boolean exterior) {
+            this.numero = numero;
+            this.exterior = exterior;
+        }
+
+        public int numero()       { return numero; }
+        public boolean exterior() { return exterior; }
+
+        public static Posicion porNumero(int n) {
+            return Arrays.stream(values())
+                    .filter(p -> p.numero == n)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Posición " + n));
+        }
+    }
+    ```
+
+    Un `enum` en Java **es una clase**: puede tener campos, constructor y métodos. Eso permite meter el dato donde vive el concepto, en vez de repartirlo en un `switch` por cada consulta.
+
+    `values()` devuelve un **array nuevo cada vez**, así que dentro de un bucle conviene guardarlo en una variable.
+
+### E25 ●●● — Tu propia interfaz funcional
+
+Escribe un método `aplicarA` que reciba una lista y una transformación. Sin usar `Function`.
+
+??? success "Solución"
+
+    ```java
+    @FunctionalInterface
+    interface Transformacion<E, S> {
+        S aplicar(E entrada);
+
+        default <T> Transformacion<E, T> luego(Transformacion<S, T> siguiente) {
+            return e -> siguiente.aplicar(this.aplicar(e));
+        }
+    }
+
+    <E, S> List<S> aplicarA(List<E> lista, Transformacion<E, S> t) {
+        var salida = new ArrayList<S>(lista.size());
+        for (var e : lista) {
+            salida.add(t.aplicar(e));
+        }
+        return List.copyOf(salida);
+    }
+    ```
+
+    Y se usa igual que las del JDK:
+
+    ```java
+    Transformacion<Jugador, String> aNombre = Jugador::nombre;
+    Transformacion<Jugador, String> aGritar = aNombre.luego(String::toUpperCase);
+
+    List<String> nombres = aplicarA(jugadores, aGritar);
+    ```
+
+    `@FunctionalInterface` no es obligatoria, pero **hace que el compilador avise** si alguien añade un segundo método abstracto y rompe todas las lambdas.
+
+    Lo que hay que llevarse de aquí: una lambda no es magia, es **una implementación de una interfaz de un solo método**.
+
+### E26 ●● — Modificar mientras recorres
+
+Elimina los jugadores con menos de 5 puntos. Escribe la versión que falla y la que funciona.
+
+??? success "Solución"
+
+    ```java
+    // FALLA: ConcurrentModificationException
+    for (var j : jugadores) {
+        if (j.puntos() < 5) jugadores.remove(j);
+    }
+    ```
+
+    El `for-each` usa un `Iterator` por debajo, y el `remove` de la lista lo deja obsoleto. La excepción salta en el siguiente `next()`.
+
+    **Tres formas correctas**, de mejor a peor:
+
+    ```java
+    jugadores.removeIf(j -> j.puntos() < 5);            // 1. la que se usa
+
+    var it = jugadores.iterator();                      // 2. con más control
+    while (it.hasNext()) {
+        if (it.next().puntos() < 5) it.remove();        // remove DEL ITERADOR
+    }
+
+    var filtrados = jugadores.stream()                  // 3. sin mutar nada
+            .filter(j -> j.puntos() >= 5).toList();
+    ```
+
+    Y un aviso: **la lista tiene que ser mutable**. Sobre una `List.of(...)`, las dos primeras lanzan `UnsupportedOperationException`.
+
+### E27 ●●● — Refactor completo a Java 25
+
+Moderniza este método. Está escrito como en 2010.
+
+```java
+public String informe(List<Jugador> jugadores) {
+    String salida = "";
+    int total = 0;
+    Jugador mejor = null;
+    for (int i = 0; i < jugadores.size(); i++) {
+        Jugador j = jugadores.get(i);
+        if (j != null && j.getPuntos() > 0) {
+            total = total + j.getPuntos();
+            if (mejor == null || j.getPuntos() > mejor.getPuntos()) {
+                mejor = j;
+            }
+            salida = salida + j.getNombre() + ": " + j.getPuntos() + "\n";
+        }
+    }
+    if (mejor != null) {
+        salida = salida + "Mejor: " + mejor.getNombre();
+    } else {
+        salida = salida + "Sin datos";
+    }
+    return salida;
+}
+```
+
+??? success "Solución"
+
+    ```java
+    String informe(List<Jugador> jugadores) {
+        var anotadores = jugadores.stream()
+                .filter(Objects::nonNull)
+                .filter(j -> j.puntos() > 0)
+                .toList();
+
+        var lineas = anotadores.stream()
+                .map(j -> "%s: %d".formatted(j.nombre(), j.puntos()))
+                .collect(Collectors.joining("\n"));
+
+        var mejor = anotadores.stream()
+                .max(Comparator.comparingInt(Jugador::puntos))
+                .map(j -> "Mejor: " + j.nombre())
+                .orElse("Sin datos");
+
+        return lineas.isEmpty() ? mejor : lineas + "\n" + mejor;
+    }
+    ```
+
+    | Antes | Ahora | Por qué |
+    |---|---|---|
+    | `salida = salida + ...` dentro del bucle | `Collectors.joining` | Cada `+` crea un `String` nuevo. Con 10.000 filas se nota |
+    | `for` con índice | `stream` | Se lee **qué** hace, no **cómo** recorre |
+    | `mejor == null` como centinela | `max(...)` y `Optional` | El `null` deja de existir |
+    | `j != null` disperso | `filter(Objects::nonNull)` | Una línea, y al principio |
+    | `getPuntos()` | `puntos()` | Es un `record` |
+    | `+` para formatear | `formatted` | Se lee la plantilla de un vistazo |
+
+    **Lo que NO hay que hacer** es convertirlo todo en un único *stream* gigante. Tres pasos con nombre —`anotadores`, `lineas`, `mejor`— se leen muchísimo mejor que quince operaciones encadenadas.
+
+---
+
 ## Reparto sugerido
 
 | Ejercicio | Nivel | Sesión | Encaje |
@@ -275,3 +808,46 @@ Monta un proyecto Maven con la clase `Liga` y escribe cuatro tests con JUnit 5: 
 | E10 · `Optional` | ●● | S8 | |
 | E11 · Bucles a streams | ●●● | S8 | |
 | E12 · Maven y tests | ●●● | S9 | Prepara todo el curso |
+| **E13 · Bloques de texto** | ● | S3 | Reaparece en la UT6 con JSON |
+| **E14 · `var` bien y mal** | ● | S3 | Criterio, no sintaxis |
+| **E15 · `instanceof` con patrón** | ●● | S5 | |
+| **E16 · `switch` y `sealed`** | ●● | S5 | Lo más moderno de la unidad |
+| **E17 · Comparador con desempate** | ●● | S6 | El `.reversed()` mal puesto |
+| **E18 · `partitioningBy`** | ●● | S7 | |
+| **E19 · `teeing`** | ●●● | S7 | Una pasada, dos cuentas |
+| **E20 · `Optional` encadenado** | ●● | S8 | Sin `isPresent` |
+| **E21 · Varios recursos** | ●● | S8 | **Reaparece en la UT3** |
+| **E22 · Envolver excepciones** | ●●● | S8 | Prepara la UT4 |
+| **E23 · Inmutabilidad de verdad** | ●● | S4 | La fuga por el *getter* |
+| **E24 · `enum` con datos** | ●● | S5 | |
+| **E25 · Interfaz funcional propia** | ●●● | S8 | Explica qué es una lambda |
+| **E26 · Modificar al recorrer** | ●● | S6 | Cae en el examen |
+| **E27 · Refactor a Java 25** | ●●● | S9 | Cierra la unidad |
+
+!!! tip "Los doce primeros son el núcleo"
+    Del **E13 en adelante** es ampliación. En un grupo que va rodado se hacen en clase; en uno que va justo, quedan como refuerzo guiado. El **E27** conviene hacerlo siempre: es la unidad entera en un solo ejercicio.
+
+---
+
+## Del ejercicio a la pregunta de test
+
+El examen de esta unidad son **30 preguntas**, y la mayoría son **preguntas de código**: se da un fragmento y hay que decir qué imprime, si compila o dónde está el fallo ([formato aquí](examen.md)).
+
+| Ejercicios | Preguntas | Qué se pregunta |
+|---|:-:|---|
+| **E1–E2 · E13–E14** · Sintaxis y tipos | 5 | La división entera; `var` y qué tipo infiere; bloques de texto y la sangría |
+| **E3–E4 · E23–E24** · POO y `record` | 6 | Qué genera un `record`; `equals` sin `hashCode`; la lista que se cuela por el getter; `enum` con campos |
+| **E15–E16** · Patrones | 4 | `instanceof` con patrón y su ámbito; por qué un `switch` sobre `sealed` no lleva `default` |
+| **E5–E8 · E17–E19 · E26** · Colecciones y streams | 9 | Qué imprime un `HashMap` frente a un `TreeMap`; `map` o `flatMap`; dónde va el `.reversed()`; `ConcurrentModificationException` |
+| **E9–E10 · E20–E22** · Excepciones y `Optional` | 6 | Qué se imprime al tragarse una excepción; orden de cierre en el *try*; `orElse` frente a `orElseThrow` |
+
+!!! reto "Las tres costumbres que transfieren"
+    En esta unidad el efecto es todavía más directo que en la UT1, porque las preguntas **son** fragmentos de código como los de los ejercicios.
+
+    1. **Predice antes de ejecutar.** Antes de darle a *Run*, escribe en un papel qué va a imprimir. Si aciertas, lo entendiste; si no, acabas de encontrar tu hueco. Es exactamente el tipo de pregunta «¿qué imprime?».
+
+    2. **Rompe tu propia solución.** Cuando un ejercicio te salga bien, quítale el `hashCode`, mueve el `.reversed()` al final, cambia el `TreeMap` por un `HashMap`, borra la causa del `throw`. Ejecuta y **apunta qué cambia**. Eso es el tipo «¿por qué falla?».
+
+    3. **Escribe tú la pregunta.** Coge un ejercicio resuelto e invéntate cuatro opciones. Los tres distractores te obligan a saber por qué alguien se equivocaría, que es justo lo que se pregunta.
+
+    Dos minutos por ejercicio. Con los veintisiete son menos de una hora en toda la unidad, repartida — y rinde más que cualquier repaso de la víspera.

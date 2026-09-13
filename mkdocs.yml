@@ -18,18 +18,24 @@ theme:
     # Sigue la preferencia del sistema
     - media: "(prefers-color-scheme)"
       scheme: dwes
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-auto
         name: Seguir el sistema
     # Modo claro
     - media: "(prefers-color-scheme: light)"
       scheme: dwes
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-night
         name: Modo oscuro
     # Modo oscuro
     - media: "(prefers-color-scheme: dark)"
       scheme: dwes-dark
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-sunny
         name: Modo claro
@@ -144,6 +150,7 @@ nav:
     - "Chuleta de comandos: Maven y Gradle": entorno/comandos.md
 
   - 1.er trimestre · 80 h:
+    - Cómo se trabaja el 1.er trimestre: retos-1t.md
     - UT1 · RA1 · Arquitecturas y tecnologías:
       - ut1/index.md
       - 1. El viaje de una petición: ut1/01-el-viaje-de-una-peticion.md
@@ -227,6 +234,10 @@ nav:
       - Preparar el examen: ut6/examen.md
 
   - 2.º trimestre · 80 h:
+    - Proyecto · Pulso de Madrid:
+      - proyecto/index.md
+      - Los seis retos: proyecto/retos.md
+      - Cómo se defiende cada entrega: proyecto/defensa.md
     - UT7 · RA4 · Estado, sesiones y seguridad:
       - ut7/index.md
       - 1. El estado en la web: ut7/01-estado-en-la-web.md

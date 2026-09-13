@@ -25,14 +25,14 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 
 | Sesión (55') | En clase | Lectura previa |
 |---|---|---|
-| **S1** | Entorno: JDK 25, IntelliJ, tu primer programa | [IntelliJ](../entorno/intellij/) + [1. Primeros pasos](01-primeros-pasos/) |
-| **S2** | Tipos, `var`, operadores, control de flujo y el `switch` moderno | [2. Sintaxis y tipos](02-sintaxis-y-tipos/) completo |
-| **S3** | Clases y objetos · **records**, enums y `equals`/`toString` | [3. POO en Java](03-poo-en-java/) §1–4 |
-| **S4** | Herencia, interfaces y polimorfismo | [3. POO en Java](03-poo-en-java/) §5–6 |
-| **S5** | Colecciones: `List`, `Map`, `Set` | [4. Colecciones y funcional](04-colecciones-y-funcional/) §1–2 |
-| **S6** | Lambdas y **Streams** (el gran salto) | [4. Colecciones y funcional](04-colecciones-y-funcional/) §3–4 |
-| **S7** | Excepciones y `Optional` · Maven, librerías y testing con JUnit 5 | [5. Excepciones y Optional](05-excepciones-y-optional/) + [6. Proyectos y testing](06-proyectos-y-testing/) |
-| **S8** | :material-form-select: **Test de RA2 (100 %)** — 30 preguntas | Repasa con la [autoevaluación](autoevaluacion/) |
+| **S1** | Entorno: JDK 25, IntelliJ, tu primer programa | [IntelliJ](../entorno/intellij.md) + [1. Primeros pasos](01-primeros-pasos.md) |
+| **S2** | Tipos, `var`, operadores, control de flujo y el `switch` moderno | [2. Sintaxis y tipos](02-sintaxis-y-tipos.md) completo |
+| **S3** | Clases y objetos · **records**, enums y `equals`/`toString` | [3. POO en Java](03-poo-en-java.md) §1–4 |
+| **S4** | Herencia, interfaces y polimorfismo | [3. POO en Java](03-poo-en-java.md) §5–6 |
+| **S5** | Colecciones: `List`, `Map`, `Set` | [4. Colecciones y funcional](04-colecciones-y-funcional.md) §1–2 |
+| **S6** | Lambdas y **Streams** (el gran salto) | [4. Colecciones y funcional](04-colecciones-y-funcional.md) §3–4 |
+| **S7** | Excepciones y `Optional` · Maven, librerías y testing con JUnit 5 | [5. Excepciones y Optional](05-excepciones-y-optional.md) + [6. Proyectos y testing](06-proyectos-y-testing.md) |
+| **S8** | :material-form-select: **Test de RA2 (100 %)** — 30 preguntas | Repasa con la [autoevaluación](autoevaluacion.md) |
 
 Cada página incluye **Pruébalo ahora** (código que ejecutas) y **Ejercicios con solución**.
 
@@ -59,7 +59,7 @@ Se supera con **≥ 5**. Como en la UT1: **el test se estudia programando**. Qui
     : ejercicios de programación con enunciado y solución.
 - Autoevaluación
     : banco de preguntas tipo test con soluciones.
-- [Comprobar tu trabajo](../comprobar-tu-trabajo/) — los tests del reto de tu unidad.
+- [Comprobar tu trabajo](../comprobar-tu-trabajo.md) — los tests del reto de tu unidad.
     : pega tu código y recibe feedback + simulacros del test.
 - [Chuleta de Java 25](chuleta.md)
     : la sintaxis esencial en una página.

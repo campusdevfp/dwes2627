@@ -223,6 +223,14 @@ Un RA aprobado **no se pierde**: lo que apruebas en noviembre sigue aprobado en 
 
 **Los tests son el corrector.** Las prácticas vienen con un **proyecto base y tests que ejecutas tú**: mientras estén en rojo falta trabajo; cuando se ponen verdes, la práctica está terminada. Sin interpretaciones, sin esperar a clase y a cualquier hora. Es además el mismo mecanismo con el que se corrige el examen práctico, así que trabajar así **es** ensayar el examen. Ver [Comprobar tu trabajo](comprobar-tu-trabajo.md).
 
+**Se pregunta antes de explicar.** En UT1, UT2 y UT3 cada sesión abre con un **micro-reto de 25 minutos**: una pregunta incómoda que se trabaja en pareja *antes* de que nadie explique nada. Es incómodo a propósito y no se evalúa. Están todos listados en **[Cómo se trabaja el 1.er trimestre](retos-1t.md)**.
+
+### En enero cambia la forma de trabajar
+
+El primer trimestre va de **aprender piezas**. El segundo va de **usarlas**: las tres unidades que quedan se dan construyendo **un solo producto en equipos de tres**, por retos y con una demo cada viernes. El aula deja de organizarse por temas y pasa a organizarse por **sprints de dos semanas**.
+
+No cambia lo importante: se sigue leyendo antes de clase, los tests siguen siendo el corrector y **el examen práctico de cada unidad sigue siendo el 100 % de su nota** — solo que ahora sale del proyecto. Lo tienes explicado en **[el proyecto del 2.º trimestre](proyecto/index.md)**.
+
 ---
 
 ## 5. Qué necesitas

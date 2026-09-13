@@ -24,16 +24,16 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 
 | Sesión (55') | En clase | Lectura previa |
 |---|---|---|
-| **S1** | Elegir estructura y ordenar: `List`, `Set`, `Map`, `Deque`, `Comparator` | [1. Estructuras de datos](01-estructuras-de-datos/) §1–3 |
-| **S2** | `groupingBy`, `reduce` y estadísticas sobre datos reales | [1. Estructuras de datos](01-estructuras-de-datos/) §4–6 |
-| **S3** | Rutas y ficheros de texto con NIO.2 | [2. Ficheros](02-ficheros/) §1–2 |
-| **S4** | CSV: leer, escribir, recursos y errores de E/S | [2. Ficheros](02-ficheros/) §3–4 |
-| **S5** | JSON: estructura y mapeo a objetos | [3. JSON y Jackson](03-json-y-jackson/) §1–2 |
-| **S6** | Jackson: serializar, deserializar, anidados y fechas | [3. JSON y Jackson](03-json-y-jackson/) §3–5 |
-| **S7** | Fechas con `java.time` · validación y expresiones regulares | [4. Fechas y validación](04-fechas-y-validacion/) |
-| **S8** | El patrón **Repositorio**, las capas y el proyecto integrador | [5. Repositorio y capas](05-repositorio-y-capas/) completo |
-| **S9** | Laboratorio con la batería · repaso y dudas | [Batería de ejercicios](ejercicios/) + [Preparar el examen](examen/) |
-| **S10** | :material-form-select: **Test práctico de RA3 (100 %)** | [Preparar el examen](examen/) |
+| **S1** | Elegir estructura y ordenar: `List`, `Set`, `Map`, `Deque`, `Comparator` | [1. Estructuras de datos](01-estructuras-de-datos.md) §1–3 |
+| **S2** | `groupingBy`, `reduce` y estadísticas sobre datos reales | [1. Estructuras de datos](01-estructuras-de-datos.md) §4–6 |
+| **S3** | Rutas y ficheros de texto con NIO.2 | [2. Ficheros](02-ficheros.md) §1–2 |
+| **S4** | CSV: leer, escribir, recursos y errores de E/S | [2. Ficheros](02-ficheros.md) §3–4 |
+| **S5** | JSON: estructura y mapeo a objetos | [3. JSON y Jackson](03-json-y-jackson.md) §1–2 |
+| **S6** | Jackson: serializar, deserializar, anidados y fechas | [3. JSON y Jackson](03-json-y-jackson.md) §3–5 |
+| **S7** | Fechas con `java.time` · validación y expresiones regulares | [4. Fechas y validación](04-fechas-y-validacion.md) |
+| **S8** | El patrón **Repositorio**, las capas y el proyecto integrador | [5. Repositorio y capas](05-repositorio-y-capas.md) completo |
+| **S9** | Laboratorio con la batería · repaso y dudas | [Batería de ejercicios](ejercicios.md) + [Preparar el examen](examen.md) |
+| **S10** | :material-form-select: **Test práctico de RA3 (100 %)** | [Preparar el examen](examen.md) |
 
 ## Cómo se evalúa
 
@@ -53,19 +53,19 @@ Acierto **+1**, fallo **−0,25**, en blanco **0**. Se examina con la chuleta im
 
     Las prácticas y la batería siguen siendo la preparación, y siguen haciéndose programando.
 
-**Lo que se evalúa** (detalle en la [página de preparación](examen/)): elección de estructuras y orden · *streams* y agrupaciones · lectura de ficheros y las trampas del CSV · JSON con Jackson y fechas ISO · validación y rangos · qué va en cada capa.
+**Lo que se evalúa** (detalle en la [página de preparación](examen.md)): elección de estructuras y orden · *streams* y agrupaciones · lectura de ficheros y las trampas del CSV · JSON con Jackson y fechas ISO · validación y rangos · qué va en cada capa.
 
 ## Material
 
-- [Prácticas guiadas](practicas/)
+- [Prácticas guiadas](practicas.md)
     — 8 ejercicios con solución que construyen el proyecto integrador.
-- [Batería de ejercicios prácticos](ejercicios/)
+- [Batería de ejercicios prácticos](ejercicios.md)
     — 12 ejercicios de examen resueltos, con datos de partida y salidas esperadas.
-- [Preparar el examen](examen/)
+- [Preparar el examen](examen.md)
     — formato, los cinco tipos de pregunta con ejemplos resueltos y un simulacro.
-- [Batería de test](autoevaluacion/)
+- [Batería de test](autoevaluacion.md)
     — preguntas del mismo tipo que las del examen, con solución razonada.
-- [comprobar tu trabajo con los tests](../comprobar-tu-trabajo/)
+- [comprobar tu trabajo con los tests](../comprobar-tu-trabajo.md)
     — feedback de tu código + simulacros de examen.
-- [Chuleta de la UT3](chuleta/)
+- [Chuleta de la UT3](chuleta.md)
     — colecciones, ficheros, JSON y fechas en una página.

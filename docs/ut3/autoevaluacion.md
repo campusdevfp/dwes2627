@@ -598,4 +598,4 @@ public interface FuenteConciertos {
 ---
 
 !!! success "Cuando hayas hecho las 30"
-    Vuelve a la [página de preparación del examen](../examen/) y haz el **simulacro cronometrado**. Menos de dos minutos por pregunta, que es el ritmo real.
+    Vuelve a la [página de preparación del examen](examen.md) y haz el **simulacro cronometrado**. Menos de dos minutos por pregunta, que es el ritmo real.

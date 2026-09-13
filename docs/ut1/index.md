@@ -47,7 +47,7 @@ Se supera con **≥ 5** (15 aciertos de 30). Traducción práctica: **el test se
 - [Batería de ejercicios](ejercicios.md): 12 ejercicios resueltos del tipo que cae en el test.
 - [Prácticas guiadas](practicas.md): los ejercicios hands-on de los que sale la sección práctica del test.
 - [Caso HuertoVecino](practica-evaluable.md): la práctica formativa de la que sale la sección de caso.
-- [comprobar tu trabajo con los tests](../comprobar-tu-trabajo/): feedback de tus entregas + simulacros de test (con ejemplos reales de uso).
+- [comprobar tu trabajo con los tests](../comprobar-tu-trabajo.md): feedback de tus entregas + simulacros de test (con ejemplos reales de uso).
 - [Autoevaluación](autoevaluacion.md): ~80 preguntas tipo test con soluciones.
 - [Chuleta](chuleta.md): códigos, métodos y vocabulario en una página.
 - [Preparar el examen](examen.md): formato, reparto de preguntas y errores que más cuestan.

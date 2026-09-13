@@ -58,10 +58,10 @@ Entregas un `.zip` **sin la carpeta `target`**. El dominio será distinto al de 
 
 ## Cómo prepararte
 
-1. Haz los **14 ejercicios** de la [batería](../ejercicios/), sobre todo el **E9** (contar consultas), el **E11** (transacción con códigos) y el **E14**, que es un simulacro.
-2. Termina el [proyecto de aula](../practicas/): si migraste la TiendaAPI entera, el examen es lo mismo con otro dominio.
+1. Haz los **14 ejercicios** de la [batería](ejercicios.md), sobre todo el **E9** (contar consultas), el **E11** (transacción con códigos) y el **E14**, que es un simulacro.
+2. Termina el [proyecto de aula](practicas.md): si migraste la TiendaAPI entera, el examen es lo mismo con otro dominio.
 3. Deja `show-sql: true` mientras practicas. **Saber leer el SQL que genera Hibernate es la mitad de esta unidad.**
-4. Ten la [chuleta](../chuleta/) a mano: en 110 minutos no da tiempo a buscar la sintaxis de `@JoinColumn`.
+4. Ten la [chuleta](chuleta.md) a mano: en 110 minutos no da tiempo a buscar la sintaxis de `@JoinColumn`.
 
 ## Simulacro
 

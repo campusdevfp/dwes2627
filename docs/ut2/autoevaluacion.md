@@ -105,5 +105,5 @@ Formato: opción múltiple, una correcta. Muchas son de **leer código y decir q
 ## Cómo usarlo
 
 - **Tras cada sesión:** responde el bloque del tema y corrige con el solucionario.
-- **La semana del test:** repite los bloques que fallaste y pide simulacros al [comprobar tu trabajo con los tests](../comprobar-tu-trabajo/).
+- **La semana del test:** repite los bloques que fallaste y pide simulacros al [comprobar tu trabajo con los tests](../comprobar-tu-trabajo.md).
 - Recuerda que el test real incluye además preguntas sobre **tu propio código** de las [prácticas](practicas.md): qué imprime, dónde está el fallo, por qué compila o no.

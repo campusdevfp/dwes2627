@@ -2,7 +2,7 @@
 
 > **Reto `ut4-capas-base`**, en GitHub Classroom. Proyecto con las capas esbozadas, los métodos vacíos y **los tests escritos**. Tu trabajo es ponerlos en verde.
 >
-> En paralelo, en clase se construye la *TiendaAPI* en directo: es el [proyecto del profesor](../comprobar-tu-trabajo/#6-el-proyecto-del-profesor), y lo tienes publicado con un *tag* por sesión para consultarlo cuando te atasques.
+> En paralelo, en clase se construye la *TiendaAPI* en directo: es el [proyecto del profesor](../comprobar-tu-trabajo.md#6-el-proyecto-del-profesor), y lo tienes publicado con un *tag* por sesión para consultarlo cuando te atasques.
 
 Debajo, las **fases sugeridas** para resolver el reto.
 
@@ -27,12 +27,12 @@ tienda/
 
 | Fase | Sesiones | Qué construyes | Página |
 |---|---|---|---|
-| **F1** | S1–S3 | Proyecto creado y primer endpoint funcionando | [1](../01-spring-boot/) |
-| **F2** | S4–S6 | Las tres capas conectadas por inyección | [2](../02-inyeccion-dependencias/) |
-| **F3** | S7–S9 | CRUD completo con códigos HTTP correctos | [3](../03-capas-en-spring/) |
-| **F4** | S10–S11 | DTO de entrada/salida y validación | [4](../04-dto-y-validacion/) |
-| **F5** | S12–S13 | Errores globales y configuración externa | [5](../05-errores-y-configuracion/) |
-| **F6** | S14–S15 | Tests de servicio y de controlador | [6](../06-testing-en-spring/) |
+| **F1** | S1–S3 | Proyecto creado y primer endpoint funcionando | [1](01-spring-boot.md) |
+| **F2** | S4–S6 | Las tres capas conectadas por inyección | [2](02-inyeccion-dependencias.md) |
+| **F3** | S7–S9 | CRUD completo con códigos HTTP correctos | [3](03-capas-en-spring.md) |
+| **F4** | S10–S11 | DTO de entrada/salida y validación | [4](04-dto-y-validacion.md) |
+| **F5** | S12–S13 | Errores globales y configuración externa | [5](05-errores-y-configuracion.md) |
+| **F6** | S14–S15 | Tests de servicio y de controlador | [6](06-testing-en-spring.md) |
 
 ---
 
@@ -157,6 +157,6 @@ tienda/
 
 ## Entrega y autoevaluación
 
-El proyecto de aula **no puntúa** (la nota es 100 % el examen), pero es su preparación directa. Cuando lo tengas, pásalo por el [comprobar tu trabajo con los tests](../comprobar-tu-trabajo/): te dirá si tus capas aguantarían la rúbrica.
+El proyecto de aula **no puntúa** (la nota es 100 % el examen), pero es su preparación directa. Cuando lo tengas, pásalo por el [comprobar tu trabajo con los tests](../comprobar-tu-trabajo.md): te dirá si tus capas aguantarían la rúbrica.
 
-Y repasa el [autochequeo de la página de examen](../examen/): si puedes hacer las ocho cosas de esa lista sin mirar, vas preparado.
+Y repasa el [autochequeo de la página de examen](examen.md): si puedes hacer las ocho cosas de esa lista sin mirar, vas preparado.

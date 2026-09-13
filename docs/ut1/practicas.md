@@ -17,7 +17,7 @@ Ejercicios **hands-on** para hacer en el aula (en el bloque de *pair work*) o en
 | P7 | Dockeriza un "hola mundo" | T9 / S5 | Docker | Dockerfile + contenedor corriendo |
 | P8 | Diagrama de arquitectura | T3 / S2 | Mermaid | Diagrama + decisiones |
 
-Cada práctica se autoevalúa con el [comprobar tu trabajo con los tests](../comprobar-tu-trabajo/) usando su rúbrica. **Ojo: el test de la unidad (100 % de la nota) pregunta directamente sobre estas prácticas.** Objetivo de entrenamiento: ≥ 80 % en cada una.
+Cada práctica se autoevalúa con el [comprobar tu trabajo con los tests](../comprobar-tu-trabajo.md) usando su rúbrica. **Ojo: el test de la unidad (100 % de la nota) pregunta directamente sobre estas prácticas.** Objetivo de entrenamiento: ≥ 80 % en cada una.
 
 ---
 
@@ -104,4 +104,4 @@ Estas prácticas **son el material del bloque *pair work*** de las sesiones (ver
 
 ## Autoevaluación con IA
 
-Estas prácticas de la UT1 producen documentos y diagramas, no código, así que no llevan tests automáticos: se revisan en la puesta en común con la rúbrica delante. Desde la **UT2** cada práctica sí tiene sus tests en el [proyecto base](../comprobar-tu-trabajo/).
+Estas prácticas de la UT1 producen documentos y diagramas, no código, así que no llevan tests automáticos: se revisan en la puesta en común con la rúbrica delante. Desde la **UT2** cada práctica sí tiene sus tests en el [proyecto base](../comprobar-tu-trabajo.md).

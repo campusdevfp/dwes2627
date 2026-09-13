@@ -1,5 +1,5 @@
 /* ==========================================================================
-   DWES · Tema teal + ámbar
+   DWES · Tema azul pizarra + arcilla
    Paleta propia para Material for MkDocs, en modo claro y oscuro.
    ========================================================================== */
 
@@ -13,95 +13,96 @@
      parpadeo antes del primer pintado. */
   color-scheme: light;
 
-  --md-primary-fg-color:        #00695f;
-  --md-primary-fg-color--light: #00897b;
-  --md-primary-fg-color--dark:  #004d40;
+  --md-primary-fg-color:        #3e5c76;
+  --md-primary-fg-color--light: #55778f;
+  --md-primary-fg-color--dark:  #2c4257;
   --md-primary-bg-color:        #ffffff;
   --md-primary-bg-color--light: #ffffffb3;
 
-  --md-accent-fg-color:         #b26500;
-  --md-accent-fg-color--transparent: #b2650014;
+  --md-accent-fg-color:         #a9714b;
+  --md-accent-fg-color--transparent: #a9714b14;
   --md-accent-bg-color:         #ffffff;
 
-  --md-default-bg-color:        #fdfdfd;
-  --md-default-fg-color:        #1c1f24de;
-  --md-default-fg-color--light: #1c1f2499;
-  --md-default-fg-color--lighter: #1c1f2452;
-  --md-default-fg-color--lightest: #1c1f241f;
+  --md-default-bg-color:        #fcfcfd;
+  --md-default-fg-color:        #1f252bde;
+  --md-default-fg-color--light: #1f252b99;
+  --md-default-fg-color--lighter: #1f252b52;
+  --md-default-fg-color--lightest: #1f252b1f;
 
-  --md-typeset-color:           #1c1f24;
-  --md-typeset-a-color:         #00695f;
+  --md-typeset-color:           #1f252b;
+  --md-typeset-a-color:         #35607f;
 
   /* Código */
-  --md-code-bg-color:           #f4f6f8;
+  --md-code-bg-color:           #f2f5f8;
   --md-code-fg-color:           #24292f;
   --md-code-hl-comment-color:   #6a737d;
-  --md-code-hl-keyword-color:   #b1276b;
-  --md-code-hl-string-color:    #0a6e4a;
-  --md-code-hl-number-color:    #b26500;
-  --md-code-hl-function-color:  #6f42c1;
+  --md-code-hl-keyword-color:   #8e4162;
+  --md-code-hl-string-color:    #2e6b4f;
+  --md-code-hl-number-color:    #a9714b;
+  --md-code-hl-function-color:  #6a4fa3;
   --md-code-hl-name-color:      #24292f;
 
   /* Tokens propios usados más abajo */
-  --dwes-borde:                 #e0e5e9;
-  --dwes-borde-fuerte:          #c6d0d6;
-  --dwes-tabla-cabecera:        #eef3f4;
+  --dwes-borde:                 #e2e7ec;
+  --dwes-borde-fuerte:          #c8d1d9;
+  --dwes-tabla-cabecera:        #eef2f5;
   --dwes-tabla-alterna:         #f8fafb;
-  --dwes-cita-fondo:            #f2f7f7;
+  --dwes-cita-fondo:            #f3f6f8;
 }
 
 /* Modo oscuro */
 [data-md-color-scheme="dwes-dark"] {
   color-scheme: dark;
 
-  --md-primary-fg-color:        #1b2027;
+  --md-primary-fg-color:        #1d222a;
   --md-primary-fg-color--light: #263039;
-  --md-primary-fg-color--dark:  #12161b;
-  --md-primary-bg-color:        #e3e6ea;
-  --md-primary-bg-color--light: #e3e6eab3;
+  --md-primary-fg-color--dark:  #11151a;
+  --md-primary-bg-color:        #dde2e7;
+  --md-primary-bg-color--light: #dde2e7b3;
 
-  --md-accent-fg-color:         #ffb74d;
-  --md-accent-fg-color--transparent: #ffb74d1f;
-  --md-accent-bg-color:         #14181d;
+  --md-accent-fg-color:         #e0a878;
+  --md-accent-fg-color--transparent: #e0a8781f;
+  --md-accent-bg-color:         #161a1f;
 
-  --md-default-bg-color:        #14181d;
-  --md-default-bg-color--light: #1b2027;
-  --md-default-fg-color:        #e3e6eade;
-  --md-default-fg-color--light: #e3e6ea99;
-  --md-default-fg-color--lighter: #e3e6ea52;
-  --md-default-fg-color--lightest: #e3e6ea1f;
+  --md-default-bg-color:        #161a1f;
+  --md-default-bg-color--light: #1d222a;
+  --md-default-fg-color:        #dde2e7de;
+  --md-default-fg-color--light: #dde2e799;
+  --md-default-fg-color--lighter: #dde2e752;
+  --md-default-fg-color--lightest: #dde2e71f;
 
-  --md-typeset-color:           #dfe3e8;
-  --md-typeset-a-color:         #4db6ac;
+  --md-typeset-color:           #dde2e7;
+  --dwes-realce:                #93b4cc;
+  --md-typeset-a-color:         var(--dwes-realce);
 
-  --md-code-bg-color:           #1b2027;
-  --md-code-fg-color:           #dfe3e8;
-  --md-code-hl-comment-color:   #8b98a5;
-  --md-code-hl-keyword-color:   #ff8fc0;
-  --md-code-hl-string-color:    #7ee0b0;
-  --md-code-hl-number-color:    #ffb74d;
-  --md-code-hl-function-color:  #c8a2ff;
-  --md-code-hl-name-color:      #dfe3e8;
+  --md-code-bg-color:           #1d222a;
+  --md-code-fg-color:           #dde2e7;
+  --md-code-hl-comment-color:   #8a96a2;
+  --md-code-hl-keyword-color:   #e9a8c4;
+  --md-code-hl-string-color:    #8fd3ae;
+  --md-code-hl-number-color:    #e0a878;
+  --md-code-hl-function-color:  #bfa8f0;
+  --md-code-hl-name-color:      #dde2e7;
 
-  --md-footer-bg-color:         #0f1318;
-  --md-footer-bg-color--dark:   #0b0e12;
+  --md-footer-bg-color:         #11151a;
+  --md-footer-bg-color--dark:   #0c1014;
 
-  --dwes-borde:                 #2a323b;
-  --dwes-borde-fuerte:          #3a444f;
-  --dwes-tabla-cabecera:        #1e242b;
-  --dwes-tabla-alterna:         #181d23;
-  --dwes-cita-fondo:            #182126;
+  --dwes-borde:                 #2a3138;
+  --dwes-borde-fuerte:          #3a434c;
+  --dwes-tabla-cabecera:        #1f252c;
+  --dwes-tabla-alterna:         #191e24;
+  --dwes-cita-fondo:            #1b2228;
 }
 
-/* En oscuro la barra superior es sobria; el teal se reserva para acentos */
+/* En oscuro la barra superior es sobria; el color se reserva para acentos */
 [data-md-color-scheme="dwes-dark"] .md-header,
 [data-md-color-scheme="dwes-dark"] .md-tabs {
-  background-color: #10151a;
+  background-color: #12161b;
   border-bottom: 1px solid var(--dwes-borde);
 }
 [data-md-color-scheme="dwes-dark"] .md-tabs__link--active,
 [data-md-color-scheme="dwes-dark"] .md-nav__link--active {
-  color: #4db6ac;
+  color: var(--dwes-realce);
 }
 
 /* ---------- 2. TIPOGRAFÍA Y RITMO ---------- */
@@ -199,7 +200,7 @@
 }
 .md-typeset blockquote > :last-child { margin-bottom: 0; }
 [data-md-color-scheme="dwes-dark"] .md-typeset blockquote {
-  border-left-color: #4db6ac;
+  border-left-color: var(--dwes-realce);
 }
 
 /* ---------- 3. CÓDIGO ---------- */
@@ -310,12 +311,12 @@
 /* Líneas resaltadas con hl_lines. Material ya calcula la geometría del sangrado
    a ancho completo; aquí solo se cambian los colores por los del módulo. */
 :root {
-  --md-code-hl-color:        color-mix(in srgb, #b26500 55%, transparent);
-  --md-code-hl-color--light: color-mix(in srgb, #b26500 11%, transparent);
+  --md-code-hl-color:        color-mix(in srgb, #a9714b 55%, transparent);
+  --md-code-hl-color--light: color-mix(in srgb, #a9714b 11%, transparent);
 }
 [data-md-color-scheme="dwes-dark"] {
-  --md-code-hl-color:        color-mix(in srgb, #ffb74d 60%, transparent);
-  --md-code-hl-color--light: color-mix(in srgb, #ffb74d 13%, transparent);
+  --md-code-hl-color:        color-mix(in srgb, #e0a878 60%, transparent);
+  --md-code-hl-color--light: color-mix(in srgb, #e0a878 13%, transparent);
 }
 
 /* Marcador de anotación: círculo teal en vez del punto por defecto */
@@ -326,7 +327,7 @@
   background: var(--md-accent-fg-color);
 }
 [data-md-color-scheme="dwes-dark"] .md-typeset .md-annotation__index > ::before {
-  background: #4db6ac;
+  background: var(--dwes-realce);
 }
 
 /* Botón de copiar, discreto hasta que se necesita */
@@ -389,19 +390,19 @@
 }
 
 /* Un color por tipo, sin estridencias */
-.md-typeset .admonition.tip,     .md-typeset details.tip     { border-left-color: #00695f; }
+.md-typeset .admonition.tip,     .md-typeset details.tip     { border-left-color: #3e5c76; }
 .md-typeset .admonition.note,    .md-typeset details.note    { border-left-color: #2c5678; }
 .md-typeset .admonition.info,    .md-typeset details.info    { border-left-color: #2c6e8f; }
-.md-typeset .admonition.success, .md-typeset details.success { border-left-color: #2f7d4f; }
-.md-typeset .admonition.warning, .md-typeset details.warning { border-left-color: #b26500; }
+.md-typeset .admonition.success, .md-typeset details.success { border-left-color: #3f7d5c; }
+.md-typeset .admonition.warning, .md-typeset details.warning { border-left-color: #a9714b; }
 .md-typeset .admonition.danger,  .md-typeset details.danger  { border-left-color: #a8342a; }
 .md-typeset .admonition.bug,     .md-typeset details.bug     { border-left-color: #8e3b8e; }
-.md-typeset .admonition.example, .md-typeset details.example { border-left-color: #5b5bd6; }
+.md-typeset .admonition.example, .md-typeset details.example { border-left-color: #5b6bb0; }
 
-/* Las soluciones de los ejercicios llevan el teal del módulo */
-.md-typeset details.success { border-left-color: #2f7d4f; }
+/* Las soluciones de los ejercicios llevan el verde de «correcto» */
+.md-typeset details.success { border-left-color: #3f7d5c; }
 [data-md-color-scheme="dwes-dark"] .md-typeset details:not([class]) {
-  border-left-color: #4db6ac;
+  border-left-color: var(--dwes-realce);
 }
 
 /* ---------- 6. PESTAÑAS ---------- */
@@ -423,8 +424,8 @@
   border-color: var(--md-primary-fg-color);
 }
 [data-md-color-scheme="dwes-dark"] .md-typeset .tabbed-set > input:checked + label {
-  color: #4db6ac;
-  border-color: #4db6ac;
+  color: var(--dwes-realce);
+  border-color: var(--dwes-realce);
 }
 
 /* ---------- 7. DETALLES DE NAVEGACIÓN ---------- */
@@ -469,30 +470,30 @@
   --md-mermaid-font-family:                   var(--md-text-font-family), sans-serif;
 
   --md-mermaid-edge-color:                    #5a6b73;
-  --md-mermaid-node-bg-color:                 #e4efee;
-  --md-mermaid-node-fg-color:                 #00514a;
-  --md-mermaid-label-bg-color:                #fdfdfd;
-  --md-mermaid-label-fg-color:                #1c1f24;
+  --md-mermaid-node-bg-color:                 #edf1f5;
+  --md-mermaid-node-fg-color:                 #2c4257;
+  --md-mermaid-label-bg-color:                #fcfcfd;
+  --md-mermaid-label-fg-color:                #1f252b;
 
-  --md-mermaid-sequence-actor-bg-color:       #e4efee;
-  --md-mermaid-sequence-actor-fg-color:       #00514a;
-  --md-mermaid-sequence-actor-border-color:   #00695f;
-  --md-mermaid-sequence-actor-line-color:     #9fb3b0;
-  --md-mermaid-sequence-actorman-bg-color:    #e4efee;
-  --md-mermaid-sequence-actorman-line-color:  #00695f;
-  --md-mermaid-sequence-box-bg-color:         #f2f7f7;
-  --md-mermaid-sequence-box-fg-color:         #1c1f24;
-  --md-mermaid-sequence-label-bg-color:       #00695f;
+  --md-mermaid-sequence-actor-bg-color:       #edf1f5;
+  --md-mermaid-sequence-actor-fg-color:       #2c4257;
+  --md-mermaid-sequence-actor-border-color:   #3e5c76;
+  --md-mermaid-sequence-actor-line-color:     #a9b6c2;
+  --md-mermaid-sequence-actorman-bg-color:    #edf1f5;
+  --md-mermaid-sequence-actorman-line-color:  #3e5c76;
+  --md-mermaid-sequence-box-bg-color:         #f3f6f8;
+  --md-mermaid-sequence-box-fg-color:         #1f252b;
+  --md-mermaid-sequence-label-bg-color:       #3e5c76;
   --md-mermaid-sequence-label-fg-color:       #ffffff;
-  --md-mermaid-sequence-loop-bg-color:        #fdfdfd;
-  --md-mermaid-sequence-loop-fg-color:        #1c1f24;
-  --md-mermaid-sequence-loop-border-color:    #b26500;
-  --md-mermaid-sequence-message-fg-color:     #1c1f24;
+  --md-mermaid-sequence-loop-bg-color:        #fcfcfd;
+  --md-mermaid-sequence-loop-fg-color:        #1f252b;
+  --md-mermaid-sequence-loop-border-color:    #a9714b;
+  --md-mermaid-sequence-message-fg-color:     #1f252b;
   --md-mermaid-sequence-message-line-color:   #5a6b73;
-  --md-mermaid-sequence-note-bg-color:        #fff4e2;
-  --md-mermaid-sequence-note-fg-color:        #6b3d00;
-  --md-mermaid-sequence-note-border-color:    #e0a860;
-  --md-mermaid-sequence-number-bg-color:      #00695f;
+  --md-mermaid-sequence-note-bg-color:        #faf3ec;
+  --md-mermaid-sequence-note-fg-color:        #6b4527;
+  --md-mermaid-sequence-note-border-color:    #e0a878;
+  --md-mermaid-sequence-number-bg-color:      #3e5c76;
   --md-mermaid-sequence-number-fg-color:      #ffffff;
 }
 
@@ -500,31 +501,31 @@
   --md-mermaid-font-family:                   var(--md-text-font-family), sans-serif;
 
   --md-mermaid-edge-color:                    #8b9aa4;
-  --md-mermaid-node-bg-color:                 #1f2b2c;
-  --md-mermaid-node-fg-color:                 #a7ded6;
-  --md-mermaid-label-bg-color:                #14181d;
-  --md-mermaid-label-fg-color:                #dfe3e8;
+  --md-mermaid-node-bg-color:                 #212a33;
+  --md-mermaid-node-fg-color:                 #b8cede;
+  --md-mermaid-label-bg-color:                #161a1f;
+  --md-mermaid-label-fg-color:                #dde2e7;
 
-  --md-mermaid-sequence-actor-bg-color:       #1f2b2c;
-  --md-mermaid-sequence-actor-fg-color:       #a7ded6;
-  --md-mermaid-sequence-actor-border-color:   #4db6ac;
+  --md-mermaid-sequence-actor-bg-color:       #212a33;
+  --md-mermaid-sequence-actor-fg-color:       #b8cede;
+  --md-mermaid-sequence-actor-border-color:   var(--dwes-realce);
   --md-mermaid-sequence-actor-line-color:     #46545c;
-  --md-mermaid-sequence-actorman-bg-color:    #1f2b2c;
-  --md-mermaid-sequence-actorman-line-color:  #4db6ac;
-  --md-mermaid-sequence-box-bg-color:         #182126;
-  --md-mermaid-sequence-box-fg-color:         #dfe3e8;
-  --md-mermaid-sequence-label-bg-color:       #4db6ac;
-  --md-mermaid-sequence-label-fg-color:       #10151a;
-  --md-mermaid-sequence-loop-bg-color:        #14181d;
-  --md-mermaid-sequence-loop-fg-color:        #dfe3e8;
-  --md-mermaid-sequence-loop-border-color:    #ffb74d;
-  --md-mermaid-sequence-message-fg-color:     #dfe3e8;
+  --md-mermaid-sequence-actorman-bg-color:    #212a33;
+  --md-mermaid-sequence-actorman-line-color:  var(--dwes-realce);
+  --md-mermaid-sequence-box-bg-color:         #1b2228;
+  --md-mermaid-sequence-box-fg-color:         #dde2e7;
+  --md-mermaid-sequence-label-bg-color:       var(--dwes-realce);
+  --md-mermaid-sequence-label-fg-color:       #12161b;
+  --md-mermaid-sequence-loop-bg-color:        #161a1f;
+  --md-mermaid-sequence-loop-fg-color:        #dde2e7;
+  --md-mermaid-sequence-loop-border-color:    #e0a878;
+  --md-mermaid-sequence-message-fg-color:     #dde2e7;
   --md-mermaid-sequence-message-line-color:   #8b9aa4;
   --md-mermaid-sequence-note-bg-color:        #33291a;
-  --md-mermaid-sequence-note-fg-color:        #ffd39b;
+  --md-mermaid-sequence-note-fg-color:        #e8c49c;
   --md-mermaid-sequence-note-border-color:    #a97c3a;
-  --md-mermaid-sequence-number-bg-color:      #ffb74d;
-  --md-mermaid-sequence-number-fg-color:      #10151a;
+  --md-mermaid-sequence-number-bg-color:      #e0a878;
+  --md-mermaid-sequence-number-fg-color:      #12161b;
 }
 
 /* El contenedor del diagrama: centrado, con aire y sin desbordar en móvil */
@@ -592,24 +593,24 @@
 
 /* — Reto: ejercicio corto intercalado en la teoría — */
 .md-typeset .admonition.reto,
-.md-typeset details.reto { border-left-color: #0f766e; }
+.md-typeset details.reto { border-left-color: #3e5c76; }
 .md-typeset .reto > .admonition-title,
 .md-typeset .reto > summary { background-color: rgba(15,118,110,.10); }
 .md-typeset .reto > .admonition-title::before,
 .md-typeset .reto > summary::before {
-  background-color: #0f766e;
+  background-color: #3e5c76;
   -webkit-mask-image: var(--md-admonition-icon--reto);
           mask-image: var(--md-admonition-icon--reto);
 }
 
 /* — Analogía: la comparación con algo cotidiano — */
 .md-typeset .admonition.analogia,
-.md-typeset details.analogia { border-left-color: #7c3aed; }
+.md-typeset details.analogia { border-left-color: #6a5aa8; }
 .md-typeset .analogia > .admonition-title,
 .md-typeset .analogia > summary { background-color: rgba(124,58,237,.10); }
 .md-typeset .analogia > .admonition-title::before,
 .md-typeset .analogia > summary::before {
-  background-color: #7c3aed;
+  background-color: #6a5aa8;
   -webkit-mask-image: var(--md-admonition-icon--analogia);
           mask-image: var(--md-admonition-icon--analogia);
 }
@@ -650,5 +651,39 @@
 
 [data-md-color-scheme="dwes-dark"] ::selection {
   background: var(--md-accent-fg-color);
-  color: #14181d;
+  color: #161a1f;
+}
+
+/* ---------- Primario y acento propios ----------
+   Material escribe data-md-color-primary en el <html> y sus reglas pisan
+   las del esquema. Con «custom» no aplica ninguna paleta suya y manda esto. */
+
+[data-md-color-primary="custom"] {
+  --md-primary-fg-color:        #3e5c76;
+  --md-primary-fg-color--light: #55778f;
+  --md-primary-fg-color--dark:  #2c4257;
+  --md-primary-bg-color:        #ffffff;
+  --md-primary-bg-color--light: #ffffffb3;
+}
+
+[data-md-color-accent="custom"] {
+  --md-accent-fg-color:              #a9714b;
+  --md-accent-fg-color--transparent: #a9714b14;
+  --md-accent-bg-color:              #ffffff;
+  --md-accent-bg-color--light:       #ffffffb3;
+}
+
+/* En oscuro, la cabecera es la superficie oscura y el acento se aclara. */
+[data-md-color-scheme="dwes-dark"][data-md-color-primary="custom"] {
+  --md-primary-fg-color:        #1d222a;
+  --md-primary-fg-color--light: #263039;
+  --md-primary-fg-color--dark:  #11151a;
+  --md-primary-bg-color:        #dde2e7;
+  --md-primary-bg-color--light: #dde2e7b3;
+}
+
+[data-md-color-scheme="dwes-dark"][data-md-color-accent="custom"] {
+  --md-accent-fg-color:              #e0a878;
+  --md-accent-fg-color--transparent: #e0a8781f;
+  --md-accent-bg-color:              #161a1f;
 }

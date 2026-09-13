@@ -86,7 +86,7 @@ git --version
 !!! warning "El fallo más común de la primera semana"
     `java -version` dice 25 y `javac -version` dice 17. Significa que tienes varios JDK instalados y el `PATH` apunta a distintos sitios.
 
-    Se arregla con `JAVA_HOME` bien puesto. En el [manual de IntelliJ](intellij/) está explicado paso a paso, y en clase se resuelve en dos minutos: pregúntalo en la S1 en vez de arrastrarlo un mes.
+    Se arregla con `JAVA_HOME` bien puesto. En el [manual de IntelliJ](intellij.md) está explicado paso a paso, y en clase se resuelve en dos minutos: pregúntalo en la S1 en vez de arrastrarlo un mes.
 
 ## 5. Maven y Gradle: por qué los dos
 
@@ -103,7 +103,7 @@ Las dos son **herramientas de construcción**: descargan las librerías, compila
 
 **En este módulo usamos Maven** en clase, en las prácticas y en los exámenes. Es más previsible, el `pom.xml` se lee sin saber programar y la estructura es idéntica en todos los proyectos, lo que simplifica la corrección.
 
-**Y también aprendes Gradle**, porque te lo vas a encontrar. En muchas ofertas de empleo aparece, y en Android no hay alternativa. El [manual de Gradle](gradle/) enseña lo mismo que el de Maven, traducido: si entiendes uno, el otro es cuestión de sintaxis.
+**Y también aprendes Gradle**, porque te lo vas a encontrar. En muchas ofertas de empleo aparece, y en Android no hay alternativa. El [manual de Gradle](gradle.md) enseña lo mismo que el de Maven, traducido: si entiendes uno, el otro es cuestión de sintaxis.
 
 !!! tip "El truco para no liarte"
     Los conceptos son los mismos y solo cambia el nombre:
@@ -203,19 +203,19 @@ Exactamente el mismo proyecto —Java 25, Jackson, JUnit— escrito con cada her
 
 <div class="grid cards" markdown>
 
-- **[Manual de IntelliJ IDEA](intellij/)**
+- **[Manual de IntelliJ IDEA](intellij.md)**
   Instalación, primer proyecto, los atajos que hay que memorizar, el depurador, ejecutar tests y trabajar con Spring Boot.
 
-- **[Trabajar con VS Code](vscode/)**
+- **[Trabajar con VS Code](vscode.md)**
   Si eliges la alternativa: extensiones necesarias, configuración mínima y las cinco cosas que vas a echar de menos.
 
-- **[Manual de Maven](maven/)**
+- **[Manual de Maven](maven.md)**
   El `pom.xml` por dentro, el ciclo de vida, dependencias, *scopes*, perfiles, el *wrapper* y cómo salir de los problemas típicos.
 
-- **[Manual de Gradle](gradle/)**
+- **[Manual de Gradle](gradle.md)**
   Lo mismo en Gradle, con la tabla de equivalencias siempre a la vista.
 
-- **[Chuleta de comandos](comandos/)**
+- **[Chuleta de comandos](comandos.md)**
   Todos los comandos de Maven y Gradle para Spring Boot, uno al lado del otro: arrancar con perfiles, ejecutar un solo test, mirar el árbol de dependencias, construir la imagen de Docker y qué escribir cuando algo falla.
 
 </div>

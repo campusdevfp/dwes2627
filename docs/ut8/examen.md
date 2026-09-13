@@ -72,6 +72,6 @@ Si la primera orden crea un registro, el criterio 4 es **cero**, aunque en el na
 La semana antes, en este orden:
 
 1. Rehaz la **F4** del reto sobre otro dominio, de memoria y sin mirar. Es el 25 % del examen.
-2. Repasa la [chuleta](../chuleta/) hasta que los cuatro símbolos te salgan solos.
+2. Repasa la [chuleta](chuleta.md) hasta que los cuatro símbolos te salgan solos.
 3. Ejecuta las dos órdenes `curl` de arriba contra tu proyecto. Si alguna falla, ahí tienes el trabajo.
 4. Rompe una plantilla a propósito y comprueba que tus tests lo detectan.

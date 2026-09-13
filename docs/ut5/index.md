@@ -41,38 +41,38 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 
 | Sesión (55') | En clase | Lectura previa |
 |---|---|---|
-| **S1** | Qué hace JPA por debajo · las cuatro siglas · JDBC a pelo e inyección SQL | [1. Qué hace JPA por debajo](01-que-hace-jpa-por-debajo/) §1–3 |
-| **S2** | El ciclo de vida de la entidad y el *dirty checking* | [1. Qué hace JPA por debajo](01-que-hace-jpa-por-debajo/) §4 |
-| **S3** | `@Entity`, `@Id` y generación de claves | [2. Entidades y mapeo](02-entidades-y-mapeo/) §1–2 |
-| **S4** | Tipos, `@Column`, enumerados y fechas | [2. Entidades y mapeo](02-entidades-y-mapeo/) §3 |
-| **S5** | Por qué una entidad **no** puede ser un `record` | [2. Entidades y mapeo](02-entidades-y-mapeo/) §4–5 |
-| **S6** | `JpaRepository`: el CRUD que no escribes · consultas derivadas | [3. Spring Data JPA](03-spring-data-jpa/) §1–3 |
-| **S7** | `@Query`, JPQL y consultas nativas | [3. Spring Data JPA](03-spring-data-jpa/) §4 |
-| **S8** | Paginación **de verdad** y proyecciones | [3. Spring Data JPA](03-spring-data-jpa/) §5–6 |
+| **S1** | Qué hace JPA por debajo · las cuatro siglas · JDBC a pelo e inyección SQL | [1. Qué hace JPA por debajo](01-que-hace-jpa-por-debajo.md) §1–3 |
+| **S2** | El ciclo de vida de la entidad y el *dirty checking* | [1. Qué hace JPA por debajo](01-que-hace-jpa-por-debajo.md) §4 |
+| **S3** | `@Entity`, `@Id` y generación de claves | [2. Entidades y mapeo](02-entidades-y-mapeo.md) §1–2 |
+| **S4** | Tipos, `@Column`, enumerados y fechas | [2. Entidades y mapeo](02-entidades-y-mapeo.md) §3 |
+| **S5** | Por qué una entidad **no** puede ser un `record` | [2. Entidades y mapeo](02-entidades-y-mapeo.md) §4–5 |
+| **S6** | `JpaRepository`: el CRUD que no escribes · consultas derivadas | [3. Spring Data JPA](03-spring-data-jpa.md) §1–3 |
+| **S7** | `@Query`, JPQL y consultas nativas | [3. Spring Data JPA](03-spring-data-jpa.md) §4 |
+| **S8** | Paginación **de verdad** y proyecciones | [3. Spring Data JPA](03-spring-data-jpa.md) §5–6 |
 | **S9** | Migrar el proyecto: fuera el repositorio en memoria | — |
-| **S10** | `@ManyToOne` y `@OneToMany` · el lado dueño y `mappedBy` | [4. Relaciones](04-relaciones/) §1–3 |
-| **S11** | `LAZY` vs `EAGER` y el problema **N+1** | [4. Relaciones](04-relaciones/) §4 |
-| **S12** | `JOIN FETCH`, `@EntityGraph` y `@ManyToMany` | [4. Relaciones](04-relaciones/) §5–6 |
-| **S13** | `@Transactional`: qué es una transacción · *rollback* y propagación | [5. Transacciones](05-transacciones/) §1–3 |
-| **S14** | Integridad, restricciones y unicidad | [5. Transacciones](05-transacciones/) §4 |
-| **S15** | Concurrencia y bloqueo optimista con `@Version` | [5. Transacciones](05-transacciones/) §5 |
-| **S16** | `ddl-auto` no vale para producción: **Flyway** | [6. De H2 a producción](06-produccion/) §1–2 |
-| **S17** | PostgreSQL con Docker y perfiles · tests con `@DataJpaTest` | [6. De H2 a producción](06-produccion/) §3–4 |
-| **S18** | Laboratorio: la escuela de música de principio a fin | [Batería de ejercicios](ejercicios/) |
-| **S19** | Repaso: las seis trampas y cómo se ven en el *log* | [Preparar el examen](examen/) |
-| **S20** | :material-laptop: **Examen práctico de RA6 (100 %)** | [Preparar el examen](examen/) |
+| **S10** | `@ManyToOne` y `@OneToMany` · el lado dueño y `mappedBy` | [4. Relaciones](04-relaciones.md) §1–3 |
+| **S11** | `LAZY` vs `EAGER` y el problema **N+1** | [4. Relaciones](04-relaciones.md) §4 |
+| **S12** | `JOIN FETCH`, `@EntityGraph` y `@ManyToMany` | [4. Relaciones](04-relaciones.md) §5–6 |
+| **S13** | `@Transactional`: qué es una transacción · *rollback* y propagación | [5. Transacciones](05-transacciones.md) §1–3 |
+| **S14** | Integridad, restricciones y unicidad | [5. Transacciones](05-transacciones.md) §4 |
+| **S15** | Concurrencia y bloqueo optimista con `@Version` | [5. Transacciones](05-transacciones.md) §5 |
+| **S16** | `ddl-auto` no vale para producción: **Flyway** | [6. De H2 a producción](06-produccion.md) §1–2 |
+| **S17** | PostgreSQL con Docker y perfiles · tests con `@DataJpaTest` | [6. De H2 a producción](06-produccion.md) §3–4 |
+| **S18** | Laboratorio: la escuela de música de principio a fin | [Batería de ejercicios](ejercicios.md) |
+| **S19** | Repaso: las seis trampas y cómo se ven en el *log* | [Preparar el examen](examen.md) |
+| **S20** | :material-laptop: **Examen práctico de RA6 (100 %)** | [Preparar el examen](examen.md) |
 
 ## Cómo se evalúa
 
-:material-laptop: **Examen práctico (100 %)**, 2 sesiones. Se te da un esqueleto con el modelo y un fichero de datos, y tienes que montar la persistencia completa: entidades, relaciones, repositorios, consultas, transacciones y tests. Rúbrica en la [página de preparación](examen/).
+:material-laptop: **Examen práctico (100 %)**, 2 sesiones. Se te da un esqueleto con el modelo y un fichero de datos, y tienes que montar la persistencia completa: entidades, relaciones, repositorios, consultas, transacciones y tests. Rúbrica en la [página de preparación](examen.md).
 
 ## Material
 
-- [Prácticas guiadas](practicas/) — migramos la TiendaAPI a base de datos, paso a paso.
-- [Batería de ejercicios](ejercicios/) — 14 ejercicios resueltos, del mapeo al bloqueo optimista.
-- [Preparar el examen](examen/) — formato, rúbrica y los errores que más cuestan.
-- [Chuleta de JPA](chuleta/) — anotaciones y consultas en una página.
-- [Comprobar tu trabajo](../comprobar-tu-trabajo/) — los tests del proyecto `spring-base`.
+- [Prácticas guiadas](practicas.md) — migramos la TiendaAPI a base de datos, paso a paso.
+- [Batería de ejercicios](ejercicios.md) — 14 ejercicios resueltos, del mapeo al bloqueo optimista.
+- [Preparar el examen](examen.md) — formato, rúbrica y los errores que más cuestan.
+- [Chuleta de JPA](chuleta.md) — anotaciones y consultas en una página.
+- [Comprobar tu trabajo](../comprobar-tu-trabajo.md) — los tests del proyecto `spring-base`.
 
 ## Antes de la S1
 

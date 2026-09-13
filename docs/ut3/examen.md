@@ -173,7 +173,7 @@ Son los mismos de siempre. Ahora, en vez de cometerlos, hay que **reconocerlos e
 
 ## Cómo prepararte
 
-1. **Haz la [batería de test](../autoevaluacion/)**, que tiene el mismo formato y los mismos cinco tipos de pregunta.
+1. **Haz la [batería de test](autoevaluacion.md)**, que tiene el mismo formato y los mismos cinco tipos de pregunta.
 2. **Escribe el código de los ejercicios**, aunque el examen sea de test. Se reconoce un `ConcurrentModificationException` en un fragmento porque te ha saltado antes en tu propia pantalla, no porque lo hayas leído.
 3. **Ejecuta los fragmentos que no tengas claros.** Con `jshell` es inmediato:
 
@@ -184,8 +184,8 @@ Son los mismos de siempre. Ahora, en vez de cometerlos, hay que **reconocerlos e
    jshell> m.keySet()
    ```
 
-4. **Repasa la [batería de ejercicios](../ejercicios/) y las [prácticas](../practicas/)**: de ahí salen los fragmentos.
-5. **Ten la [chuleta](../chuleta/) delante** mientras entrenas, para llegar al examen sabiendo dónde está cada cosa.
+4. **Repasa la [batería de ejercicios](ejercicios.md) y las [prácticas](practicas.md)**: de ahí salen los fragmentos.
+5. **Ten la [chuleta](chuleta.md) delante** mientras entrenas, para llegar al examen sabiendo dónde está cada cosa.
 
 !!! success "Lo que de verdad entrena para este examen"
     Programar y equivocarse. Cada excepción que te salte en clase es una pregunta del examen que ya tienes contestada.

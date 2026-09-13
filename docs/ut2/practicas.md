@@ -2,7 +2,7 @@
 
 > Programar es como nadar: no se aprende leyendo. Estas 8 prácticas son el entrenamiento del que sale la **sección práctica del test** (100 % de la nota de la unidad).
 
-Todas se ejecutan con `java Fichero.java` (JDK 25), sin proyecto ni configuración. Entrena cada una con el [comprobar tu trabajo con los tests](../comprobar-tu-trabajo/) hasta llegar al **≥ 80 %**.
+Todas se ejecutan con `java Fichero.java` (JDK 25), sin proyecto ni configuración. Entrena cada una con el [comprobar tu trabajo con los tests](../comprobar-tu-trabajo.md) hasta llegar al **≥ 80 %**.
 
 | # | Práctica | Página | Qué practicas |
 |---|----------|--------|---------------|
@@ -314,4 +314,4 @@ Para la `CalculadoraPrecios` de la página 6, escribe (en pseudo-JUnit o JUnit r
 
 ## Cómo entrenar para el test
 
-El test de la UT2 pregunta sobre **estas prácticas**: qué imprime un fragmento, dónde está el error de compilación, qué colección usar, qué hace un stream, por qué falla un `catch`. Repasa tus soluciones, pásalas al [comprobar tu trabajo con los tests](../comprobar-tu-trabajo/) y pídele simulacros de las que lleves flojas.
+El test de la UT2 pregunta sobre **estas prácticas**: qué imprime un fragmento, dónde está el error de compilación, qué colección usar, qué hace un stream, por qué falla un `catch`. Repasa tus soluciones, pásalas al [comprobar tu trabajo con los tests](../comprobar-tu-trabajo.md) y pídele simulacros de las que lleves flojas.

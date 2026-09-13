@@ -510,26 +510,77 @@ Monta repositorio, servicio y una capa de presentación por consola, con las tre
     ```
 
 
-### E30 ●●● — Simulacro de examen (55 min)
+### E30 ●●● — Convierte tus propios ejercicios en preguntas
 
-Con `datos/bicis.csv`: cargar contando descartes, cuatro informes con colecciones, exportar a JSON y un resumen por consola. Cronométrate.
+Coge tres ejercicios que ya hayas resuelto y **escribe una pregunta de test sobre cada uno**, con sus cuatro opciones y los tres distractores plausibles.
 
 ??? success "Solución"
 
-    Es el examen del primer trimestre con otro dominio. La solución completa está en las tres partes anteriores; lo que se entrena aquí es **el tiempo**.
+    No hay una única respuesta; hay un método. Para convertir un ejercicio en pregunta, cambia **una sola cosa** de tu código correcto y pregunta por el resultado.
 
-    Reparto recomendado de los 55 minutos:
+    **Del E5 (doble agrupación):**
 
-    | Minutos | Qué |
-    |:-:|---|
-    | 0–15 | Carga del CSV, con descartes contados |
-    | 15–35 | Los cuatro informes |
-    | 35–45 | Exportación a JSON |
-    | 45–52 | Resumen por consola |
-    | 52–55 | `mvn test` y empaquetar el `.zip` |
+    ```java
+    Map<String, Map<String, Long>> r = bicis.stream()
+            .collect(groupingBy(Bici::marca, TreeMap::new,
+                     groupingBy(Bici::tipo, counting())));
+    ```
 
-    Si en el minuto 20 no tienes la carga funcionando, **salta a los informes con datos de prueba a mano**. Entregar cuatro apartados a medias puntúa más que uno perfecto.
+    > ¿Qué cambia si se quita el `TreeMap::new`?
+    >
+    > **A.** Nada, el resultado es el mismo · **B.** Las marcas dejan de salir ordenadas · **C.** Los tipos dejan de salir ordenados · **D.** No compila
 
+    El distractor bueno es la **C**: es el fallo real, confundir en qué nivel actúa el `TreeMap`.
+
+    **Del E9 (CSV con trampas):**
+
+    ```java
+    String[] campos = linea.split(";");
+    ```
+
+    > Con la línea `B-004;Orbea;;;;` ¿cuántos elementos tiene `campos`?
+    >
+    > **A.** 6 · **B.** 2 · **C.** 5 · **D.** 3
+
+    La respuesta es **B**: `split` sin `-1` descarta los vacíos finales. Es el error que más `ArrayIndexOutOfBounds` provoca.
+
+    **Del E16 (fechas ISO):**
+
+    Enseña la salida `"fecha": [2026,3,14]` y pregunta qué falta configurar.
+
+    ---
+
+    **Por qué este ejercicio es el más rentable de la unidad:** escribir el distractor te obliga a saber **por qué** alguien se equivocaría. Y ese «por qué» es justo lo que se pregunta en el examen.
+
+    Hazlo en parejas: cada uno escribe tres preguntas y se las pasa al otro. Las que no sabéis resolver son las que hay que repasar.
+
+
+---
+
+## Del ejercicio a la pregunta de test
+
+El examen de esta unidad es un **test práctico sobre fragmentos de código** ([formato aquí](examen.md)). No se pide escribir un programa: se pide leer código y saber qué hace.
+
+La correspondencia es directa. Cada bloque de ejercicios alimenta un bloque de preguntas:
+
+| Ejercicios | Preguntas del examen | Qué se pregunta exactamente |
+|---|:-:|---|
+| **E1–E7** · Estructuras | 8 preguntas | Qué imprime un `HashMap` frente a un `TreeMap`; qué devuelve `groupingBy`; en qué nivel actúa el `TreeMap::new`; el tipo que devuelve `counting()` |
+| **E8–E14** · Ficheros | 7 preguntas | Por qué falla un `split` sin `-1`; qué pasa sin `skip(1)`; el separador cambiado; `Files.lines` sin cerrar; la ruta relativa |
+| **E15–E20** · JSON | 6 preguntas | La fecha que sale como `[2026,3,14]`; el campo nulo que aparece; `get` frente a `path`; el campo desconocido que revienta |
+| **E21–E25** · Fechas y validación | 5 preguntas | `LocalDate` es inmutable: el `plusDays` que se pierde; solapes de rangos; el `BigDecimal` con `double` |
+| **E26–E29** · Repositorio y capas | 4 preguntas | Qué capa puede importar a cuál; el orden existencia → estado; qué devuelve el repositorio cuando no encuentra |
+
+!!! reto "Las tres cosas que de verdad transfieren"
+    Hacer ejercicios **no** prepara para un test por sí solo. Lo que transfiere es esto, y se puede practicar desde la primera sesión:
+
+    1. **Predecir antes de ejecutar.** Antes de darle a *Run*, escribe en un papel qué va a salir. Si aciertas, entendiste; si no, acabas de encontrar tu hueco. **Esta es la única costumbre que hay que coger**, y es exactamente lo que pide el tipo de pregunta 1.
+
+    2. **Romper tu propia solución.** Cuando un ejercicio te salga bien, quítale el `-1` al `split`, cambia el `TreeMap` por un `HashMap`, borra el `skip(1)`. Mira el error que sale y **apúntalo**. El tipo de pregunta 2 —«¿por qué falla?»— es literalmente eso.
+
+    3. **Escribir la pregunta tú (E30).** Inventar los tres distractores te obliga a saber por qué alguien se equivocaría. Es el paso que convierte «sé hacerlo» en «sé reconocerlo».
+
+    Después de cada ejercicio de esta batería, dedica **dos minutos** a los puntos 1 y 2. Son 60 minutos en toda la unidad y valen más que cualquier repaso de la víspera.
 
 ---
 
@@ -541,9 +592,9 @@ Con `datos/bicis.csv`: cargar contando descartes, cuatro informes con coleccione
 | Taller de la sesión, 25-30 min | E4 · E9 · E16 · E24 · E28 |
 | Los que hay que hacer sí o sí | **E5 · E9 · E10 · E16 · E27** |
 | Para quien va sobrado | E7 · E12 · E14 · E19 · E25 · E29 |
-| Repaso antes del examen | E5 · E10 · E16 · E30 |
+| Repaso antes del test | E5 · E10 · E16 · E30 + [autoevaluación](autoevaluacion.md) |
 
-!!! tip "El que más se parece al examen"
-    El **E30** es literalmente el examen con otro dominio, cronometrado. Hazlo una semana antes y sabrás exactamente dónde estás.
+!!! tip "Los dos que más caen"
+    El **E9** (CSV con sus trampas) y el **E16** (fechas ISO y sin nulos) concentran entre los dos **seis de las treinta preguntas**. Si vas justo de tiempo, esos dos antes que ninguno.
 
-    Y el **E10** (contar los descartes) vale un 20 % del examen de RA3 él solo.
+    Y el **E30** hazlo siempre: es el puente entre haber resuelto los ejercicios y saber contestar sobre ellos.

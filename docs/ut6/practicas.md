@@ -8,13 +8,13 @@ Debajo, las **fases sugeridas**.
 
 | Fase | Sesiones | Qué añades | Página |
 |---|---|---|---|
-| **F1** | S1–S2 | Rediseño REST: `/api/v1`, subrecursos, acciones | [1](../01-diseno-rest/) |
-| **F2** | S3–S5 | `ResponseEntity`, `Location`, Problem Details | [2](../02-respuestas-y-errores/) |
-| **F3** | S6–S8 | Paginación, ordenación y filtros | [3](../03-paginacion-y-busqueda/) |
-| **F4** | S9–S10 | Documentación OpenAPI | [4](../04-documentacion-openapi/) |
-| **F5** | S11–S14 | GraphQL: esquema, consultas y el N+1 | [5](../05-graphql/) |
-| **F6** | S15–S17 | Tiempo real: WebSockets y SSE | [6](../06-websockets/) |
-| **F7** | S18–S20 | Tests de API y consumo de terceros | [7](../07-testing-apis/) · [8](../08-consumir-apis/) |
+| **F1** | S1–S2 | Rediseño REST: `/api/v1`, subrecursos, acciones | [1](01-diseno-rest.md) |
+| **F2** | S3–S5 | `ResponseEntity`, `Location`, Problem Details | [2](02-respuestas-y-errores.md) |
+| **F3** | S6–S8 | Paginación, ordenación y filtros | [3](03-paginacion-y-busqueda.md) |
+| **F4** | S9–S10 | Documentación OpenAPI | [4](04-documentacion-openapi.md) |
+| **F5** | S11–S14 | GraphQL: esquema, consultas y el N+1 | [5](05-graphql.md) |
+| **F6** | S15–S17 | Tiempo real: WebSockets y SSE | [6](06-websockets.md) |
+| **F7** | S18–S20 | Tests de API y consumo de terceros | [7](07-testing-apis.md) · [8](08-consumir-apis.md) |
 | **F8** | S21–S24 | Laboratorio libre y repaso | — |
 
 ---
@@ -122,4 +122,4 @@ Cinco tests mínimos: 200 con `jsonPath` · 404 con `$.title` · 400 de validaci
 
 Al terminar deberías tener una API con: versionado, CRUD completo con códigos correctos, subrecursos, paginación con filtros, errores estandarizados, documentación interactiva, login con JWT y autorización por roles, y una batería de tests. **Eso es un proyecto de portfolio**, no un ejercicio de clase: enséñalo en una entrevista.
 
-Pásalo por el [comprobar tu trabajo con los tests](../comprobar-tu-trabajo/) para una revisión contra la rúbrica antes del examen.
+Pásalo por el [comprobar tu trabajo con los tests](../comprobar-tu-trabajo.md) para una revisión contra la rúbrica antes del examen.

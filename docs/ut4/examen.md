@@ -71,7 +71,7 @@ Construir una pequeña API por capas para un dominio nuevo. Por ejemplo:
 
 ## Cómo prepararlo
 
-**Haz el proyecto de aula completo** ([prácticas](../practicas/)). El examen es "lo mismo con otro dominio": si has construido la tienda de principio a fin, la biblioteca te sale en 90 minutos.
+**Haz el proyecto de aula completo** ([prácticas](practicas.md)). El examen es "lo mismo con otro dominio": si has construido la tienda de principio a fin, la biblioteca te sale en 90 minutos.
 
 Autochequeo antes del examen — ¿sabes hacer todo esto **sin mirar**?
 

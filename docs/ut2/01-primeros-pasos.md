@@ -15,7 +15,7 @@ Java es un lenguaje **compilado a bytecode** que se ejecuta sobre una máquina v
 En este curso usamos **JDK 25**, la versión **LTS** (soporte a largo plazo) vigente: la que encontrarás en las empresas.
 
 !!! tip "El manual completo está aparte"
-    Aquí va lo justo para arrancar. La instalación paso a paso, la configuración del JDK, los atajos que hay que memorizar y qué hacer cuando algo falla están en el **[manual de IntelliJ](../../entorno/intellij/)**.
+    Aquí va lo justo para arrancar. La instalación paso a paso, la configuración del JDK, los atajos que hay que memorizar y qué hacer cuando algo falla están en el **[manual de IntelliJ](../entorno/intellij.md)**.
 
     Si `javac -version` no te dice 25, ve allí ahora: es el problema que más tiempo hace perder en la primera semana.
 
