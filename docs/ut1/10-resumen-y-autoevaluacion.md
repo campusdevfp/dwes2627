@@ -1,4 +1,9 @@
-# Resumen y autoevaluación
+# Resumen de la unidad
+
+!!! info "Qué de esto entra en el test"
+    Entra lo de los **temas 1 a 6**. Las ideas 9 y 10, el glosario de despliegue y las dos últimas casillas de la comprobación vienen de los temas 7, 8 y 9, que son **divulgación**: ordenan el panorama y no se preguntan.
+
+    Para entrenar de verdad: la [batería de ejercicios](ejercicios.md) y el [simulacro](autoevaluacion.md).
 
 ### Las 10 ideas del RA1
 
@@ -40,8 +45,8 @@
 - [ ] El flujo MVC y qué es un Fat Controller. *(§3)*
 - [ ] Métodos y códigos HTTP; qué añade HTTPS; qué es un JWT y su trampa. *(§4)*
 - [ ] Estática vs. dinámica; SSR vs. SPA; los 3 tipos de ejecución de lenguajes. *(§5)*
-- [ ] Servidor web vs. de aplicaciones; qué resuelve Docker; vertical vs. horizontal. *(§6)*
-- [ ] Autenticación vs. autorización (401 vs. 403); para qué sirven los logs. *(§7)*
+- [ ] Autenticación vs. autorización (401 vs. 403) y qué lleva dentro un JWT. *(§5)*
+- [ ] ~~Servidor web vs. de aplicaciones, Docker, logs~~ — divulgación, no entra en el test.
 
 **Diez preguntas** (soluciones abajo):
 
@@ -53,8 +58,8 @@
 6. ¿Qué diferencia hay entre un 401 y un 403?
 7. ¿Puede cualquiera **leer** el payload de un JWT? ¿Puede **modificarlo**?
 8. Web con animaciones espectaculares pero igual para todos los visitantes: ¿estática o dinámica?
-9. ¿Qué problema concreto resuelve Docker?
-10. Ves cientos de `"POST /login" 401` en el access log. ¿Qué sospechas y qué harías?
+9. Diseña las rutas para listar libros, ver uno y filtrarlos por autor.
+10. Un `POST` falla por un corte de red. ¿Puede el cliente reintentarlo sin riesgo? ¿Y un `PUT`?
 
 ??? success "Soluciones"
 
@@ -66,10 +71,10 @@
     6. **401** = no autenticado (no sé quién eres). **403** = autenticado pero sin permiso (sé quién eres y no puedes).
     7. Leerlo **sí** (Base64 no es cifrado). Modificarlo **no** sin invalidar la firma.
     8. **Estática.** Dinámica = generada en el servidor según datos, no "que se mueva".
-    9. El "en mi máquina funcionaba": empaqueta la app **con sus dependencias** y corre igual en cualquier sitio.
-    10. Intentos de fuerza bruta contra el login. Limitar intentos/IP, exigir contraseñas fuertes, considerar 2FA y alertas.
+    9. `GET /api/v1/libros` · `GET /api/v1/libros/{id}` · `GET /api/v1/libros?autor=Saramago`. Sustantivos en plural, el filtro en la consulta y la versión en la ruta.
+    10. El `PUT` **sí**: es idempotente, repetirlo deja el mismo estado. El `POST` **no**: puede crear el pedido dos veces. Por eso existe el aviso de «no pulse dos veces».
 
 
 ---
 
-*Material original del módulo DWES (0613) · 2.º DAW · Madrid · Curso 2025-2026. Ilustraciones propias (SVG). Como segunda lectura opcional puede usarse el [repo de J.L. González](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-01-2025-2026) (CC BY-NC-SA).*
+*Material original del módulo DWES (0613) · 2.º DAW · Madrid · Curso 2026-2027. Ilustraciones propias (SVG). Como segunda lectura opcional puede usarse el [repo de J.L. González](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-01-2025-2026) (CC BY-NC-SA).*

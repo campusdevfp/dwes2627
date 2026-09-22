@@ -792,6 +792,356 @@ public String informe(List<Jugador> jugadores) {
 
 ---
 
+## Taller largo: ocho programas completos
+
+!!! reto "Del E28 al E35 se entrega un programa que funciona"
+    Los anteriores son fragmentos; estos son **programas enteros**, uno por tema. Son lo que antes iban como «prácticas guiadas»: ahora están aquí, con su solución, porque no tenía sentido tenerlos en dos sitios.
+
+    Todos se ejecutan con `java Fichero.java`, sin proyecto ni configuración.
+
+### E28 ● — Entorno y primer programa
+
+Comprueba que `java -version` dice 25.x. Escribe `Hola.java` que salude con tu nombre e imprima la fecha. Después **rómpelo**: quita un `;`, ejecuta y anota qué dice el compilador.
+
+??? success "Solución"
+
+    ```java
+    import java.time.LocalDate;
+
+    void main() {
+        var nombre = "Iván";
+        IO.println("Hola, " + nombre + ". Hoy es " + LocalDate.now());
+    }
+    ```
+
+    Al quitar el `;` sale algo así:
+
+    ```
+    Hola.java:5: error: ';' expected
+        IO.println("Hola, " + nombre)
+                                    ^
+    1 error
+    ```
+
+    El compilador te da **fichero, línea, columna y motivo**. Lo único que hay que aprender aquí es a leerlo en vez de asustarse: el 90 % de los errores de compilación se arreglan mirando la línea que señala, o la de arriba.
+
+    Ojo con eso último: cuando falta un `;`, el compilador señala **la línea siguiente**, porque es donde se da cuenta.
+
+### E29 ● — Calculadora de precios
+
+Dado un precio base y una cantidad, calcula subtotal, descuento del 10 % si se compran más de 5 unidades, IVA del 21 % y total. Muestra cada paso.
+
+??? success "Solución"
+
+    ```java
+    void main() {
+        var precioBase = 20.0;          // (1)
+        var cantidad = 8;
+
+        var subtotal = precioBase * cantidad;
+        var descuento = cantidad > 5 ? subtotal * 0.10 : 0.0;
+        var base = subtotal - descuento;
+        var iva = base * 0.21;
+        var total = base + iva;
+
+        IO.println("Subtotal:  " + subtotal);
+        IO.println("Descuento: " + descuento);
+        IO.println("IVA:       " + iva);
+        IO.println("TOTAL:     " + total);
+    }
+    ```
+
+    1.  `20.0` y no `20`. Con `var`, el literal decide el tipo: `20` sería `int`.
+
+    La trampa de este ejercicio es la **división entera**. Si en algún punto escribes `cantidad / 5` con los dos enteros, Java descarta los decimales sin avisar:
+
+    ```java
+    IO.println(9 / 5);      // 1, no 1.8
+    IO.println(9 / 5.0);    // 1.8
+    ```
+
+    Y el aviso que vale para siempre: **para dinero de verdad no se usa `double`**, se usa `BigDecimal`. `0.1 + 0.2` en `double` da `0.30000000000000004`. En la UT3 se ve por qué y cómo se hace bien.
+
+### E30 ● — Clasificador de códigos HTTP
+
+Dado un código de estado, imprime su significado y de quién es la culpa. Con `switch` de flecha, como expresión.
+
+??? success "Solución"
+
+    ```java
+    void main() {
+        var codigo = 404;
+
+        var significado = switch (codigo) {
+            case 200 -> "OK";
+            case 201 -> "Created";
+            case 204 -> "No Content";
+            case 400 -> "Bad Request";
+            case 401 -> "Unauthorized (no autenticado)";
+            case 403 -> "Forbidden (sin permiso)";
+            case 404 -> "Not Found";
+            case 409 -> "Conflict";
+            case 415 -> "Unsupported Media Type";
+            case 500 -> "Internal Server Error";
+            default  -> "Desconocido";
+        };
+
+        var culpa = switch (codigo / 100) {
+            case 2 -> "Éxito";
+            case 3 -> "Redirección";
+            case 4 -> "Error del CLIENTE";
+            case 5 -> "Error del SERVIDOR";
+            default -> "?";
+        };
+
+        IO.println(codigo + " " + significado + " → " + culpa);
+    }
+    ```
+
+    Lo bonito: `codigo / 100`. La división entera, que en el E29 era una trampa, aquí es la solución — `404 / 100` da `4`.
+
+    Y las tres diferencias con el `switch` de siempre:
+
+    | Antiguo | Moderno |
+    |---|---|
+    | Hace falta `break` | No: no hay caída entre casos |
+    | Es una sentencia | **Es una expresión**: devuelve valor |
+    | Un valor por `case` | Varios: `case 200, 201, 204 ->` |
+
+### E31 ●● — Catálogo con records
+
+Crea un `record Producto(String nombre, String categoria, double precio)` que valide en el constructor y tenga `precioConIva()`. Monta una lista de cinco e imprímelos.
+
+??? success "Solución"
+
+    ```java
+    import java.util.List;
+
+    record Producto(String nombre, String categoria, double precio) {
+        Producto {                                            // (1)
+            if (precio < 0) {
+                throw new IllegalArgumentException("Precio negativo: " + precio);
+            }
+            if (nombre == null || nombre.isBlank()) {
+                throw new IllegalArgumentException("Nombre vacío");
+            }
+        }
+
+        double precioConIva() { return precio * 1.21; }
+    }
+
+    void main() {
+        var catalogo = List.of(
+            new Producto("Patinete", "movilidad", 120.0),
+            new Producto("Casco", "seguridad", 35.0),
+            new Producto("Bici", "movilidad", 450.0),
+            new Producto("Candado", "seguridad", 25.0),
+            new Producto("Luces", "seguridad", 15.0));
+
+        for (var p : catalogo) {
+            IO.println("%-10s %7.2f €  (IVA inc.: %7.2f €)"
+                    .formatted(p.nombre(), p.precio(), p.precioConIva()));
+        }
+    }
+    ```
+
+    1.  **Constructor compacto**: sin paréntesis ni parámetros. Se ejecuta antes de asignar los campos, así que ahí es donde va la validación.
+
+    Un `record` te da gratis: constructor, *getters* con el nombre del campo (`p.nombre()`, no `getNombre()`), `equals`, `hashCode` y `toString`. Y los campos son **finales**: no hay `setNombre`.
+
+    Cuándo **no** usar un record: cuando el objeto tiene que cambiar de estado. Un `Pedido` que pasa de PENDIENTE a ENVIADO no es un record.
+
+### E32 ●● — Métodos de pago
+
+Define `MetodoPago` con `cobrar(double)`. Impleméntalo con `Tarjeta`, `Bizum` y `Transferencia`. Escribe `procesarCompra` de forma que funcione con cualquiera.
+
+??? success "Solución"
+
+    ```java
+    interface MetodoPago {
+        void cobrar(double importe);
+    }
+
+    class Tarjeta implements MetodoPago {
+        @Override public void cobrar(double i) { IO.println("Con tarjeta: " + i + " €"); }
+    }
+    class Bizum implements MetodoPago {
+        @Override public void cobrar(double i) { IO.println("Bizum de " + i + " €"); }
+    }
+    class Transferencia implements MetodoPago {
+        @Override public void cobrar(double i) { IO.println("Transferencia de " + i + " €"); }
+    }
+
+    void procesarCompra(MetodoPago metodo, double importe) {
+        IO.println("Procesando compra…");
+        metodo.cobrar(importe);          // (1)
+    }
+
+    void main() {
+        procesarCompra(new Tarjeta(), 50);
+        procesarCompra(new Bizum(), 30);
+        procesarCompra(new Transferencia(), 200);
+    }
+    ```
+
+    1.  No sabe **ni le importa** cuál es. Eso es polimorfismo.
+
+    Lo que hay que ver: `procesarCompra` depende de la **interfaz**, no de las clases concretas. Por eso el día que aparezca `PagoCripto` no hay que tocar una línea de `procesarCompra`.
+
+    Es exactamente la **inversión de dependencias** (la *D* de SOLID), hecha a mano. En la UT4, Spring hace este mismo `new` por ti y te entrega la implementación que toque: se llama inyección de dependencias, y ahora ya sabes qué problema resuelve.
+
+### E33 ●●● — Informe de ventas
+
+Con el catálogo del E31, saca en cinco líneas: (1) los nombres de más de 100 € · (2) el total · (3) el más caro · (4) agrupados por categoría · (5) el precio medio por categoría.
+
+??? success "Solución"
+
+    ```java
+    import java.util.*;
+    import java.util.stream.*;
+
+    void main() {
+        var catalogo = List.of(
+            new Producto("Patinete", "movilidad", 120.0),
+            new Producto("Casco", "seguridad", 35.0),
+            new Producto("Bici", "movilidad", 450.0),
+            new Producto("Candado", "seguridad", 25.0),
+            new Producto("Luces", "seguridad", 15.0));
+
+        IO.println(catalogo.stream()
+                .filter(p -> p.precio() > 100)
+                .map(Producto::nombre)
+                .toList());                                   // [Patinete, Bici]
+
+        IO.println(catalogo.stream()
+                .mapToDouble(Producto::precio).sum());        // 645.0
+
+        IO.println(catalogo.stream()
+                .max(Comparator.comparingDouble(Producto::precio))
+                .map(Producto::nombre).orElse("—"));          // Bici
+
+        IO.println(catalogo.stream()
+                .collect(Collectors.groupingBy(Producto::categoria)));
+
+        IO.println(catalogo.stream()
+                .collect(Collectors.groupingBy(Producto::categoria,
+                         Collectors.averagingDouble(Producto::precio))));
+        // {movilidad=285.0, seguridad=25.0}
+    }
+    ```
+
+    Tres cosas que se preguntan:
+
+    - `max` devuelve **`Optional`**, porque la lista podría estar vacía. Por eso hace falta `.map(...).orElse(...)`.
+    - `groupingBy` devuelve un **`HashMap`**: el orden de las claves **no** está garantizado. Si lo necesitas ordenado, `groupingBy(clave, TreeMap::new, downstream)`.
+    - `mapToDouble(...).sum()` evita el autoboxing de `reduce`. Con cinco productos da igual; con doscientos mil, no.
+
+### E34 ●●● — Repositorio robusto
+
+Escribe `CatalogoRepositorio` con `Optional<Producto> buscarPorNombre(String)` y `Producto obtenerObligatorio(String)`, que lance una excepción propia si no existe. Pruébalo con uno que exista y otro que no.
+
+??? success "Solución"
+
+    ```java
+    import java.util.*;
+
+    class ProductoNoEncontradoException extends RuntimeException {
+        ProductoNoEncontradoException(String nombre) {
+            super("No existe el producto: " + nombre);
+        }
+    }
+
+    class CatalogoRepositorio {
+        private final List<Producto> productos;
+
+        CatalogoRepositorio(List<Producto> productos) {
+            this.productos = List.copyOf(productos);          // (1)
+        }
+
+        Optional<Producto> buscarPorNombre(String nombre) {
+            return productos.stream()
+                    .filter(p -> p.nombre().equalsIgnoreCase(nombre))
+                    .findFirst();
+        }
+
+        Producto obtenerObligatorio(String nombre) {
+            return buscarPorNombre(nombre)
+                    .orElseThrow(() -> new ProductoNoEncontradoException(nombre));
+        }
+    }
+
+    void main() {
+        var repo = new CatalogoRepositorio(List.of(
+                new Producto("Patinete", "movilidad", 120.0)));
+
+        IO.println(repo.buscarPorNombre("Patinete").map(Producto::precio).orElse(0.0));
+        IO.println(repo.buscarPorNombre("Moto").isPresent());   // false
+
+        try {
+            repo.obtenerObligatorio("Moto");
+        } catch (ProductoNoEncontradoException e) {
+            IO.println("Capturada: " + e.getMessage());
+        }
+    }
+    ```
+
+    1.  Copia inmutable, por lo del E23: si guardas la lista que te dan, quien la creó puede seguir modificándola.
+
+    **Por qué dos métodos y no uno.** Son dos situaciones distintas:
+
+    | Método | Cuándo | Qué dice |
+    |---|---|---|
+    | `buscarPorNombre` | Puede no estar, y es normal | Devuelve `Optional` |
+    | `obtenerObligatorio` | Si no está, es un error | Lanza |
+
+    Un repositorio que devuelve `null` obliga a quien lo llama a acordarse de comprobarlo. `Optional` lo obliga el compilador.
+
+    Y la excepción de dominio no es decoración: en la UT4 se traduce automáticamente a un **404** sin que el servicio sepa nada de HTTP.
+
+### E35 ●●● — Tu primer test
+
+Para una `CalculadoraPrecios` con la regla «10 % de descuento desde 6 unidades», escribe tres tests: caso normal, caso con descuento y caso de error.
+
+??? success "Solución"
+
+    ```java
+    import org.junit.jupiter.api.Test;
+    import static org.junit.jupiter.api.Assertions.*;
+
+    class CalculadoraPreciosTest {
+
+        private final CalculadoraPrecios calculadora = new CalculadoraPrecios();
+
+        @Test
+        void noAplicaDescuentoConMenosDeSeisUnidades() {
+            assertEquals(40.0, calculadora.total(2, 20.0), 0.001);   // (1)
+        }
+
+        @Test
+        void aplicaDiezPorCientoDesdeSeisUnidades() {
+            assertEquals(180.0, calculadora.total(10, 20.0), 0.001);
+        }
+
+        @Test
+        void rechazaCantidadNegativa() {
+            assertThrows(IllegalArgumentException.class,
+                    () -> calculadora.total(-1, 20.0));
+        }
+    }
+    ```
+
+    1.  El tercer parámetro es la **tolerancia**. Comparar `double` con `==` falla por redondeo: `assertEquals(0.3, 0.1 + 0.2)` no pasa.
+
+    Lo que se evalúa en este ejercicio no es la sintaxis de JUnit, son **tres decisiones**:
+
+    - **Los nombres describen la regla de negocio**, no el método. Si falla `aplicaDiezPorCientoDesdeSeisUnidades`, ya sabes qué se rompió sin abrir el código. `test1` no dice nada.
+    - **Hay un caso de error.** Un conjunto de tests que solo prueba el camino feliz no prueba casi nada.
+    - **Está el límite.** Con 6 unidades exactas, ¿hay descuento? Los fallos viven en los bordes: prueba 5, 6 y 7.
+
+    La estructura de los tres es la misma, y se llama **AAA**: *Arrange* (preparar), *Act* (ejecutar), *Assert* (comprobar).
+
+---
+
 ## Reparto sugerido
 
 | Ejercicio | Nivel | Sesión | Encaje |
@@ -823,15 +1173,23 @@ public String informe(List<Jugador> jugadores) {
 | **E25 · Interfaz funcional propia** | ●●● | S8 | Explica qué es una lambda |
 | **E26 · Modificar al recorrer** | ●● | S6 | Cae en el examen |
 | **E27 · Refactor a Java 25** | ●●● | S9 | Cierra la unidad |
+| **E28 · Entorno y primer programa** | ● | S1 | Leer al compilador |
+| **E29 · Calculadora de precios** | ● | S2 | La división entera |
+| **E30 · Clasificador HTTP** | ● | S2 | Enlaza con la UT1 |
+| **E31 · Catálogo con records** | ●● | S4 | |
+| **E32 · Métodos de pago** | ●● | S5 | **Prepara la UT4** |
+| **E33 · Informe de ventas** | ●●● | S7 | |
+| **E34 · Repositorio robusto** | ●●● | S8 | **Prepara la UT3 y la UT4** |
+| **E35 · Tu primer test** | ●●● | S9 | El patrón de todo el curso |
 
 !!! tip "Los doce primeros son el núcleo"
-    Del **E13 en adelante** es ampliación. En un grupo que va rodado se hacen en clase; en uno que va justo, quedan como refuerzo guiado. El **E27** conviene hacerlo siempre: es la unidad entera en un solo ejercicio.
+    Del **E13 al E27** es ampliación; del **E28 al E35** son programas completos, uno por tema. En un grupo que va rodado se hacen en clase; en uno que va justo, quedan como refuerzo guiado. El **E27** conviene hacerlo siempre: es la unidad entera en un solo ejercicio.
 
 ---
 
 ## Del ejercicio a la pregunta de test
 
-El examen de esta unidad son **30 preguntas**, y la mayoría son **preguntas de código**: se da un fragmento y hay que decir qué imprime, si compila o dónde está el fallo ([formato aquí](examen.md)).
+El examen de esta unidad son **30 preguntas**, y la mayoría son **preguntas de código**: se da un fragmento y hay que decir qué imprime, si compila o dónde está el fallo ([simulacro aquí](autoevaluacion.md)).
 
 | Ejercicios | Preguntas | Qué se pregunta |
 |---|:-:|---|

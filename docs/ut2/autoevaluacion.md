@@ -1,12 +1,27 @@
-# Autoevaluación — UT2 (Java)
+# Simulacro de test — UT2
 
-Banco de preguntas por tema, con solucionario. Úsalo tras leer cada página y para preparar el **test de RA2** (100 % de la nota).
+**80 preguntas con solución.** Mismo formato que el test de la unidad: opción múltiple, **una sola correcta**, sin penalización por fallo.
 
-Formato: opción múltiple, una correcta. Muchas son de **leer código y decir qué pasa** — igual que el test real.
+!!! info "De dónde sale todo lo que se pregunta"
+    De **los temas 1 a 6** y de la **[batería de ejercicios](ejercicios.md)**. Nada más.
+
+    La mayoría son de **leer código y decir qué pasa**, porque así es el test real. Estudiar esta unidad leyendo apuntes no funciona: hay que teclear.
+
+| Bloque | De dónde | Preguntas |
+|---|---|:-:|
+| 1 | Primeros pasos | 7 |
+| 2 | Sintaxis y tipos | 9 |
+| 3 | POO | 10 |
+| 4 | Colecciones y streams | 10 |
+| 5 | Excepciones y `Optional` | 9 |
+| 6 | Proyectos y testing | 9 |
+| **7** | **Directamente sobre los ejercicios** | **26** |
+
+**El test oficial son 30 preguntas en 55 minutos.** Se aprueba con 15.
 
 ---
 
-## Tema 1 — Primeros pasos (S1)
+## Bloque 1 — Primeros pasos
 
 1. Para **desarrollar** en Java necesitas… a) solo la JRE · b) **el JDK** · c) solo la JVM · d) un servidor
 2. El bytecode `.class` lo ejecuta… a) el SO directamente · b) `javac` · c) **la JVM** · d) el navegador
@@ -20,7 +35,7 @@ Formato: opción múltiple, una correcta. Muchas son de **leer código y decir q
 
 ---
 
-## Tema 2 — Sintaxis y tipos (S2–S3)
+## Bloque 2 — Sintaxis y tipos
 
 1. `IO.println(7 / 2);` imprime… a) 3.5 · b) **3** · c) 4 · d) error
 2. `IO.println("5" + 3);` imprime… a) 8 · b) **53** · c) error · d) "5 3"
@@ -36,7 +51,7 @@ Formato: opción múltiple, una correcta. Muchas son de **leer código y decir q
 
 ---
 
-## Tema 3 — POO (S4–S6)
+## Bloque 3 — POO
 
 1. Los atributos se declaran `private` para… a) que ocupen menos · b) **controlar el acceso y proteger las reglas** · c) que sean más rápidos · d) obligación del compilador
 2. Un `record` genera automáticamente… a) solo el constructor · b) **constructor, getters, equals, hashCode y toString** · c) solo getters y setters · d) nada
@@ -53,7 +68,7 @@ Formato: opción múltiple, una correcta. Muchas son de **leer código y decir q
 
 ---
 
-## Tema 4 — Colecciones y streams (S7–S8)
+## Bloque 4 — Colecciones y streams
 
 1. Para una colección **sin duplicados** usas… a) List · b) **Set** · c) Map · d) Array
 2. Para buscar por clave usas… a) List · b) Set · c) **Map** · d) Queue
@@ -70,7 +85,7 @@ Formato: opción múltiple, una correcta. Muchas son de **leer código y decir q
 
 ---
 
-## Tema 5 — Excepciones y Optional (S9)
+## Bloque 5 — Excepciones y Optional
 
 1. El bloque `finally` se ejecuta… a) solo si hay error · b) solo si no hay error · c) **siempre** · d) nunca
 2. `NullPointerException` es… a) checked · b) **unchecked** · c) un error de compilación · d) un warning
@@ -86,7 +101,7 @@ Formato: opción múltiple, una correcta. Muchas son de **leer código y decir q
 
 ---
 
-## Tema 6 — Proyectos y testing (S9)
+## Bloque 6 — Proyectos y testing
 
 1. Las dependencias de un proyecto Maven se declaran en… a) `build.gradle` · b) **`pom.xml`** · c) `package.json` · d) `application.properties`
 2. El código de producción va en… a) `src/test/java` · b) **`src/main/java`** · c) `target/` · d) la raíz
@@ -100,10 +115,128 @@ Formato: opción múltiple, una correcta. Muchas son de **leer código y decir q
 
 > **Soluciones:** 1b · 2b · 3b · 4b · 5b · 6b · 7b · 8b · 9b
 
+## Bloque 7 — Sobre los ejercicios
+
+Estas 26 salen directamente de la [batería](ejercicios.md). Son del tipo que más pesa en el test: **código delante y decidir**.
+
+**1.** ¿Qué imprime?
+
+```java
+IO.println(9 / 5);
+IO.println(9 / 5.0);
+```
+
+a) `1.8` y `1.8` · b) **`1` y `1.8`** · c) `1.8` y `1` · d) Error de compilación
+
+**2.** En `var precioBase = 20;`, el tipo inferido es…
+a) `double` · b) **`int`** · c) `Number` · d) `var`
+
+**3.** Si falta un `;`, el compilador suele señalar…
+a) La primera línea del fichero · b) **La línea siguiente, que es donde se da cuenta** · c) Siempre la línea exacta · d) Ninguna: falla en ejecución
+
+**4.** `switch (codigo / 100)` con `codigo = 404` entra por el caso…
+a) `case 404` · b) **`case 4`** · c) `case 40` · d) `default`
+
+**5.** En un `switch` de flecha…
+a) Hace falta `break` · b) **No hace falta: no hay caída entre casos** · c) No admite varios valores por caso · d) No puede devolver valor
+
+**6.** El constructor compacto de un `record` se escribe…
+a) `Producto(String n, double p) { ... }` · b) **`Producto { ... }`** · c) `compact Producto() { ... }` · d) `record() { ... }`
+
+**7.** Un `record` **no** genera automáticamente…
+a) `equals` · b) `hashCode` · c) `toString` · d) **Métodos `setX`**
+
+**8.** ¿Cuándo **no** conviene un `record`?
+a) Cuando hay muchos campos · b) **Cuando el objeto debe cambiar de estado** · c) Cuando hay que compararlo · d) Nunca
+
+**9.** En `procesarCompra(MetodoPago metodo, double importe)`, que dependa de la interfaz y no de `Tarjeta` es un ejemplo de…
+a) Responsabilidad única · b) **Inversión de dependencias** · c) Liskov · d) Segregación de interfaces
+
+**10.** ¿Qué devuelve `catalogo.stream().max(Comparator.comparingDouble(Producto::precio))`?
+a) Un `Producto` · b) **Un `Optional<Producto>`** · c) Un `double` · d) Una `List`
+
+**11.** `Collectors.groupingBy(Producto::categoria)` devuelve un mapa cuyo orden de claves…
+a) Es alfabético · b) Es el de inserción · c) **No está garantizado: es un `HashMap`** · d) Es inverso
+
+**12.** Para que ese mapa salga ordenado hay que escribir…
+a) `.sorted()` antes · b) **`groupingBy(clave, TreeMap::new, downstream)`** · c) `groupingBy(clave).sort()` · d) No se puede
+
+**13.** ¿Por qué `mapToDouble(...).sum()` es preferible a un `reduce` con `Double`?
+a) Es más corto · b) **Evita el autoboxing** · c) Es la única forma · d) Devuelve `Optional`
+
+**14.** Un repositorio que devuelve `null` cuando no encuentra…
+a) Es correcto y eficiente · b) **Obliga a quien llama a acordarse de comprobarlo; `Optional` lo obliga el compilador** · c) Es obligatorio en Java 25 · d) Lanza excepción
+
+**15.** `orElseThrow(() -> new ProductoNoEncontradoException(nombre))` se usa cuando…
+a) La ausencia es normal · b) **La ausencia es un error** · c) Siempre · d) Nunca
+
+**16.** En `assertEquals(40.0, calculadora.total(2, 20.0), 0.001)`, el tercer parámetro es…
+a) El número de intentos · b) **La tolerancia al comparar decimales** · c) El tiempo máximo · d) El mensaje de error
+
+**17.** ¿Por qué `assertEquals(0.3, 0.1 + 0.2)` falla sin tolerancia?
+a) Porque `assertEquals` no admite `double` · b) **Por el redondeo de la coma flotante** · c) Porque falta el `import` · d) No falla
+
+**18.** Un conjunto de tests que solo prueba el camino feliz…
+a) Es suficiente · b) **Deja fuera justo donde están los fallos** · c) Es obligatorio · d) No compila
+
+**19.** Con la regla «descuento desde 6 unidades», los valores que hay que probar son…
+a) 1 y 100 · b) **5, 6 y 7** · c) Solo 10 · d) Solo 0
+
+**20.** ¿Qué imprime?
+
+```java
+var lista = new ArrayList<>(List.of(1, 2, 3));
+for (var n : lista) { if (n == 2) lista.remove(n); }
+```
+
+a) `[1, 3]` · b) **`ConcurrentModificationException`** · c) `[1, 2, 3]` · d) Error de compilación
+
+**21.** La forma correcta de eliminar mientras recorres es…
+a) `for` con índice hacia delante · b) **`lista.removeIf(...)`** · c) `lista.remove()` dentro del `for-each` · d) `lista.clear()`
+
+**22.** `comparing(P::puntos).thenComparing(P::nombre).reversed()` invierte…
+a) Solo los puntos · b) **Todo, incluido el desempate por nombre** · c) Solo el nombre · d) Nada
+
+**23.** ¿Qué tiene de malo `catch (IOException e) { }`?
+a) No compila · b) **Hace desaparecer el fallo y el programa sigue con datos a medias** · c) Es lento · d) Nada
+
+**24.** Al envolver una excepción, pasar la causa (`super(mensaje, e)`) sirve para…
+a) Que compile · b) **No perder la traza del fallo original** · c) Cifrar el mensaje · d) Reintentar
+
+**25.** En un `try` con varios recursos, se cierran…
+a) En el orden de apertura · b) **En orden inverso, y todos aunque uno falle al cerrarse** · c) Solo el primero · d) Solo si no hay excepción
+
+**26.** `List.copyOf(lista)` hace dos cosas:
+a) Ordena y copia · b) **Copia y devuelve una lista inmutable** · c) Copia y permite `add` · d) Solo comprueba nulos
+
+> **Soluciones bloque 7:** 1b · 2b · 3b · 4b · 5b · 6b · 7d · 8b · 9b · 10b · 11c · 12b · 13b · 14b · 15b · 16b · 17b · 18b · 19b · 20b · 21b · 22b · 23b · 24b · 25b · 26b
+
 ---
 
-## Cómo usarlo
+## Simulacro cronometrado
 
-- **Tras cada sesión:** responde el bloque del tema y corrige con el solucionario.
-- **La semana del test:** repite los bloques que fallaste y pide simulacros al [comprobar tu trabajo con los tests](../comprobar-tu-trabajo.md).
-- Recuerda que el test real incluye además preguntas sobre **tu propio código** de las [prácticas](practicas.md): qué imprime, dónde está el fallo, por qué compila o no.
+Con la unidad hecha, siéntate **55 minutos con un reloj** y contesta, sin mirar nada:
+
+- **Del tema 2:** las 9 preguntas.
+- **Del tema 3:** las 5 primeras.
+- **Del tema 4:** las 6 primeras.
+- **Del tema 5:** las 4 primeras.
+- **Del bloque 7:** las preguntas 1, 4, 7, 10, 20 y 23.
+
+Son **30 preguntas**, la misma proporción que el test real: la mayoría de código, y la mitad salidas de la batería.
+
+| Aciertos | Lectura |
+|:-:|---|
+| **24 o más** | Vas sobrado |
+| **18 a 23** | Aprobado holgado. Vuelve al bloque que peor te fue |
+| **15 a 17** | Justo. Rehaz los ejercicios del E28 al E35 |
+| **menos de 15** | El problema no es de memoria: falta teclear |
+
+!!! tip "Cómo se estudia esta unidad"
+    Leyendo, no. El test pone **código delante** y pregunta qué imprime, si compila o dónde está el fallo. Eso solo se entrena de una forma:
+
+    1. **Predice antes de ejecutar.** Escribe en un papel qué va a salir, y después ejecuta.
+    2. **Rompe tu propia solución.** Quítale el `hashCode`, mueve el `.reversed()`, borra la causa del `throw`. Apunta qué cambia.
+    3. **Escribe tú la pregunta**, con sus tres distractores.
+
+    Las respuestas de este banco siguen un orden fijo para corregir rápido; en el test real **las opciones van mezcladas**, así que no memorices letras.

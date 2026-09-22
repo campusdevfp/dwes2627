@@ -30,15 +30,15 @@ Aquí casi todo se resuelve **con la consola y el navegador**. No se programa to
 
 | Sesión | El micro-reto | Se resuelve con | Lo que queda claro |
 |:-:|---|:-:|---|
-| **S1** | *«Escribe todo lo que ocurre entre que pulsas Intro y ves la página. Sin mirar nada. Después compáralo con lo que dice el navegador.»* | [E13](ut1/ejercicios.md) | Cuántas piezas hay, y que el navegador te las enseña |
-| **S2** | *«Este `curl` devuelve 200 y está mal. Encuentra por qué.»* (un `POST` que responde 200 en vez de 201) | [E14](ut1/ejercicios.md) · [E15](ut1/ejercicios.md) | Que el código de estado **es** la respuesta |
-| **S3** | *«La página tarda 3 segundos. ¿Dónde se van? Tráeme el número, no la sensación.»* | [E16](ut1/ejercicios.md) | `curl -w`, y que «va lento» no es un diagnóstico |
-| **S4** | *«Pide la misma URL y consigue que te devuelva dos formatos distintos.»* | [E17](ut1/ejercicios.md) | Negociación de contenido, sin haberla nombrado antes |
-| **S5** | *«Aquí tienes un JWT. ¿Qué sabes de este usuario? Tienes cinco minutos.»* | [E19](ut1/ejercicios.md) | Que un JWT **no está cifrado**. Nadie lo olvida |
-| **S6** | *«Este despliegue devuelve 502. Solo tienes el log. ¿Qué ha pasado?»* | [E24](ut1/ejercicios.md) · [E10](ut1/ejercicios.md) | Que el log es la herramienta, no un estorbo |
+| **S1** | *«Escribe todo lo que ocurre entre que pulsas Intro y ves la página. Sin mirar nada. Después ábrelo con `F12` y cuenta las peticiones.»* | [E2](ut1/ejercicios.md) · [E4](ut1/ejercicios.md) | Que una página son decenas de peticiones, no una |
+| **S2** | *«Aquí tenéis seis situaciones. ¿Qué código devolvéis en cada una? Aviso: en dos os vais a equivocar.»* | [E23](ut1/ejercicios.md) · [E15](ut1/ejercicios.md) | Que el código de estado **es** la respuesta, y el 401/403 |
+| **S3** | *«La página tarda 3 segundos. ¿Dónde se van? Traedme el número, no la sensación.»* | [E16](ut1/ejercicios.md) | `curl -w`, y que «va lento» no es un diagnóstico |
+| **S4** | *«Pedid la misma URL y conseguid que os devuelva dos formatos distintos.»* | [E17](ut1/ejercicios.md) · [E18](ut1/ejercicios.md) | Negociación de contenido y caché, sin haberlas nombrado |
+| **S5** | *«Aquí tenéis un JWT. ¿Qué sabéis de este usuario? Cinco minutos.»* | [E25](ut1/ejercicios.md) | Que un JWT **no está cifrado**. Nadie lo olvida |
+| **S6** | *«Diseñad las rutas de una biblioteca en veinte minutos. Después las comparamos todas en la pizarra.»* | [E24](ut1/ejercicios.md) · [E29](ut1/ejercicios.md) | Que hay decisiones de diseño, no una única forma |
 
 !!! tip "El de la S5 es el que más rinde"
-    Cuando alguien decodifica el token en base64 y ve el correo de otra persona en claro, la clase se queda en silencio. Es la mejor explicación de seguridad que se va a dar en todo el trimestre, y no la das tú.
+    Cuando alguien decodifica el token con `base64 -d` y ve el correo de otra persona en claro, la clase se queda en silencio. Es la mejor explicación de seguridad de todo el trimestre, y no la das tú.
 
 ---
 
@@ -61,7 +61,7 @@ En Java el micro-reto casi siempre tiene la misma forma: **predice qué imprime,
 
 ## UT3 · Datos, ficheros y JSON · 9 sesiones
 
-La UT3 se examina con un [test práctico](ut3/examen.md) sobre fragmentos de código, así que el micro-reto tiene aquí un papel extra: **generar las preguntas**.
+La UT3 se examina con un [test práctico](ut3/autoevaluacion.md) sobre fragmentos de código, así que el micro-reto tiene aquí un papel extra: **generar las preguntas**.
 
 | Sesión | El micro-reto | Se resuelve con | Lo que queda claro |
 |:-:|---|:-:|---|
@@ -81,13 +81,13 @@ La UT3 se examina con un [test práctico](ut3/examen.md) sobre fragmentos de có
 
 Además de los micro-retos, cada unidad tiene **un reto de dos sesiones** que se parece ya a lo que se hará en enero: enunciado abierto, en parejas, y puesta en común.
 
-=== "UT1 · La autopsia"
+=== "UT1 · La autopsia de una web"
 
-    > Os doy **el log de un incidente real** de un servidor: quince minutos de peticiones, con sus códigos, tiempos y cabeceras. Algo se rompió. **Decidme qué pasó, cuándo empezó y qué lo provocó** — y traedme la línea concreta que lo demuestra.
+    > Elegid **dos webs muy distintas** —un periódico y una aplicación tipo panel— y desmontadlas con las DevTools y con `curl`. **Decidme cuál hace SSR y cuál CSR, y demostradlo**; cuántas peticiones lanza cada una y de qué tipo; qué se está cacheando y cómo lo sabéis.
 
-    No hay que arreglar nada. Hay que **leer**, que es la mitad del trabajo de un desarrollador de servidor y no se enseña en ningún tema.
+    No hay que programar nada. Hay que **leer lo que ya está pasando**, que es la mitad del trabajo de un desarrollador de servidor y no se enseña en ningún tema.
 
-    **Se entrega:** media página. Qué pasó, la evidencia, y qué habría evitado el problema.
+    **Se entrega:** una página. Las dos tablas de peticiones, la evidencia del SSR o CSR (`Ctrl+U`) y una captura de un `304`.
 
 === "UT2 · El código heredado"
 
@@ -106,7 +106,7 @@ Además de los micro-retos, cada unidad tiene **un reto de dos sesiones** que se
     **Se entrega:** el proyecto y **tres preguntas de test** escritas por vosotros sobre los errores que cometisteis.
 
 !!! info "Y desde la UT4 ya cambia"
-    UT4, UT5 y UT6 tienen su propio **[reto con tests](ut4/practicas.md)**: un proyecto base, un enunciado y una batería que te dice cuándo has terminado. Es el escalón intermedio entre esto y el proyecto de enero — y es además el formato exacto del examen práctico.
+    UT4, UT5 y UT6 tienen sus propios **retos** ([UT4](ut4/retos.md) · [UT5](ut5/retos.md) · [UT6](ut6/retos.md)): dos resueltos que se construyen en clase y **uno que se entrega**, con la misma rúbrica que el examen práctico. Es el escalón intermedio entre esto y el proyecto de enero.
 
 ---
 

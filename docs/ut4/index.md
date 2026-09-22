@@ -10,7 +10,7 @@ Aquí cambia el juego. Dejas de escribir ficheros sueltos y empiezas a construir
     El repositorio guarda en memoria, así que al parar la aplicación los datos desaparecen. Es **deliberado**: esta unidad va de **arquitectura**, no de persistencia. Lo importante es que el servicio y el controlador no sepan **dónde** se guardan los datos — y por eso, en la UT5, podrás cambiar memoria por base de datos sin tocarlos.
 
 !!! danger "Primera unidad con examen práctico"
-    Ya no hay test. La prueba consiste en **construir una aplicación en el ordenador** a partir de un enunciado. Se evalúa con [rúbrica por criterios](examen.md). Traducción: hay que programar todos los días, no estudiar la última semana.
+    Ya no hay test. La prueba consiste en **construir una aplicación en el ordenador** a partir de un enunciado. Se evalúa con **rúbrica por criterios**, la misma del [reto R3](retos.md). Traducción: hay que programar todos los días, no estudiar la última semana.
 
 
 ## Al terminar sabrás hacer
@@ -43,25 +43,24 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 | **S13** | Tests unitarios con Mockito | [6. Testing en Spring](06-testing-en-spring.md) §1–2 |
 | **S14** | Tests de rodaja y de integración | [6. Testing en Spring](06-testing-en-spring.md) §3–5 |
 | **S15** | Laboratorio: la batería sobre otro dominio (biblioteca) | [Batería de ejercicios](ejercicios.md) |
-| **S16** | Proyecto integrador: montar la aplicación completa | [Reto con tests](practicas.md) |
-| **S17** | Repaso, dudas y laboratorio libre | [Preparar el examen](examen.md) |
-| **S18** | :material-laptop: **Examen práctico de RA5 (100 %)** | [Preparar el examen](examen.md) |
+| **S16** | Laboratorio: el reto R3, a entregar | [Retos R1 y R2](retos.md) |
+| **S17** | Repaso, dudas y laboratorio libre | [Reto R3, a entregar](retos.md) |
+| **S18** | :material-laptop: **Examen práctico de RA5 (100 %)** | [Reto R3, a entregar](retos.md) |
 
 ## Cómo se evalúa: examen práctico
 
 Desarrollo en el ordenador a partir de un enunciado y un esqueleto de proyecto. Se valora, por criterios: que **funcione**, que las **capas** estén bien separadas, la **inyección de dependencias** correcta, el uso de **DTO y validación**, el **manejo de errores** y los **tests**.
 
-Enunciado de ejemplo, rúbrica completa y consejos: **[preparación del examen](examen.md)**.
+El **[reto R3](retos.md)** es un enunciado del mismo tamaño y con la misma rúbrica: si lo sacas, el examen es el mismo ejercicio con otro dominio.
 
 ## Material
 
-- Reto con tests
-    — construimos una aplicación completa, sesión a sesión.
-- Batería de ejercicios — 12 ejercicios resueltos sobre otro dominio (una biblioteca), para comprobar que lo sabes hacer tú y no solo copiar.
-- [Comprobar tu trabajo](../comprobar-tu-trabajo.md) — los tests del reto de tu unidad.
-    — pégale tu código y te dice si tus capas aguantan.
-- Chuleta de Spring
-    — anotaciones y estructura en una página.
+| | |
+|---|---|
+| [**Retos**](retos.md) | Dos retos **resueltos** que se construyen en clase y **un tercero que se entrega**, con los mismos criterios que el examen |
+| [**Batería de ejercicios**](ejercicios.md) | 30 ejercicios con solución sobre otro dominio, para comprobar que lo sabes hacer tú |
+| [Chuleta](chuleta.md) | Anotaciones y estructura en una página |
+| [Comprobar tu trabajo](../comprobar-tu-trabajo.md) | Pégale tu código y te dice si aguanta la rúbrica |
 
 ## Antes de la S1
 

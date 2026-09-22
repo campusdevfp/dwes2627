@@ -45,19 +45,19 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 | **S14** | Tests de API con `MockMvc` y de integración | [7. Testing de APIs](07-testing-apis.md) |
 | **S15** | Consumir otras APIs con `RestClient` | [8. Consumir APIs](08-consumir-apis.md) |
 | **S16** | Laboratorio: la API de la biblioteca, paginada y filtrable | [Batería de ejercicios](ejercicios.md) |
-| **S17** | Repaso integrador, documentación y dudas | [Preparar el examen](examen.md) |
-| **S18** | :material-laptop: **Examen práctico de RA7 (100 %)** | [Preparar el examen](examen.md) |
+| **S17** | Repaso integrador, documentación y dudas | [Reto R3, a entregar](retos.md) |
+| **S18** | :material-laptop: **Examen práctico de RA7 (100 %)** | [Reto R3, a entregar](retos.md) |
 
 ## Cómo se evalúa
 
-**Examen práctico (100 %)**: ampliar una API existente con paginación, filtrado, documentación, una consulta GraphQL y tests. Rúbrica de seis criterios, publicada en la [página de preparación](examen.md).
+**Examen práctico (100 %)**: ampliar una API existente con paginación, filtrado, documentación, una consulta GraphQL y tests. Rúbrica de seis criterios, la misma del **[reto R3](retos.md)**.
 
 ## Material
 
-- [Reto con tests](practicas.md)
-    — la API se convierte en profesional, fase a fase.
-- Batería de ejercicios
-    — 12 ejercicios resueltos que continúan la API de la biblioteca de la UT4.
-- [Comprobar tu trabajo](../comprobar-tu-trabajo.md) — los tests del reto de tu unidad.
-    — revisión de tu API contra la rúbrica.
-- Chuleta REST + GraphQL + WebSockets — la que puedes llevar al examen.
+| | |
+|---|---|
+| [**Retos**](retos.md) | Dos retos **resueltos** que se construyen en clase y **un tercero que se entrega**, con los mismos criterios que el examen |
+| [**Batería de ejercicios**](ejercicios.md) | 32 ejercicios con solución sobre otro dominio, para comprobar que lo sabes hacer tú |
+| [Chuleta](chuleta.md) | Anotaciones y estructura en una página |
+| [Comprobar tu trabajo](../comprobar-tu-trabajo.md) | Pégale tu código y te dice si aguanta la rúbrica |
+

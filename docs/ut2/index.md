@@ -12,7 +12,7 @@ En la UT1 aprendiste *qué* pasa en un servidor. Aquí aprendes **a escribirlo**
 
 ## Al terminar sabrás hacer
 
-Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede sin marcar la semana del examen es exactamente lo que hay que repasar.
+Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede sin marcar la semana del test es exactamente lo que hay que repasar.
 
 - [ ] Escribir, compilar y ejecutar programas **Java 25** desde la consola, sin depender del IDE.
 - [ ] Usar con soltura los **tipos, `var`, `record` y el `switch` moderno**.
@@ -36,32 +36,28 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 
 Cada página incluye **Pruébalo ahora** (código que ejecutas) y **Ejercicios con solución**.
 
-## Cómo se evalúa: UN único test (100 %)
-
-Igual que en la UT1: un test de **30 preguntas (55 min)** que mezcla teoría y, sobre todo, **práctica aplicada**: leer código y decir qué imprime, detectar el error de compilación, elegir la colección correcta, interpretar un stream, corregir un `catch`…
-
-!!! info "Ojo a lo que viene después"
-    UT1, UT2 y UT3 se evalúan con test. **A partir de la UT4 los exámenes son prácticos**: programar en el ordenador. Lo que aprendas aquí es la herramienta con la que aprobarás el resto del curso.
-
-Se supera con **≥ 5**. Como en la UT1: **el test se estudia programando**. Quien hace los ejercicios reconoce las preguntas; quien solo lee apuntes, no.
-
 ## Antes de la S1
 
 - [ ] JDK 25 (LTS) instalado desde Adoptium — comprueba con `java -version`.
 - [ ] IntelliJ IDEA Community (recomendado) o VS Code con el Extension Pack for Java.
 - [ ] Git instalado (lo usarás para entregar y para el proyecto de aula).
 
+## Cómo se evalúa
+
+**Un test de 30 preguntas en 55 minutos, y nada más.** Se aprueba con 15 y no hay penalización por fallo.
+
+La mayoría son **preguntas de código**: un fragmento delante y decir qué imprime, si compila o dónde está el fallo. Salen de los **temas 1 a 6** y de la **batería de ejercicios**, de ningún otro sitio.
+
+**El test se estudia programando.** Quien hace la batería reconoce las preguntas; quien solo lee apuntes, no.
+
+!!! info "Ojo a lo que viene después"
+    UT1, UT2 y UT3 se evalúan con test. **A partir de la UT4 los exámenes son prácticos**: programar en el ordenador con el proyecto delante. Lo que aprendas aquí es la herramienta con la que aprobarás el resto del curso.
+
 ## Material de entrenamiento
 
-- [Batería de ejercicios](ejercicios.md)
-    : 12 ejercicios resueltos sobre otro dominio (una liga de baloncesto).
-- [Prácticas guiadas](practicas.md)
-    : ejercicios de programación con enunciado y solución.
-- Autoevaluación
-    : banco de preguntas tipo test con soluciones.
-- [Comprobar tu trabajo](../comprobar-tu-trabajo.md) — los tests del reto de tu unidad.
-    : pega tu código y recibe feedback + simulacros del test.
-- [Chuleta de Java 25](chuleta.md)
-    : la sintaxis esencial en una página.
-- [Preparar el examen](examen.md)
-    : formato, reparto de preguntas y los diez errores que más cuestan.
+| | |
+|---|---|
+| [**Batería de ejercicios**](ejercicios.md) | 35 ejercicios con solución: 27 fragmentos y 8 programas completos, uno por tema. Es la práctica de la unidad |
+| [**Simulacro de test**](autoevaluacion.md) | 80 preguntas con solución + una selección de 30 para cronometrar |
+| [Chuleta de Java 25](chuleta.md) | La sintaxis esencial en una página |
+| [Comprobar tu trabajo](../comprobar-tu-trabajo.md) | Pega tu código y recibe comentarios |

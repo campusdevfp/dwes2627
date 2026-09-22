@@ -1,604 +1,925 @@
 # Batería de ejercicios — UT1
 
-Doce ejercicios **de los que salen las preguntas del test**. No son teóricos: cada uno parte de algo real —una traza, un código de estado, una decisión de diseño— y se resuelve razonando.
+**34 ejercicios con solución**, agrupados por tema. Son la única práctica de la unidad: aquí están integradas las que antes iban por separado.
 
-Las [prácticas guiadas](practicas.md) son para *tocar* la tecnología; esto es para **entrenar la respuesta**.
+!!! info "Alcance: temas 1 a 6"
+    Todo lo que se pregunta en el [simulacro](autoevaluacion.md) y en el test de la unidad sale de **los temas 1 a 6 y de estos ejercicios**. Ni más ni menos.
+
+    Los temas [7](07-java-en-2026.md), [8](08-servidores-y-despliegue.md) y [9](09-seguridad-y-logs.md) son **divulgación**: conviene leerlos porque ordenan el panorama, pero **no entran ni en los ejercicios ni en el test**.
+
+| Bloque | Tema | Ejercicios |
+|---|---|---|
+| 1 · El viaje y los actores | [1](01-el-viaje-de-una-peticion.md) y [2](02-cliente-y-servidor.md) | E1–E6 |
+| 2 · Arquitecturas y MVC | [3](03-arquitecturas-y-mvc.md) | E7–E12 |
+| 3 · HTTP a fondo | [4](04-http-y-apis.md) | E13–E21 |
+| 4 · APIs | [5](05-apis-a-fondo.md) | E22–E29 |
+| 5 · Web dinámica y Java | [6](06-web-dinamica-y-lenguajes.md) | E30–E34 |
+
+**Qué hace falta:** un navegador con DevTools (`F12`), una terminal con `curl` y el JDK 25. Nada más.
 
 ---
+
+# Bloque 1 · El viaje y los actores
 
 ### E1 ● — Lee la conversación
 
-```
-> GET /api/v1/conciertos/9999 HTTP/1.1
-> Host: festival.es
-> Accept: application/json
-<
-< HTTP/1.1 404 Not Found
-< Content-Type: application/problem+json
-< {"title":"Concierto no encontrado","status":404}
-```
-
-¿Qué pidió el cliente, qué contestó el servidor y de quién es la culpa?
-
-??? success "Solución"
-
-    El cliente pidió **leer** el concierto 9999 en formato JSON. El servidor responde **404**: la ruta es correcta pero el recurso no existe.
-
-    La culpa es **del cliente** —los 4xx siempre lo son—, aunque aquí «culpa» significa solo que pidió algo que no está. Un 404 no es un error de la aplicación: es una respuesta correcta a una pregunta sobre algo inexistente.
-
-    Detalle que suele pasar desapercibido: `application/problem+json` es el formato estándar de errores (RFC 7807) que usarás en la UT4.
-
-
-### E2 ● — Asigna el código
-
-Di qué código HTTP corresponde a cada situación:
-
-1. Se crea un concierto correctamente.
-2. Se borra un concierto correctamente.
-3. Falta el campo `artista` en el cuerpo.
-4. No se ha enviado ningún token.
-5. Hay token, pero el usuario no es administrador.
-6. Se intenta crear un concierto con un nombre que ya existe.
-7. Se cae la base de datos.
-
-??? success "Solución"
-
-    | # | Código | |
-    |---|---|---|
-    | 1 | **201** Created | y con cabecera `Location` apuntando al recurso nuevo |
-    | 2 | **204** No Content | se borró; no hay nada que devolver |
-    | 3 | **400** Bad Request | la petición está mal formada |
-    | 4 | **401** Unauthorized | *no sé quién eres* |
-    | 5 | **403** Forbidden | *sé quién eres y no puedes* |
-    | 6 | **409** Conflict | choca con el estado actual del servidor |
-    | 7 | **500** Internal Server Error | culpa del servidor |
-
-    El 4 y el 5 son **la pregunta que más se falla del examen**. El nombre no ayuda: «Unauthorized» debería llamarse «Unauthenticated».
-
-
-### E3 ●● — ¿Seguro? ¿Idempotente?
-
-Clasifica: `GET /productos`, `POST /pedidos`, `PUT /productos/7`, `DELETE /productos/7`, `PATCH /productos/7`.
-
-??? success "Solución"
-
-    | Método | Seguro | Idempotente | Repetirlo… |
-    |---|:-:|:-:|---|
-    | `GET` | | | no cambia nada |
-    | `POST` | :material-close: | :material-close: | **crea otro pedido** |
-    | `PUT` | :material-close: | | deja el mismo resultado |
-    | `DELETE` | :material-close: | | el segundo da 404, pero el estado final es el mismo |
-    | `PATCH` | :material-close: | :material-close: | depende (`stock -= 1` acumula) |
-
-    **Seguro** = no modifica nada. **Idempotente** = repetirlo deja el mismo estado final.
-
-    Consecuencia práctica que verás en la UT8: el borrado **no puede ser un enlace**, porque los `GET` deben ser seguros y el precargador del navegador podría dispararlo.
-
-
-### E4 ●● — Diseña los endpoints
-
-Diseña la API de un festival: listar conciertos, ver uno, crearlo, ver sus entradas y comprar una. Sin verbos en la URL.
-
-??? success "Solución"
-
-    ```
-    GET    /api/v1/conciertos                 200
-    GET    /api/v1/conciertos/{id}            200 · 404
-    POST   /api/v1/conciertos                 201 + Location · 400 · 409
-    GET    /api/v1/conciertos/{id}/entradas   200 · 404
-    POST   /api/v1/entradas                   201 + Location · 400 · 404 · 409
-    ```
-
-    Los errores típicos que se corrigen aquí: `/getConciertos` (verbo en la URL), `/concierto` en singular, `/comprarEntrada` (acción en vez de recurso) y `/api/conciertos/borrar/7` (las tres cosas mal a la vez).
-
-    El verbo lo pone **HTTP**; la URL nombra **cosas**.
-
-
-### E5 ●● — Desmonta un JWT
-
-Este token está en tres partes separadas por puntos. ¿Qué contiene cada una, cuál puede leer cualquiera y qué garantiza la firma?
-
-??? success "Solución"
-
-    `cabecera.carga.firma`, las dos primeras en **Base64, que no es cifrado**: cualquiera las decodifica en [jwt.io](https://jwt.io).
-
-    - **Cabecera**: el algoritmo de firma (`HS256`, `RS256`).
-    - **Carga**: quién es el usuario, sus roles y cuándo caduca (`exp`).
-    - **Firma**: calculada con una clave secreta que solo tiene el servidor.
-
-    La firma garantiza que **nadie ha manipulado** el contenido. **No** garantiza que sea secreto.
-
-    De ahí la regla que cae en el examen: **nunca metas datos sensibles en un JWT**. Van a la vista de todos.
-
-
-### E6 ●● — Elige la arquitectura
-
-Justifica con dos argumentos en cada caso: (a) la web de una panadería con 30 visitas al día, (b) una plataforma de vídeo con picos de audiencia, (c) una aplicación interna de gestión para 40 empleados.
-
-??? success "Solución"
-
-    **(a) Monolito, SSR.** El coste de operar microservicios no se justifica con 30 visitas, y el contenido tiene que indexarse en buscadores.
-
-    **(b) Microservicios o serverless.** La transcodificación de vídeo y el catálogo escalan de forma muy distinta; separarlos permite dimensionar cada pieza y aguantar los picos.
-
-    **(c) Monolito modular.** Un solo despliegue —lo mantiene un equipo pequeño—, con fronteras internas claras por si mañana crece.
-
-    La respuesta que puntúa no es la etiqueta: es **el porqué**. «Microservicios porque son modernos» vale cero.
-
-
-### E7 ●●● — SSR o SPA
-
-Decide para: (a) un periódico digital, (b) un editor de fotos en línea, (c) la tienda de un ayuntamiento.
-
-??? success "Solución"
-
-    **(a) SSR.** El posicionamiento en buscadores es su negocio y la primera pantalla tiene que llegar rápida.
-
-    **(b) SPA.** Interacción intensa y continua: arrastrar, deshacer, previsualizar. Nadie busca un editor en Google por su contenido.
-
-    **(c) SSR, o híbrido.** Contenido indexable, obligación de accesibilidad y usuarios con conexiones y dispositivos muy dispares.
-
-    Los dos criterios que hay que nombrar siempre: **indexación** y **grado de interactividad**.
-
-
-### E8 ●● — Servidor web o de aplicaciones
-
-Un compañero dice que usa «Apache para ejecutar su código Java». Corrígelo y explica cómo se colocan las piezas en producción.
-
-??? success "Solución"
-
-    Apache o Nginx son **servidores web**: sirven ficheros estáticos, terminan el TLS y hacen de proxy inverso. **No ejecutan Java.**
-
-    Tomcat es un **servidor de aplicaciones**: ejecuta tu código. En Spring Boot va **dentro del propio `.jar`**.
-
-    En producción se combinan:
-
-    ```
-    Internet → Nginx (443, HTTPS, estáticos) → Spring Boot + Tomcat (8080, interno) → BD (5432, interno)
-    ```
-
-    Y una regla que cae: **los puertos internos nunca se exponen a internet**.
-
-
-### E9 ●● — Autenticación o autorización
-
-Clasifica: (a) iniciar sesión con usuario y contraseña, (b) que solo el admin pueda borrar, (c) que un usuario vea únicamente sus pedidos, (d) validar el token de cada petición, (e) el mensaje «tu cuenta no tiene acceso a esta sección».
-
-??? success "Solución"
-
-    | | | Código |
-    |---|---|---|
-    | (a) | Autenticación | — |
-    | (b) | Autorización | 403 |
-    | (c) | Autorización **por dato**, no solo por rol | 403 |
-    | (d) | Autenticación | 401 si falla |
-    | (e) | Autorización | 403 |
-
-    El (c) es el más fino y el que separa notas: no basta con «este rol puede», hay que comprobar **que ese pedido es suyo**. Lo implementarás en la UT7.
-
-
-### E10 ●●● — Diagnostica por el log
-
-```
-192.168.1.40 - - [12/Nov/2025:10:03:11] "POST /login HTTP/1.1" 401 92
-192.168.1.40 - - [12/Nov/2025:10:03:12] "POST /login HTTP/1.1" 401 92
-192.168.1.40 - - [12/Nov/2025:10:03:12] "POST /login HTTP/1.1" 401 92
-192.168.1.40 - - [12/Nov/2025:10:03:13] "POST /login HTTP/1.1" 401 92
+Aquí tienes una petición y su respuesta. Contesta: método, ruta, qué pide el cliente, qué código devuelve el servidor y qué formato.
+
+```http
+POST /api/v1/pedidos HTTP/1.1
+Host: tienda.example
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOi...
+
+{"producto": "teclado", "unidades": 2}
 ```
 
-¿Qué está pasando y qué harías?
+```http
+HTTP/1.1 201 Created
+Location: /api/v1/pedidos/8841
+Content-Type: application/json
+
+{"id": 8841, "estado": "PENDIENTE"}
+```
 
 ??? success "Solución"
 
-    **Un ataque de fuerza bruta**: la misma IP probando contraseñas, cuatro intentos en dos segundos. Un humano no teclea así.
-
-    Medidas, de más simple a más completa: limitar el número de intentos por IP y por cuenta, introducir un retardo creciente tras cada fallo, bloquear temporalmente la cuenta y añadir un segundo factor.
-
-    Y lo que **no** se hace: escribir en el log qué contraseña se probó. Ahí es donde se acaba filtrando la buena.
-
-
-### E11 ●● — Qué se registra y qué no
-
-De esta lista, di qué puede ir a un log y qué no: IP de origen, contraseña, código de respuesta, número de tarjeta, ruta pedida, token JWT, tiempo de respuesta, DNI del usuario.
-
-??? success "Solución"
-
-    | Va al log | No va nunca |
+    | | |
     |---|---|
-    | IP de origen | Contraseñas |
-    | Código de respuesta | Números de tarjeta |
-    | Ruta pedida | Tokens completos |
-    | Tiempo de respuesta | Datos personales (DNI, dirección) |
+    | **Método** | `POST` — crea algo nuevo |
+    | **Ruta** | `/api/v1/pedidos` |
+    | **Qué pide** | Crear un pedido de 2 teclados |
+    | **Código** | `201 Created` — se creó, y `Location` dice dónde |
+    | **Formato** | JSON, en la petición y en la respuesta |
 
-    La IP es un caso intermedio: es un dato personal según el RGPD, así que se registra con una finalidad concreta y un plazo de conservación.
+    Lo que hay que ver de un vistazo: **`201` y no `200`**. Un `POST` que crea un recurso devuelve `201` con la cabecera `Location`. Esa cabecera es la diferencia entre una API correcta y una que «funciona».
 
-    Y una que sorprende: **no rotar los logs tumba servidores**. El disco se llena y todo se detiene.
+    El `Authorization: Bearer ...` dice que va autenticada con un token, no con cookie de sesión.
 
+### E2 ● — Ordena el viaje
+
+Estos siete pasos están desordenados. Ponlos en orden desde que se pulsa Intro.
+
+`El navegador pinta` · `El servidor consulta la base de datos` · `Se resuelve el nombre con DNS` · `El servidor devuelve la respuesta` · `Se abre la conexión TCP y el cifrado TLS` · `El navegador pide los recursos (CSS, JS, imágenes)` · `El servidor recibe la petición y la enruta`
+
+??? success "Solución"
+
+    1. **DNS** — traducir `tienda.example` a una dirección IP.
+    2. **TCP + TLS** — abrir la conexión y cifrarla.
+    3. **El servidor recibe y enruta** la petición.
+    4. **Consulta a la base de datos**.
+    5. **Devuelve la respuesta** (el HTML o el JSON).
+    6. **El navegador pide los recursos** que menciona ese HTML.
+    7. **Pinta**.
+
+    El paso que más se olvida es el **6**: la primera respuesta casi nunca es la página terminada, es un documento que **provoca más peticiones**. Por eso en el E5 vas a contar cuarenta o cincuenta.
+
+### E3 ● — Cliente o servidor
+
+Di dónde ocurre cada cosa y, cuando la respuesta sea «en los dos», explica por qué.
+
+(a) Comprobar que el correo tiene una `@` · (b) Comprobar que la contraseña es correcta · (c) Calcular el total del carrito · (d) Ocultar un botón si no eres admin · (e) Decidir si puedes borrar un pedido · (f) Cambiar el color de un botón al pasar el ratón
+
+??? success "Solución"
+
+    | | Dónde | Por qué |
+    |---|---|---|
+    | (a) La `@` del correo | **Los dos** | En cliente para avisar rápido; en servidor porque el cliente se puede saltar |
+    | (b) Contraseña correcta | **Servidor** | El cliente no tiene con qué compararla, ni debe |
+    | (c) Total del carrito | **Servidor** | Si lo calcula el cliente, se puede cambiar el precio |
+    | (d) Ocultar un botón | **Cliente** | Es presentación |
+    | (e) Si puedes borrar | **Servidor** | Ocultar el botón no impide llamar a la URL |
+    | (f) Color al pasar el ratón | **Cliente** | CSS puro |
+
+    La pareja **(d) y (e)** es la que hay que entender. Ocultar el botón es cortesía; **la decisión de verdad es la (e)**, y vive en el servidor. Si solo ocultas el botón, cualquiera con las DevTools abiertas borra el pedido.
+
+    La regla, en una frase: **todo lo que decide el cliente, se puede falsificar**.
+
+### E4 ●● — Autopsia de una web
+
+Abre una web real, `F12 → Red`, y recarga. Cuenta las peticiones y clasifícalas.
+
+1. ¿Cuántas peticiones se lanzan en total?
+2. ¿Cuántas son del documento, CSS, JS, imágenes y llamadas a API (`fetch`/`XHR`)?
+3. Busca dos con códigos distintos y explica la diferencia.
+
+??? success "Solución"
+
+    No hay un número correcto: lo que importa es lo que descubres.
+
+    - En una web comercial normal salen **entre 40 y 150 peticiones** para *una* página. El documento HTML es **una** de ellas.
+    - Las de tipo **Fetch/XHR** son las llamadas a la API. Ahí está el back-end. Si las filtras con el botón `Fetch/XHR`, ves la API que consume la web.
+    - Códigos que aparecen casi siempre:
+
+    | Código | Qué significa aquí |
+    |---|---|
+    | **200** | Se descargó |
+    | **304 Not Modified** | Ya lo tenías en caché y sigue valiendo. **No se descargó nada** |
+    | **301 / 302** | Redirección: la URL buena es otra |
+    | **204** | Todo bien y sin cuerpo (típico de un `DELETE` o de telemetría) |
+
+    Fíjate en la columna **Tamaño**: en las `304` pone «(memoria caché)» o «(disco)». Eso es el E18 visto desde el navegador.
+
+### E5 ●● — Dos webs, dos estrategias
+
+Repite el E4 en dos sitios muy distintos: un periódico y una aplicación tipo panel (un correo web, un gestor de tareas). Compara.
+
+??? success "Solución"
+
+    Lo que sale, casi siempre:
+
+    | | Periódico | Aplicación tipo panel |
+    |---|---|---|
+    | El primer HTML | **Grande y lleno de texto** | **Casi vacío**, un `<div id="root">` |
+    | Peticiones `Fetch/XHR` | Pocas | **Muchas**, y son el contenido |
+    | JavaScript | Moderado | **Mucho**, y pesado |
+    | Si desactivas JS | Se lee | **Página en blanco** |
+
+    El periódico hace **SSR**: el servidor manda el texto ya montado, porque necesita que Google lo lea y que cargue rápido.
+
+    El panel hace **CSR**: manda una cáscara y la rellena JavaScript, porque una vez dentro se navega sin recargar y da igual el SEO.
+
+    La forma rápida de distinguirlos: **ver el código fuente (`Ctrl+U`)**. Si el texto que ves en pantalla está ahí, es SSR; si no está, lo puso JavaScript.
+
+### E6 ●● — Tres capas, tres responsabilidades
+
+Para una tienda online, di qué hace cada capa y pon un ejemplo de algo que **no** le toca.
+
+??? success "Solución"
+
+    | Capa | Su trabajo | Lo que NO le toca |
+    |---|---|---|
+    | **Presentación** | Recibir la petición, validar el formato, devolver la respuesta | Decidir si hay stock |
+    | **Lógica de negocio** | Las reglas: hay stock, se aplica el descuento, se cobra | Saber que los datos vienen de PostgreSQL |
+    | **Datos** | Guardar y recuperar | Decidir si el descuento es válido |
+
+    El error clásico es meter una regla de negocio en la capa de presentación: `if (usuario.getEdad() < 18) ...` dentro del controlador. Funciona, y el día que esa regla también haga falta en una tarea programada, hay que copiarla.
+
+    **La prueba del algodón:** si cambias de PostgreSQL a MongoDB, ¿cuántas capas tocas? Debería ser **una**. Si tocas tres, las capas no están separadas de verdad.
+
+---
+
+# Bloque 2 · Arquitecturas y MVC
+
+### E7 ●● — Elige la arquitectura
+
+Para cada caso, elige entre **monolito**, **capas**, **microservicios** o **serverless**, y justifica en una frase.
+
+(a) TFG de dos personas, seis semanas · (b) Banco con 300 desarrolladores y equipos por producto · (c) Un formulario de contacto que envía un correo, diez veces al día · (d) Una tienda que en rebajas multiplica el tráfico por cincuenta solo en el buscador
+
+??? success "Solución"
+
+    | | Elección | Por qué |
+    |---|---|---|
+    | (a) TFG | **Monolito en capas** | Con dos personas, la coordinación entre servicios cuesta más que el problema que resuelve |
+    | (b) Banco | **Microservicios** | El motivo real es **organizativo**: 300 personas no pueden desplegar el mismo artefacto |
+    | (c) Formulario | **Serverless** | Diez ejecuciones al día no justifican un servidor encendido |
+    | (d) Tienda en rebajas | **Microservicios**, o al menos el buscador aparte | Se escala **solo la pieza que lo necesita** |
+
+    La trampa está en (b). Casi todo el mundo responde «porque escala mejor», y la razón principal de los microservicios es **poder desplegar por separado**. La escalabilidad es un efecto secundario.
+
+    Y el aviso de siempre: **microservicios en un equipo pequeño es pagar todo el coste sin ninguna ventaja**.
+
+### E8 ●● — El monolito que no era
+
+Un equipo dice: «tenemos microservicios, seis servicios». Pero: comparten la misma base de datos, se despliegan a la vez y si uno cae fallan todos.
+
+¿Qué tienen en realidad, y qué problema causa?
+
+??? success "Solución"
+
+    Tienen un **monolito distribuido**: lo peor de los dos mundos.
+
+    | Coste de microservicios | Ventaja de microservicios |
+    |---|---|
+    | Latencia de red entre servicios | ~~Despliegue independiente~~ — se despliegan juntos |
+    | Errores parciales y reintentos | ~~Fallo aislado~~ — comparten base de datos |
+    | Seis despliegues que coordinar | ~~Escalar por separado~~ — la BD es el cuello de botella |
+    | Trazas repartidas | |
+
+    **La señal que lo delata es la base de datos compartida.** Si dos servicios escriben en la misma tabla, no son independientes: un cambio de esquema los rompe a la vez.
+
+    Un monolito bien hecho en capas sería más rápido, más fácil de depurar y más barato.
+
+### E9 ●● — Reparte en MVC
+
+Para «un usuario pide ver su pedido 8841», di qué hace el **controlador**, el **modelo** y la **vista**, y dónde va cada una de estas líneas:
+
+(a) `SELECT * FROM pedido WHERE id = ?` · (b) comprobar que el pedido es de ese usuario · (c) devolver `404` si no existe · (d) formatear la fecha como `14/03/2026`
+
+??? success "Solución"
+
+    | | Dónde | Por qué |
+    |---|---|---|
+    | (a) El `SELECT` | **Modelo** (capa de datos) | El controlador no sabe que hay SQL |
+    | (b) ¿Es suyo el pedido? | **Modelo** (lógica de negocio) | Es una **regla**, y debe valer también fuera de la web |
+    | (c) Devolver `404` | **Controlador** | El código de estado es HTTP, y HTTP es cosa del controlador |
+    | (d) Formatear la fecha | **Vista** | Es presentación: en una API sería ISO, en la web `dd/mm/aaaa` |
+
+    La (b) y la (c) juntas son la pregunta buena. El **modelo** decide *«este pedido no es tuyo»*; el **controlador** traduce eso a *`403 Forbidden`*. Si el modelo devuelve un `ResponseEntity`, las capas están rotas.
+
+    Y fíjate en la (d): la misma fecha se pinta distinta según quién mire. Por eso el formato **no** se guarda en el modelo.
+
+### E10 ●● — Un diagrama que se sostenga
+
+Dibuja en Mermaid la arquitectura de una tienda online: navegador, servidor web, aplicación, base de datos y caché. Marca qué parte es tuya como desarrollador de servidor.
+
+??? success "Solución"
+
+    ```mermaid
+    flowchart LR
+        N[Navegador] -->|HTTPS| SW[Servidor web<br/>nginx]
+        SW -->|reenvía| APP[Aplicación<br/>Spring Boot]
+        APP --> BD[(Base de datos)]
+        APP --> C[(Caché)]
+        APP -->|API externa| P[Pasarela de pago]
+    ```
+
+    **Tuyo es el recuadro `APP`** y las decisiones de qué guarda en la base de datos, qué cachea y cómo llama al pago.
+
+    Tres cosas que se equivocan al dibujarlo:
+
+    1. **Poner el navegador hablando con la base de datos.** No pasa nunca: la base de datos no está expuesta a Internet.
+    2. **Confundir servidor web y aplicación.** `nginx` reparte y sirve ficheros estáticos; la aplicación es la que piensa.
+    3. **Olvidar la caché.** Existe justo para que la base de datos no reciba la misma pregunta mil veces.
+
+### E11 ●●● — SOLID en cinco frases
+
+Empareja cada principio con el problema que evita.
+
+`S` · `O` · `L` · `I` · `D` ↔ (1) una clase que hace cinco cosas y cambia por cinco motivos · (2) un `if` gigante que hay que tocar cada vez que aparece un caso nuevo · (3) una subclase que rompe lo que la clase padre prometía · (4) implementar métodos vacíos porque la interfaz pide de más · (5) una clase que no se puede probar porque crea ella misma lo que necesita
+
+??? success "Solución"
+
+    | | Principio | Problema | Cómo se ve en el código |
+    |---|---|---|---|
+    | **S** | Responsabilidad única | (1) | `UsuarioService` que valida, guarda, manda correo y genera el PDF |
+    | **O** | Abierto/cerrado | (2) | `switch (tipoPago)` que crece con cada pasarela nueva |
+    | **L** | Sustitución de Liskov | (3) | `Cuadrado extends Rectangulo` y `setAncho` rompe el área |
+    | **I** | Segregación de interfaces | (4) | Implementar `Repositorio` y dejar la mitad con `throw new UnsupportedOperation` |
+    | **D** | Inversión de dependencias | (5) | `new PostgresRepositorio()` dentro del servicio |
+
+    El que más se nota en este curso es la **D**: es literalmente la razón de que exista la inyección de dependencias de Spring, que se ve en la UT4. Si el servicio hace el `new`, no puedes sustituirlo por un doble en un test.
 
 ### E12 ●●● — El caso completo
 
-Un ayuntamiento quiere una web para reservar pistas deportivas: consulta pública de horarios, reserva con usuario, y un panel de gestión. Decide arquitectura, forma de renderizar, tipo de API y esquema de despliegue, con una línea de justificación en cada punto.
+Una aplicación de reserva de pistas deportivas. Contesta las cinco preguntas.
+
+1. ¿Qué arquitectura elegirías para un polideportivo municipal y por qué?
+2. ¿Qué capas tendría, y qué hace cada una?
+3. ¿Qué endpoints HTTP harían falta para reservar y anular?
+4. ¿Qué validas en el cliente y qué en el servidor?
+5. ¿Qué pasa si dos personas reservan la misma pista a la vez?
 
 ??? success "Solución"
 
-    | Decisión | Elección | Por qué |
-    |---|---|---|
-    | Arquitectura | Monolito modular en capas | Lo mantiene un equipo pequeño; las fronteras internas permiten crecer |
-    | Renderizado | SSR con retoques dinámicos | Contenido público indexable, accesibilidad obligatoria, usuarios con dispositivos dispares |
-    | API | REST | Estándar, cacheable y suficiente; una app móvil futura la reutiliza |
-    | Autenticación | Sesión para la web, token si hay app | Sesión es más simple y el navegador la gestiona solo |
-    | Despliegue | `.jar` en contenedor, Nginx delante, PostgreSQL | Reproducible y con el TLS terminado antes de la aplicación |
+    1. **Monolito en capas.** Un polideportivo es un dominio pequeño, con un equipo pequeño y tráfico previsible. Microservicios aquí es un coste sin retorno.
 
-    Este ejercicio es **la sección final del test**, y se corrige por la justificación, no por la elección. Dos alumnos pueden elegir distinto y sacar los dos la máxima nota.
+    2. | Capa | Qué hace |
+       |---|---|
+       | Presentación | Recibe la petición, valida el formato, devuelve el código |
+       | Negocio | «La pista está libre», «no puedes reservar dos veces el mismo día», «hay que anular con 24 h» |
+       | Datos | Pistas, reservas, socios |
 
+    3. | Acción | Método y ruta | Respuesta |
+       |---|---|---|
+       | Ver huecos | `GET /api/v1/pistas/7/huecos?dia=2026-09-30` | `200` + lista |
+       | Reservar | `POST /api/v1/reservas` | `201` + `Location` |
+       | Ver reserva | `GET /api/v1/reservas/{id}` | `200` o `404` |
+       | Anular | `DELETE /api/v1/reservas/{id}` | `204` |
+
+    4. **Cliente:** que la fecha no sea pasada, que los campos estén rellenos. Es comodidad.
+       **Servidor:** *todo lo anterior otra vez*, más que la pista exista, que esté libre, que el socio esté al corriente y que se respeten las 24 h.
+
+    5. Esta es la pregunta interesante: **dos reservas a la vez**. Si el código hace «mirar si está libre» y después «guardar», hay un hueco entre las dos operaciones en el que caben las dos reservas.
+
+       Se resuelve en la base de datos, no en Java: una **restricción de unicidad** sobre `(pista, dia, hora)`. La segunda inserción falla, se captura el error y se devuelve `409 Conflict`. Esto vuelve, con nombre y apellidos, en la UT5.
 
 ---
 
-## Taller con la consola
+# Bloque 3 · HTTP a fondo
 
-!!! reto "Del E13 al E24 se hacen en el ordenador"
-    Los doce primeros se razonan; **estos se teclean**. Y esa es la idea de toda la unidad: la UT1 no es teoría que hay que pasar, es el mínimo para empezar a tocar.
-
-    Todos usan APIs públicas sin clave. Si no tienes `curl` en Windows, viene con Git Bash. `jq` formatea el JSON: si no lo tienes, quítalo y lo verás en crudo.
-
-    ```bash
-    alias api='curl -s -w "\n← %{http_code} en %{time_total}s\n"'
-    ```
+!!! tip "A partir de aquí, con la terminal abierta"
+    Del E13 al E21 todo se teclea. Si en Windows `curl` te da problemas con las comillas, usa PowerShell y escribe `curl.exe` (con la extensión) para que no coja el alias.
 
 ### E13 ● — Tu primera petición cruda
 
-Pide un recurso y mira **solo las cabeceras**, sin descargar el cuerpo.
+```bash
+curl -i https://httpbin.org/get
+```
+
+Identifica en la salida: la línea de estado, tres cabeceras y dónde empieza el cuerpo.
 
 ??? success "Solución"
 
-    ```bash
-    curl -I https://httpbin.org/html
     ```
+    HTTP/2 200                          ← línea de estado: versión + código
+    date: Tue, 22 Sep 2026 09:14:22 GMT ← cabeceras
+    content-type: application/json
+    content-length: 312
+                                        ← LÍNEA EN BLANCO
+    {                                   ← aquí empieza el cuerpo
+      "headers": { ... }
+    }
     ```
-    HTTP/2 200
-    content-type: text/html; charset=utf-8
-    content-length: 3741
-    server: gunicorn/19.9.0
-    ```
 
-    `-I` hace un **HEAD**: cabeceras sin cuerpo. Sirve para saber si algo existe, cuánto ocupa o si ha cambiado, sin bajarlo.
+    Lo que hay que quedarse: **una línea en blanco separa las cabeceras del cuerpo**. Siempre. Es la regla que hace que el protocolo se pueda leer.
 
-    Tres cosas que mirar:
-
-    - **`HTTP/2`**, no 1.1. La versión se negocia.
-    - **`content-type`** trae el tipo *y* la codificación. Ese `charset=utf-8` es lo que evita los `Ã±` de la UT3.
-    - **`server`** delata qué hay detrás. En producción se oculta, precisamente por eso.
-
-    Para ver el diálogo entero: `curl -v https://httpbin.org/html 2>&1 | head -30`
+    | Opción | Qué hace |
+    |---|---|
+    | `-i` | Muestra cabeceras **y** cuerpo |
+    | `-I` | **Solo** cabeceras (hace un `HEAD`) |
+    | `-v` | Enseña también lo que *envías* (las líneas con `>`) |
 
 ### E14 ● — Los cuatro verbos, uno a uno
 
-Lanza GET, POST, PUT y DELETE y compara lo que devuelve cada uno.
+```bash
+curl -i -X GET    https://httpbin.org/get
+curl -i -X POST   https://httpbin.org/post   -d '{"a":1}' -H "Content-Type: application/json"
+curl -i -X PUT    https://httpbin.org/put    -d '{"a":2}' -H "Content-Type: application/json"
+curl -i -X DELETE https://httpbin.org/delete
+```
+
+Apunta el código de cada uno y contesta: ¿cuáles llevan cuerpo?
 
 ??? success "Solución"
 
-    ```bash
-    api https://httpbin.org/get | jq '.args'
+    `httpbin` devuelve `200` en los cuatro porque es un espejo, no una API real. En una API de verdad:
 
-    api -X POST https://httpbin.org/post \
-        -H "Content-Type: application/json" \
-        -d '{"artista":"Amaia","aforo":5000}' | jq '.json'
+    | Verbo | Para qué | Código normal | ¿Cuerpo? |
+    |---|---|---|:-:|
+    | `GET` | Leer | `200` | No |
+    | `POST` | Crear | **`201`** + `Location` | Sí |
+    | `PUT` | Reemplazar entero | `200` o `204` | Sí |
+    | `PATCH` | Modificar un trozo | `200` | Sí |
+    | `DELETE` | Borrar | `204` | No |
 
-    api -X PUT https://httpbin.org/put -d "aforo=1200" | jq '.form'
-    api -X DELETE https://httpbin.org/delete | jq '.url'
-    ```
-
-    - **El GET no lleva cuerpo**: los parámetros van en la URL y salen en `.args`.
-    - **El POST sí**, y `httpbin` lo devuelve en `.json` o en `.form` según el `Content-Type`.
-    - `-d` ya implica POST, así que el `-X POST` sobra. En PUT y DELETE no.
-
-    Prueba esto y explica por qué devuelve `null`:
-
-    ```bash
-    api -X POST https://httpbin.org/post -d '{"a":1}' | jq '.json'
-    ```
-
-    Sin la cabecera `Content-Type: application/json`, el servidor trata el cuerpo como un formulario y no lo interpreta como JSON. **La cabecera no es decoración: cambia el significado de lo que mandas.**
+    Sin `-H "Content-Type: application/json"`, `curl` manda `application/x-www-form-urlencoded` y el servidor responde **`415 Unsupported Media Type`**. Pruébalo quitando la cabecera: ese 415 cae en el test.
 
 ### E15 ●● — Provoca los códigos a mano
 
-Genera un 200, 301, 404, 418 y 500, y comprueba cada uno.
+```bash
+for c in 200 201 204 301 400 401 403 404 409 415 418 500 503; do
+  printf "%s → " $c
+  curl -s -o /dev/null -w "%{http_code}\n" https://httpbin.org/status/$c
+done
+```
+
+Agrúpalos por familia y di cuál es «culpa tuya» y cuál «culpa del servidor».
 
 ??? success "Solución"
 
-    ```bash
-    for c in 200 301 404 418 500; do
-      printf "%s → " "$c"
-      curl -s -o /dev/null -w "%{http_code}\n" https://httpbin.org/status/$c
-    done
-    ```
+    | Familia | Significado | ¿De quién es el problema? |
+    |---|---|---|
+    | **2xx** | Salió bien | De nadie |
+    | **3xx** | Está en otro sitio | De nadie; sigue la redirección |
+    | **4xx** | **El cliente se equivocó** | Tuya |
+    | **5xx** | **El servidor se rompió** | Del servidor |
 
-    `-o /dev/null` tira el cuerpo, `-w "%{http_code}"` imprime solo el código. **Es la forma de comprobar una API desde un script**, y la que usarás para verificar despliegues.
+    Los que hay que saber sin pensar:
 
-    Ahora lo interesante:
+    | | |
+    |---|---|
+    | **401** Unauthorized | **No sé quién eres.** El nombre está mal puesto: debería ser «Unauthenticated» |
+    | **403** Forbidden | **Sé quién eres y no puedes.** Identificarte otra vez no arregla nada |
+    | **404** Not Found | No existe |
+    | **409** Conflict | Existe y choca: correo repetido, pista ya reservada |
+    | **415** Unsupported Media Type | Mandaste un formato que no acepta |
+    | **422** Unprocessable | El formato es válido pero el contenido no (edad negativa) |
 
-    ```bash
-    curl -s -o /dev/null -w "%{http_code}\n" -L https://httpbin.org/status/301
-    ```
-
-    Devuelve **200**, no 301: `-L` sigue la redirección. Por defecto `curl` **no** la sigue y el navegador **sí**. De ahí que un enlace funcione en el navegador y tu script se quede con el 301.
-
-    El 418 es real: *I'm a teapot*, una broma de 1998 que sigue en el estándar.
+    **401 frente a 403 es la pregunta que más se falla de toda la unidad.**
 
 ### E16 ●● — Dónde se va el tiempo
 
-Mide DNS, conexión, TLS y primer byte de una petición.
+```bash
+curl -s -o /dev/null -w "dns:      %{time_namelookup}s\nconexión: %{time_connect}s\ntls:      %{time_appconnect}s\nprimer byte: %{time_starttransfer}s\ntotal:    %{time_total}s\n" https://www.example.com
+```
+
+¿Qué tramo se lleva más tiempo? Repite la orden inmediatamente y compara.
 
 ??? success "Solución"
 
-    ```bash
-    curl -s -o /dev/null -w "\
-    DNS:         %{time_namelookup}s
-    Conexión:    %{time_connect}s
-    TLS listo:   %{time_appconnect}s
-    Primer byte: %{time_starttransfer}s
-    TOTAL:       %{time_total}s
-    " https://www.wikipedia.org
+    Una salida típica, la primera vez:
+
+    ```
+    dns:         0.028s   ← resolver el nombre
+    conexión:    0.061s   ← TCP
+    tls:         0.132s   ← el cifrado, el tramo más caro
+    primer byte: 0.198s   ← aquí el servidor ya pensó
+    total:       0.199s
     ```
 
-    Los tiempos son **acumulados**, no sumandos. Para saber qué costó cada fase hay que restar:
+    Al repetirla, `dns` baja casi a **0**: el sistema lo tiene cacheado. Eso ya es una lección sobre cachés.
 
-    | Fase | Cuenta |
+    Para leerlo hay que **restar**, porque los tiempos son acumulados:
+
+    | Tramo | Cuenta |
     |---|---|
-    | Resolver el nombre | `namelookup` |
-    | Abrir el TCP | `connect − namelookup` |
-    | Negociar el TLS | `appconnect − connect` |
-    | **Pensar la respuesta** | `starttransfer − appconnect` |
-    | Descargar | `total − starttransfer` |
+    | DNS | `time_namelookup` |
+    | TCP | `time_connect − time_namelookup` |
+    | TLS | `time_appconnect − time_connect` |
+    | **Pensar el servidor** | `time_starttransfer − time_appconnect` |
+    | Descargar | `time_total − time_starttransfer` |
 
-    Esa cuarta fila es el **TTFB**, y es lo que te dice si el problema es del servidor o de la red. Repite la orden: la segunda vez el DNS baja casi a cero porque está cacheado.
+    Y de aquí sale el criterio profesional: **«va lento» no es un diagnóstico**. Lento ¿dónde? Si el tramo grande es el de pensar, el problema es tu código o la base de datos. Si es TLS, es red.
 
 ### E17 ●● — La misma URL, dos formatos
 
-Pide el mismo recurso en JSON y en XML cambiando una sola cabecera.
+```bash
+curl -s -H "Accept: application/json" https://httpbin.org/headers
+curl -s -H "Accept: application/xml"  https://httpbin.org/headers
+```
+
+¿Cómo sabe el servidor qué devolver? ¿Y si pido un formato que no sabe?
 
 ??? success "Solución"
 
-    ```bash
-    curl -s -H "Accept: application/json" https://httpbin.org/anything | jq '.headers.Accept'
-    curl -s -H "Accept: application/xml"  https://httpbin.org/anything | jq '.headers.Accept'
+    Se llama **negociación de contenido**. El cliente dice lo que sabe leer con `Accept:` y el servidor elige y lo anuncia en `Content-Type:`.
+
+    ```
+    Accept: application/json, text/html;q=0.8, */*;q=0.1
     ```
 
-    Eso es **negociación de contenido**: el recurso es uno, las representaciones pueden ser varias. Es una de las cosas que REST hace bien.
+    El `q` es la preferencia, de 0 a 1. Aquí: JSON primero; HTML si no hay; cualquier cosa antes que nada.
 
-    En Spring lo escribirás así, y funciona solo:
+    Si el servidor no sabe dar ninguno de los formatos pedidos, responde **`406 Not Acceptable`**.
 
-    ```java
-    @GetMapping(value = "/conciertos", produces = {"application/json", "application/xml"})
-    ```
+    No hay que confundir las dos cabeceras, y se confunden mucho:
 
-    Y el error típico: pedir algo que el servidor no sabe dar devuelve **406 Not Acceptable**.
-
-    ```bash
-    curl -s -o /dev/null -w "%{http_code}\n" -H "Accept: application/pdf" https://httpbin.org/html
-    ```
+    | Cabecera | Quién la manda | Qué dice |
+    |---|---|---|
+    | `Accept` | El **cliente** | «Sé leer esto» |
+    | `Content-Type` | Quien **envía un cuerpo** | «Lo que va aquí dentro es esto» |
 
 ### E18 ●● — La caché, en vivo
 
-Pide un recurso, guarda su `ETag` y vuelve a pedirlo con él.
+```bash
+curl -i https://httpbin.org/etag/abc123
+curl -i -H 'If-None-Match: "abc123"' https://httpbin.org/etag/abc123
+```
+
+Compara los dos códigos y el tamaño de la respuesta.
 
 ??? success "Solución"
 
-    ```bash
-    curl -s -D cabeceras.txt -o /dev/null https://httpbin.org/etag/abc123
-    grep -i etag cabeceras.txt
+    La primera devuelve **`200`** con el cuerpo y una cabecera `ETag: "abc123"`, que es la huella del contenido.
 
-    curl -s -o /dev/null -w "%{http_code}\n" \
-         -H 'If-None-Match: "abc123"' https://httpbin.org/etag/abc123
-    ```
-    ```
-    ETag: "abc123"
-    304
-    ```
+    La segunda devuelve **`304 Not Modified`** y **sin cuerpo**. El servidor dice «lo que tienes sigue valiendo».
 
-    **304 Not Modified**: el servidor dice *«lo que tienes vale»* y **no manda el cuerpo**. Ahí está el ahorro.
+    Lo que se ahorra no es el viaje —la petición se hace igual— sino **la descarga**. Con imágenes y JavaScript eso es la mayor parte del peso de una web.
 
-    Con una etiqueta distinta vuelve el 200 y el contenido entero. Esto es lo que hace tu navegador en cada recarga, y por eso en la pestaña Red aparecen tantos 304.
+    | Cabecera | De quién | Para qué |
+    |---|---|---|
+    | `ETag` | Respuesta | Huella de esta versión |
+    | `If-None-Match` | Petición | «Solo mándamelo si ha cambiado» |
+    | `Last-Modified` | Respuesta | Fecha de la última modificación |
+    | `If-Modified-Since` | Petición | Lo mismo, por fecha |
+    | `Cache-Control: max-age=3600` | Respuesta | «Ni preguntes durante una hora» |
 
-### E19 ●● — Desmonta un JWT sin librerías
+    Esto reaparece en la UT6 como buena práctica de API.
 
-Lee las tres partes de un token con `base64`.
+### E19 ●● — Sesión con cookies
 
-??? success "Solución"
+```bash
+curl -c galletas.txt -s https://httpbin.org/cookies/set?sesion=abc123 > /dev/null
+cat galletas.txt
+curl -b galletas.txt -s https://httpbin.org/cookies
+```
 
-    ```bash
-    TOKEN='eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhbmEiLCJyb2wiOiJBRE1JTiJ9.firma'
-
-    echo "$TOKEN" | cut -d. -f1 | base64 -d 2>/dev/null; echo
-    echo "$TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null; echo
-    ```
-    ```
-    {"alg":"HS256"}
-    {"sub":"ana","rol":"ADMIN"}
-    ```
-
-    **Y esa es la lección.** Un JWT tiene tres partes y las dos primeras son **Base64, no cifrado**. Cualquiera las lee sin clave ninguna.
-
-    De ahí dos reglas que se repiten todo el curso:
-
-    1. **En el *payload* no va nada sensible.** Ni contraseñas, ni DNI, ni datos de salud. Va quién eres y qué puedes.
-    2. **Lo que protege es la firma**, la tercera parte. Puedes leer el token, pero no puedes cambiar `"rol":"USER"` por `"rol":"ADMIN"` sin invalidarla, porque no tienes la clave del servidor.
-
-### E20 ●●● — Sesión con cookies
-
-Simula un login, guarda la cookie y úsala después.
+Explica qué hace cada opción y por qué hacen falta las cookies.
 
 ??? success "Solución"
 
-    ```bash
-    curl -s -c galletas.txt https://httpbin.org/cookies/set/sesion/abc123 > /dev/null
-    curl -s -b galletas.txt https://httpbin.org/cookies | jq
-    curl -s https://httpbin.org/cookies | jq
-    ```
-    ```json
-    { "cookies": { "sesion": "abc123" } }
-    { "cookies": {} }
-    ```
+    `-c` **guarda** las cookies que manda el servidor; `-b` las **envía** de vuelta. Es exactamente lo que hace un navegador.
 
-    Esto es **todo el mecanismo de sesión de la UT7**, en tres órdenes. `-c` guarda las cookies que llegan, `-b` las envía.
-
-    Y aquí se ve por qué HTTP no tiene memoria: el servidor no recuerda nada. Lo único que hace que te reconozca es **que el cliente devuelve el identificador en cada petición**. Borra `galletas.txt` y eres alguien nuevo.
-
-### E21 ●● — Estático o dinámico, comprobado
-
-Demuestra con la consola si una página se genera en el servidor o la pinta JavaScript.
-
-??? success "Solución"
-
-    ```bash
-    curl -s https://es.wikipedia.org/wiki/Java | grep -c "Oracle"
-    curl -s https://angular.dev | grep -c "app-root"
-    ```
-
-    En la primera, el contenido **venía en el HTML**: renderizado en servidor, y es lo que ve Google. En la segunda sale un `<app-root></app-root>` vacío: los datos los pinta el navegador después.
-
-    La prueba equivalente sin consola: **botón derecho → Ver código fuente**. Eso es lo que llegó por la red. `F12 → Elements` es otra cosa: es el DOM **después** de que JavaScript lo haya tocado.
-
-    Que los dos no coincidan es exactamente la diferencia entre SSR y CSR, y es toda la UT8.
-
-### E22 ●●● — El servidor más pequeño posible
-
-Levanta un servidor web con una orden y observa sus peticiones.
-
-??? success "Solución"
-
-    ```bash
-    mkdir -p /tmp/web && cd /tmp/web
-    cat > index.html <<'HTML'
-    <!DOCTYPE html>
-    <html lang="es">
-    <head><meta charset="UTF-8"><title>Hola</title></head>
-    <body><h1>Servidor estático</h1><img src="logo.svg" alt="logo"></body>
-    </html>
-    HTML
-
-    python3 -m http.server 8000
-    ```
-
-    Abre `http://localhost:8000` y mira **la consola del servidor**:
+    Hacen falta porque **HTTP no tiene memoria**: cada petición llega sin saber nada de la anterior. La cookie es el hilo que las une.
 
     ```
-    "GET / HTTP/1.1" 200 -
-    "GET /logo.svg HTTP/1.1" 404 -
-    "GET /favicon.ico HTTP/1.1" 404 -
+    Set-Cookie: sesion=abc123; HttpOnly; Secure; SameSite=Lax; Max-Age=3600
     ```
 
-    1. **Una página son varias peticiones.** Pediste una y salieron tres.
-    2. **El 404 del `logo.svg`**: el HTML lo referenciaba y no existe. La página se sirve igual.
-    3. **El `favicon.ico` lo pide el navegador solo**, sin que nadie se lo diga.
-
-    Y lo importante: esto es un **servidor web**. Sirve ficheros que existen, no ejecuta código. Pide `/conciertos` y da 404. Eso es lo que hará distinto Tomcat desde la UT4.
-
-### E23 ●● — Un contenedor en dos órdenes
-
-Levanta nginx en Docker sirviendo tu página.
-
-??? success "Solución"
-
-    ```bash
-    cd /tmp/web
-    docker run --rm -d --name miweb -p 8080:80 \
-           -v "$PWD:/usr/share/nginx/html:ro" nginx:alpine
-
-    curl -s http://localhost:8080 | head -3
-    docker logs miweb
-    docker stop miweb
-    ```
-
-    | Trozo | Qué significa |
+    | Atributo | Qué protege |
     |---|---|
-    | `--rm` | Borra el contenedor al pararlo |
-    | `-d` | En segundo plano |
-    | `-p 8080:80` | **Puerto tuyo : puerto de dentro**. Ese orden se falla siempre |
-    | `-v "$PWD:...:ro"` | Monta tu carpeta dentro, en solo lectura |
+    | `HttpOnly` | JavaScript **no** puede leerla — corta el robo por XSS |
+    | `Secure` | Solo viaja por HTTPS |
+    | `SameSite=Lax` | No se manda desde otros sitios — corta el CSRF |
+    | `Max-Age` | Caduca sola |
 
-    La prueba que lo explica todo: **edita `index.html` y recarga**. El cambio aparece sin reconstruir nada, porque el fichero vive en tu disco y el contenedor solo lo lee.
+    Sin `HttpOnly`, un `<script>` inyectado en la página se lleva la sesión de todos los usuarios. Es una línea de configuración.
 
-    Quita el `-v` y verás la portada por defecto de nginx. Ahí se entiende qué es una imagen y qué es un volumen.
+### E20 ●● — Sigue la redirección
 
-### E24 ●●● — Diagnostica un despliegue roto
+```bash
+curl -i  http://httpbin.org/redirect-to?url=https://example.com
+curl -iL http://httpbin.org/redirect-to?url=https://example.com
+```
 
-Una aplicación devuelve 502 desde que se desplegó. Escribe las órdenes que lanzarías, en orden.
+¿Qué cambia con `-L`? ¿Y qué diferencia hay entre `301` y `302`?
 
 ??? success "Solución"
 
-    Un **502 Bad Gateway** lo devuelve el de delante —nginx— cuando el de detrás —tu aplicación— no contesta. El problema casi nunca está en nginx.
+    Sin `-L`, `curl` enseña la respuesta `302` con la cabecera `Location:` y para. Con `-L`, **sigue** la redirección y te da la página final.
 
-    ```bash
-    docker compose ps                 # 1. ¿está vivo el contenedor?
-    docker compose logs --tail=50 app # 2. ¿por qué se cae?
-    docker compose exec app curl -s -o /dev/null -w "%{http_code}\n" localhost:8080/actuator/health
-    docker compose exec proxy grep proxy_pass /etc/nginx/conf.d/default.conf
-    docker compose port app 8080
+    Un navegador siempre hace lo que hace `-L`; por eso normalmente no ves las redirecciones.
+
+    | Código | Significa | Efecto práctico |
+    |---|---|---|
+    | **301** Moved Permanently | Se mudó para siempre | El navegador **lo cachea**. Si te equivocas, es muy difícil de deshacer |
+    | **302** Found | Temporal | No se cachea |
+    | **307 / 308** | Igual que 302 / 301 | Pero **conservan el método**: un `POST` sigue siendo `POST` |
+
+    El detalle de los `307/308` importa: con un `301`, muchos clientes convierten un `POST` en `GET` al redirigir, y el cuerpo se pierde por el camino.
+
+### E21 ●●● — ¿Seguro? ¿Idempotente?
+
+Rellena la tabla y explica por qué un `POST` repetido es un problema real.
+
+| Método | ¿Seguro? | ¿Idempotente? |
+|---|:-:|:-:|
+| GET · POST · PUT · PATCH · DELETE | | |
+
+??? success "Solución"
+
+    | Método | Seguro | Idempotente |
+    |---|:-:|:-:|
+    | `GET` | ✅ | ✅ |
+    | `POST` | ❌ | ❌ |
+    | `PUT` | ❌ | ✅ |
+    | `PATCH` | ❌ | ❌ |
+    | `DELETE` | ❌ | ✅ |
+
+    - **Seguro** = no cambia nada. Solo `GET` (y `HEAD`, `OPTIONS`).
+    - **Idempotente** = repetirlo deja el mismo estado que hacerlo una vez.
+
+    `DELETE` **es** idempotente aunque el segundo intento devuelva `404`: el estado final —no existe— es el mismo. Idempotencia habla del **estado**, no del código de respuesta.
+
+    `PATCH` no lo es porque puede ser relativo: `{"op":"incrementar","valor":1}` aplicado dos veces suma dos.
+
+    **Por qué importa de verdad:** si una petición da error de red, el cliente no sabe si llegó. Puede reintentar sin miedo un `GET`, un `PUT` o un `DELETE`. Con un `POST`, reintentar puede generar **dos pedidos**. Por eso existe el botón «no pulse dos veces» — y por eso en la UT6 se ve cómo hacer un `POST` idempotente con una clave.
+
+---
+
+# Bloque 4 · APIs
+
+### E22 ● — Explora una API pública
+
+Elige una API abierta y documenta **tres** endpoints distintos.
+
+```bash
+curl -s https://jsonplaceholder.typicode.com/users/1
+curl -s https://jsonplaceholder.typicode.com/users/1/posts
+curl -s "https://jsonplaceholder.typicode.com/posts?userId=1&_limit=3"
+```
+
+Para cada uno: método, URL, parámetros y tres campos de la respuesta.
+
+??? success "Solución"
+
+    | Endpoint | Qué devuelve | Forma |
+    |---|---|---|
+    | `GET /users/1` | Un usuario | **Objeto** `{}` |
+    | `GET /users/1/posts` | Sus publicaciones | **Array** `[]` |
+    | `GET /posts?userId=1&_limit=3` | Lo mismo, filtrado | **Array** `[]` |
+
+    Tres cosas que enseña este ejercicio:
+
+    1. **Un recurso concreto devuelve un objeto; una colección devuelve un array.** Si `/users/1` te devolviera un array de un elemento, la API estaría mal diseñada.
+    2. Hay **dos formas de expresar lo mismo**: `/users/1/posts` (anidado) y `/posts?userId=1` (filtro). El anidado se lee mejor; el filtro escala mejor cuando hay muchos criterios.
+    3. Los **parámetros de consulta** van después de `?`, separados por `&`. Filtrar, ordenar y paginar van ahí — nunca en la ruta.
+
+    Truco: añade `| python3 -m json.tool` al final para verlo formateado.
+
+### E23 ●● — Asigna el código
+
+Para cada situación, di qué código devolverías.
+
+(a) Un `POST /usuarios` que crea bien · (b) `GET /usuarios/999` y no existe · (c) `DELETE /usuarios/5` que borra bien · (d) `POST /usuarios` con un correo ya registrado · (e) `GET /usuarios` sin token · (f) `GET /admin/logs` con token de usuario normal · (g) la base de datos está caída · (h) `POST` con `Content-Type: text/plain` en una API JSON · (i) `POST /usuarios` con `{"edad": -5}`
+
+??? success "Solución"
+
+    | | Código | Por qué |
+    |---|---|---|
+    | (a) Creado | **201** + `Location` | `200` también «funciona» y pierde información |
+    | (b) No existe | **404** | |
+    | (c) Borrado | **204** | Sin cuerpo: no hay nada que devolver |
+    | (d) Correo repetido | **409** | Conflicto con el estado actual |
+    | (e) Sin token | **401** | No sé quién eres |
+    | (f) Sin permiso | **403** | Sé quién eres y no puedes |
+    | (g) BD caída | **503** | `500` vale; `503` dice «vuelve luego» |
+    | (h) Formato no aceptado | **415** | |
+    | (i) Edad negativa | **422** (o **400**) | El JSON es válido; el contenido no |
+
+    La pareja **(e)/(f)** y la pareja **(h)/(i)** son las dos que caen siempre.
+
+### E24 ●● — Diseña los endpoints
+
+Diseña la API de una biblioteca: listar libros, ver uno, crear, actualizar, borrar, buscar por autor y listar los préstamos de un libro.
+
+??? success "Solución"
+
+    | Acción | Método y ruta |
+    |---|---|
+    | Listar | `GET /api/v1/libros` |
+    | Ver uno | `GET /api/v1/libros/{id}` |
+    | Crear | `POST /api/v1/libros` |
+    | Actualizar | `PUT /api/v1/libros/{id}` |
+    | Borrar | `DELETE /api/v1/libros/{id}` |
+    | Buscar por autor | `GET /api/v1/libros?autor=Saramago` |
+    | Préstamos de un libro | `GET /api/v1/libros/{id}/prestamos` |
+
+    Las reglas que se comprueban:
+
+    - **Sustantivos en plural, nunca verbos.** `/obtenerLibros` está mal: el verbo ya lo pone el método HTTP.
+    - **El filtro va en la consulta**, no en la ruta. `/libros/autor/Saramago` se rompe en cuanto quieras filtrar por dos cosas.
+    - **La versión en la ruta**, `/api/v1/`, desde el primer día. Añadirla después obliga a romper a todos los clientes.
+    - **Minúsculas y guiones** para nombres compuestos: `/libros-agotados`, no `/librosAgotados`.
+
+### E25 ●● — Desmonta un JWT
+
+Este token es real y está sin cifrar. Ábrelo.
+
+```bash
+TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbmFAaWVzeC5lcyIsInJvbCI6IkFMVU1OTyIsImV4cCI6MTc5MDAwMDAwMH0.firma"
+echo "$TOKEN" | cut -d. -f1 | base64 -d 2>/dev/null; echo
+echo "$TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null; echo
+```
+
+¿Qué has podido leer? ¿Qué impide entonces que alguien se cambie el rol a `ADMIN`?
+
+??? success "Solución"
+
+    Sale esto:
+
+    ```json
+    {"alg":"HS256","typ":"JWT"}
+    {"sub":"ana@iesx.es","rol":"ALUMNO","exp":1790000000}
     ```
 
-    Qué buscas en cada una:
+    **Un JWT no está cifrado: está firmado.** Lo lee cualquiera que lo tenga, sin contraseña ni herramientas.
 
-    1. Si dice `Exited` o `Restarting`, la aplicación se cae al arrancar.
-    2. Aquí sale casi siempre: puerto ocupado, base de datos no disponible, variable vacía.
-    3. Si por dentro responde 200 y por fuera da 502, el problema es **de red o puertos**.
-    4. El fallo clásico: `proxy_pass http://localhost:8080`. Dentro de un contenedor, `localhost` es **ese** contenedor. Tiene que ser el nombre del servicio: `http://app:8080`.
+    Un token tiene tres partes separadas por puntos: **cabecera.contenido.firma**. Las dos primeras son Base64 —que es codificación, no cifrado— y la tercera es una firma hecha con una clave que solo tiene el servidor.
 
-    **El orden importa**, y es siempre el mismo: *¿vive? → ¿qué dice el log? → ¿responde por dentro? → ¿está bien enrutado?* Ir directo a tocar nginx sin mirar el log es la forma más rápida de perder una tarde.
+    Si alguien cambia `"rol":"ADMIN"` y vuelve a montar el token, **la firma deja de cuadrar** y el servidor lo rechaza. Falsificar la firma exige la clave secreta.
+
+    De ahí las dos reglas:
+
+    1. **Nunca metas datos sensibles en un JWT.** Van a la vista: contraseñas, DNI, saldo, nada.
+    2. **Comprueba siempre la firma y la caducidad `exp`** en el servidor. Un token sin caducidad es un agujero permanente.
+
+### E26 ●● — Autenticación o autorización
+
+Clasifica: (a) iniciar sesión con usuario y contraseña · (b) que solo los admin borren usuarios · (c) validar un token en cada petición · (d) que un profesor vea solo sus grupos · (e) el segundo factor por SMS
+
+??? success "Solución"
+
+    | | Cuál | Pregunta que responde |
+    |---|---|---|
+    | (a) Usuario y contraseña | **Autenticación** | ¿Quién eres? |
+    | (b) Solo admin borra | **Autorización** | ¿Qué puedes hacer? |
+    | (c) Validar el token | **Autenticación** | ¿Sigues siendo tú? |
+    | (d) Solo sus grupos | **Autorización** | Y de la difícil: depende del dato, no solo del rol |
+    | (e) SMS | **Autenticación** | Segundo factor |
+
+    En HTTP: fallar la autenticación es **401**; fallar la autorización es **403**.
+
+    La (d) es la que separa el ejercicio del mundo real. «Solo sus grupos» no se resuelve con un rol: hay que comprobar, **para cada grupo concreto**, que es suyo. Eso se llama autorización a nivel de dato, y es donde aparecen los fallos de seguridad de verdad.
+
+### E27 ●●● — Qué tipo de API
+
+Elige entre REST, GraphQL, gRPC y WebSocket, y justifica.
+
+(a) Una API pública para que terceros integren tu catálogo · (b) Una app móvil que se queja de pedir cinco endpoints para pintar una pantalla · (c) Dos microservicios internos que se llaman miles de veces por segundo · (d) Un panel que muestra pedidos según van entrando
+
+??? success "Solución"
+
+    | | Elección | Por qué |
+    |---|---|---|
+    | (a) API pública | **REST** | Lo entiende todo el mundo, se cachea con HTTP y se documenta con OpenAPI |
+    | (b) App móvil | **GraphQL** | El cliente pide **exactamente** los campos que pinta, en una sola llamada |
+    | (c) Entre microservicios | **gRPC** | Binario y con HTTP/2: mucho menos que JSON por cable |
+    | (d) Panel en vivo | **WebSocket** | El **servidor** empuja; con REST habría que preguntar cada segundo |
+
+    El caso (b) tiene nombre: **sobrefetching** (traes campos que no usas) e **infrafetching** (te faltan y haces otra llamada). GraphQL ataca las dos cosas, y a cambio pierdes la caché de HTTP, que no es poco.
+
+    El (d) también admite **SSE** (Server-Sent Events) si la comunicación es en un solo sentido: es más simple que WebSocket y va sobre HTTP normal.
+
+### E28 ●●● — Lee una respuesta de error
+
+```json
+{
+  "type": "https://api.tienda.example/errores/stock-insuficiente",
+  "title": "Stock insuficiente",
+  "status": 409,
+  "detail": "Quedan 2 unidades de «teclado» y se pidieron 5",
+  "instance": "/api/v1/pedidos"
+}
+```
+
+¿Qué formato es? ¿Por qué es mejor que devolver `{"error": "fallo"}`?
+
+??? success "Solución"
+
+    Es **Problem Details**, el formato estándar de errores de HTTP (RFC 7807/9457). Se ve a fondo en la UT6.
+
+    | Campo | Para qué |
+    |---|---|
+    | `type` | Identificador estable del tipo de error. **Una máquina puede compararlo** |
+    | `title` | Resumen corto y fijo |
+    | `status` | El código HTTP, repetido dentro |
+    | `detail` | Lo concreto de **este** caso |
+    | `instance` | Dónde pasó |
+
+    Frente a `{"error": "fallo"}`: aquí el cliente puede **programar** contra el error —si `type` es stock-insuficiente, enseña el selector de unidades— en vez de comparar cadenas de texto que cambian cuando alguien corrige una tilde.
+
+    Y `detail` dice lo que hace falta **sin filtrar nada interno**. Nunca se manda la traza de Java al cliente: eso regala nombres de clases y versiones a quien esté mirando.
+
+### E29 ●●● — Diseña la API completa
+
+Un sistema de incidencias de un instituto: crear, listar, asignar a un técnico, cerrar, comentar. Diseña las rutas, los códigos y di qué protegerías.
+
+??? success "Solución"
+
+    | Acción | Método y ruta | Respuesta |
+    |---|---|---|
+    | Crear | `POST /api/v1/incidencias` | `201` + `Location` |
+    | Listar | `GET /api/v1/incidencias?estado=ABIERTA&_page=1` | `200` |
+    | Ver una | `GET /api/v1/incidencias/{id}` | `200` / `404` |
+    | Asignar | `PUT /api/v1/incidencias/{id}/tecnico` | `200` / `409` si ya está cerrada |
+    | Cerrar | `POST /api/v1/incidencias/{id}/cierre` | `200` / `409` |
+    | Comentar | `POST /api/v1/incidencias/{id}/comentarios` | `201` |
+    | Ver comentarios | `GET /api/v1/incidencias/{id}/comentarios` | `200` |
+
+    **Sobre «cerrar»:** no es un recurso, es una transición de estado. Hay dos formas defendibles: `PATCH /incidencias/{id}` con `{"estado":"CERRADA"}`, o un subrecurso `/cierre` como aquí. La segunda se lee mejor cuando cerrar tiene reglas propias.
+
+    **Qué se protege:**
+
+    | Quién | Qué puede |
+    |---|---|
+    | Cualquier usuario autenticado | Crear y ver **las suyas** |
+    | Técnico | Ver todas, asignarse, comentar, cerrar |
+    | Admin | Todo, incluido reabrir |
+
+    Y lo importante: **«ver las suyas» no se resuelve ocultando el listado**. Hay que comprobar en `GET /incidencias/{id}` que esa incidencia es del que pregunta, o cualquiera cambia el número en la URL y lee las de los demás.
 
 ---
 
-## Reparto sugerido
+# Bloque 5 · Web dinámica y Java
 
-| Ejercicio | Nivel | Sesión |
-|---|:-:|:-:|
-| E1 · Lee la conversación | ● | S4 |
-| E2 · Asigna el código | ● | S4 |
-| E3 · Seguro e idempotente | ●● | S5 |
-| E4 · Diseña los endpoints | ●● | S6 |
-| E5 · Desmonta un JWT | ●● | S7 |
-| E6 · Elige la arquitectura | ●● | S3 |
-| E7 · SSR o SPA | ●●● | S8 |
-| E8 · Servidor web o de aplicaciones | ●● | S9 |
-| E9 · Autenticación o autorización | ●● | S9 |
-| E10 · Diagnostica por el log | ●●● | S9 |
-| E11 · Qué se registra | ●● | S9 |
-| E12 · El caso completo | ●●● | S9 |
-| **E13 · Tu primera petición cruda** | ● | S3 |
-| **E14 · Los cuatro verbos** | ● | S4 |
-| **E15 · Provoca los códigos** | ●● | S4 |
-| **E16 · Dónde se va el tiempo** | ●● | S3 |
-| **E17 · La misma URL, dos formatos** | ●● | S5 |
-| **E18 · La caché en vivo** | ●● | S5 |
-| **E19 · Desmonta un JWT** | ●● | S7 |
-| **E20 · Sesión con cookies** | ●●● | S7 |
-| **E21 · Estático o dinámico** | ●● | S6 |
-| **E22 · El servidor más pequeño** | ●●● | S8 |
-| **E23 · Un contenedor en dos órdenes** | ●● | S8 |
-| **E24 · Despliegue roto** | ●●● | S9 |
+### E30 ● — Estática o dinámica
 
-!!! tip "Del E13 en adelante, con el ordenador"
-    Son doce ejercicios de teclear. La UT1 dura **seis sesiones** y existe para una cosa: salir de ella sabiendo lo justo para empezar a programar. Cuanto antes se pase, mejor — pero pasando por el teclado, no solo por la pizarra.
+Clasifica: (a) el `index.html` de un portfolio · (b) el perfil de un usuario con su nombre · (c) un PDF en el servidor · (d) el listado de productos de una tienda · (e) la portada de un periódico
+
+??? success "Solución"
+
+    | | Cuál | Matiz |
+    |---|---|---|
+    | (a) Portfolio | **Estática** | El mismo fichero para todos |
+    | (b) Perfil | **Dinámica** | Cambia según quién mira |
+    | (c) PDF | **Estático** | El fichero no se genera |
+    | (d) Listado | **Dinámica** | Sale de la base de datos |
+    | (e) Portada | **Dinámica…** pero servida como estática |
+
+    La (e) tiene truco y por eso está aquí. Las portadas se generan cada pocos minutos y se guardan **ya montadas** en una caché o CDN. Para el usuario es estática —rapidísima— y para la redacción es dinámica.
+
+    La definición que vale: **estático** = el fichero existe tal cual en el disco; **dinámico** = se construye en el momento.
+
+### E31 ●● — Estática frente a dinámica, comprobado
+
+Crea `hora.html` con una hora escrita a mano. Después este servidor en Java, que se ejecuta **sin compilar ni crear proyecto**:
+
+```java
+// Servidor.java · se lanza con: java Servidor.java
+import com.sun.net.httpserver.HttpServer;
+import java.net.InetSocketAddress;
+import java.time.LocalTime;
+
+void main() throws Exception {
+    var servidor = HttpServer.create(new InetSocketAddress(8000), 0);
+    servidor.createContext("/hora", intercambio -> {
+        var cuerpo = "<h1>Son las " + LocalTime.now().withNano(0) + "</h1>";
+        var bytes = cuerpo.getBytes();
+        intercambio.getResponseHeaders().add("Content-Type", "text/html; charset=utf-8");
+        intercambio.sendResponseHeaders(200, bytes.length);
+        try (var salida = intercambio.getResponseBody()) { salida.write(bytes); }
+    });
+    servidor.start();
+    IO.println("En http://localhost:8000/hora");
+}
+```
+
+Recarga las dos varias veces. ¿Por qué una cambia y la otra no?
+
+??? success "Solución"
+
+    El `.html` es un fichero: el servidor lo lee y lo manda **tal cual**. Da igual cuántas veces recargues.
+
+    En `/hora`, el código se ejecuta **en cada petición**: `LocalTime.now()` se evalúa cada vez y el HTML se construye en ese momento.
+
+    Eso es toda la diferencia entre estático y dinámico, y es el trabajo de este módulo: **el HTML —o el JSON— se fabrica cuando alguien lo pide**.
+
+    Dos cosas que conviene notar:
+
+    - `java Servidor.java` **ejecuta el fuente directamente**, sin `javac` y sin proyecto. Es lo que hace posible que los ejercicios de la UT2 y la UT3 sean ficheros sueltos.
+    - Esto es un juguete: sin capas, sin rutas, sin errores, sin seguridad. Lo que hace Spring Boot es exactamente esto, con todo lo que le falta.
+
+### E32 ●● — SSR o CSR
+
+Para cada caso di qué elegirías y por qué. (a) Un blog que vive de Google · (b) Un panel de administración interno · (c) Una tienda · (d) Un editor de texto colaborativo
+
+??? success "Solución"
+
+    | | Elección | Motivo dominante |
+    |---|---|---|
+    | (a) Blog | **SSR** | SEO: el buscador tiene que leer el texto |
+    | (b) Panel interno | **CSR** | Nadie lo busca en Google y se navega mucho dentro |
+    | (c) Tienda | **Mixta** | Fichas de producto en SSR (SEO); carrito y filtros en CSR |
+    | (d) Editor colaborativo | **CSR** | Estado muy vivo en el cliente, además de WebSocket |
+
+    La comprobación empírica es la del E5: **`Ctrl+U`** y buscar el texto. Si está, es SSR.
+
+    | | SSR | CSR |
+    |---|---|---|
+    | Primera carga | Rápida | Lenta (hay que bajar el JS) |
+    | Navegación interna | Recarga | Instantánea |
+    | SEO | Bueno | Problemático |
+    | Carga del servidor | Alta | Baja |
+
+    En este módulo harás **SSR** con Thymeleaf en la UT8, y en la UT6 construyes la API que alimentaría un cliente CSR.
+
+### E33 ●● — Dónde encaja Java
+
+Sitúa cada tecnología: `Spring Boot` · `Thymeleaf` · `JPA / Hibernate` · `Maven` · `JUnit` · `Tomcat`. ¿Cuál se usa en qué unidad?
+
+??? success "Solución"
+
+    | Tecnología | Qué es | Dónde se ve |
+    |---|---|---|
+    | **Maven** | Construye el proyecto y baja dependencias | UT2, y todo el curso |
+    | **JUnit** | Escribe y ejecuta pruebas | UT2, y todo el curso |
+    | **Spring Boot** | El marco de trabajo: crea los objetos, enruta, configura | UT4 |
+    | **JPA / Hibernate** | Traduce entre objetos y tablas | UT5 |
+    | **Tomcat** | El servidor que atiende HTTP. **Va dentro del `.jar`** | UT4 (sin que te enteres) |
+    | **Thymeleaf** | Rellena plantillas HTML en el servidor | UT8 |
+
+    Lo que sorprende y cae en el test: **Spring Boot lleva Tomcat dentro**. No hay que instalar un servidor ni copiar un `.war` a ningún sitio; el `.jar` se ejecuta con `java -jar` y ya escucha en el 8080. Eso es lo que cambió Spring Boot respecto a cómo se desplegaba Java hace quince años.
+
+### E34 ●●● — El recorrido entero, de punta a punta
+
+Junta toda la unidad. Alguien pulsa «Comprar» en una tienda hecha con Spring Boot. Describe el recorrido completo nombrando: protocolo, método, código, capas, base de datos y respuesta.
+
+??? success "Solución"
+
+    ```mermaid
+    sequenceDiagram
+        participant N as Navegador
+        participant C as Controlador
+        participant S as Servicio
+        participant R as Repositorio
+        participant BD as Base de datos
+
+        N->>C: POST /api/v1/pedidos (JSON + token)
+        C->>C: valida formato y token
+        C->>S: crearPedido(datos)
+        S->>R: ¿hay stock?
+        R->>BD: SELECT
+        BD-->>R: 2 unidades
+        S->>S: aplica las reglas
+        S->>R: guarda el pedido
+        R->>BD: INSERT
+        S-->>C: pedido 8841
+        C-->>N: 201 Created + Location
+    ```
+
+    Contado en palabras:
+
+    1. El navegador manda un **`POST`** por **HTTPS** a `/api/v1/pedidos`, con el pedido en **JSON** y un **token** en `Authorization`.
+    2. El **controlador** comprueba el formato y quién eres. Si el token falta → **401**; si el JSON está mal → **400**.
+    3. Llama al **servicio**, que es donde viven las reglas: hay stock, el precio es el que es, el usuario puede comprar.
+    4. El servicio usa el **repositorio**, que es el único que sabe que por debajo hay SQL.
+    5. Si no hay stock, el servicio lo dice y el controlador lo traduce a **409 Conflict** con un cuerpo Problem Details.
+    6. Si todo va bien: **201 Created** y la cabecera **`Location: /api/v1/pedidos/8841`**.
+
+    Este ejercicio **es** la unidad entera. Si sabes contarlo entero y sin mirar, el test está aprobado.
 
 ---
 
-## Del ejercicio a la pregunta de test
+## Cómo trabajarlos
 
-El examen de esta unidad son **30 preguntas de opción múltiple** ([formato aquí](examen.md)). Hacer los ejercicios no prepara para un test **por sí solo**: hay que hacerlos de una forma concreta.
+| Momento | Ejercicios |
+|---|---|
+| Para arrancar la sesión, 10 min | E1 · E7 · E13 · E22 · E30 |
+| Taller de la sesión, 25-30 min | E4 · E9 · E15 · E24 · E31 |
+| Los que hay que hacer sí o sí | **E3 · E12 · E15 · E21 · E25 · E26 · E34** |
+| Para quien va sobrado | E8 · E11 · E16 · E27 · E28 · E29 |
+| Repaso antes del test | E12 · E15 · E21 · E25 · E34 + el [simulacro](autoevaluacion.md) |
 
-| Ejercicios | Preguntas | Qué se pregunta |
-|---|:-:|---|
-| **E1–E5 · E13–E16** · HTTP | 10 | Qué verbo, qué código de estado, qué cabecera; 401 frente a 403; dónde se va el tiempo de una petición |
-| **E6–E8 · E21–E22** · Arquitecturas | 8 | MVC y sus responsabilidades; SSR frente a SPA; servidor web frente a servidor de aplicaciones |
-| **E17–E18 · E23** · Contenido y despliegue | 6 | Negociación de contenido; ETag y 304; qué hace cada orden de Docker |
-| **E9 · E19–E20** · Seguridad | 4 | Autenticación frente a autorización; qué lleva un JWT y qué no; sesión con cookies |
-| **E10–E12 · E24** · Diagnóstico | 2 | Leer un log y decir qué falló; el 502 y su causa |
+!!! reto "Las tres costumbres que transfieren al test"
+    El test no pregunta definiciones: pone delante una salida de `curl`, un trozo de JSON o un caso, y hay que decidir. Eso se entrena así:
 
-!!! reto "Las tres costumbres que transfieren"
-    1. **Predice antes de ejecutar.** Antes de lanzar el `curl`, escribe qué código de estado y qué cabeceras esperas. Si aciertas, lo entendiste; si no, acabas de encontrar tu hueco. Esta es la costumbre que más nota vale.
+    1. **Predice antes de ejecutar.** Antes de lanzar el `curl`, escribe qué código y qué cabeceras esperas. Acertar confirma; fallar te señala el hueco exacto.
+    2. **Rómpelo a propósito.** Quita el `Content-Type`, pide un formato imposible, manda el verbo equivocado. Apunta el código que sale: esas son las preguntas de «¿por qué falla?».
+    3. **Escribe tú la pregunta.** Coge un ejercicio e invéntate cuatro opciones. Pensar los tres distractores obliga a saber **por qué** alguien se equivocaría, que es justo lo que se pregunta.
 
-    2. **Rómpelo a propósito.** Cuando un ejercicio te salga, quita la cabecera `Accept`, pide un recurso que no existe, manda el verbo equivocado. Apunta el código que sale. Las preguntas de «¿por qué falla?» son literalmente eso.
+    Dos minutos por ejercicio. En toda la unidad es poco más de una hora, y rinde más que releer los apuntes la víspera.
 
-    3. **Escribe tú la pregunta.** Coge un ejercicio resuelto e invéntate una pregunta con cuatro opciones. Los tres distractores te obligan a saber por qué alguien se equivocaría — que es justo lo que se pregunta.
-
-    Dos minutos por ejercicio. En toda la unidad son menos de treinta, y valen más que releer los apuntes la víspera.
+[:material-arrow-right: Al simulacro de test](autoevaluacion.md){ .md-button .md-button--primary }

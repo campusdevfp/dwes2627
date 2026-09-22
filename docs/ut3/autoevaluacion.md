@@ -597,5 +597,348 @@ public interface FuenteConciertos {
 
 ---
 
-!!! success "Cuando hayas hecho las 30"
-    Vuelve a la [página de preparación del examen](examen.md) y haz el **simulacro cronometrado**. Menos de dos minutos por pregunta, que es el ritmo real.
+## Tema 6 — Sobre la batería de ejercicios
+
+Estas dieciséis salen directamente de lo que resolviste en la [batería](ejercicios.md), sobre todo de los programas completos E31–E38.
+
+### T6.1 · ¿Qué estructura?
+
+Necesitas las **últimas diez búsquedas, la más reciente primero**.
+
+**a)** `ArrayList` · **b)** `HashSet` · **c)** `ArrayDeque` usado como pila · **d)** `TreeMap`
+
+??? success "Solución"
+
+    **c)** «La más reciente primero» es **LIFO**: último en entrar, primero en salir. Eso es una pila, y en Java moderno la pila es `ArrayDeque` con `push`/`pop`.
+
+    `ArrayList` obligaría a insertar siempre en la posición 0, que desplaza todos los elementos. `HashSet` no tiene orden y además quitaría los repetidos, que aquí sí interesan. `TreeMap` ordena por clave, no por antigüedad.
+
+    Y no: `Stack` no es la respuesta. Está obsoleta —es `synchronized` sin motivo— desde hace dos décadas.
+
+### T6.2 · ¿Por qué falla?
+
+``` { .java .numerado }
+var facturacion = ventas.stream().collect(Collectors.groupingBy(
+        Venta::vendedor, Collectors.summingDouble(v -> v.unidades() * v.precio())));
+
+var ranking = facturacion.entrySet().stream()
+        .sorted(Map.Entry.comparingByValue().reversed())
+        .map(Map.Entry::getKey)
+        .toList();
+```
+
+**a)** `groupingBy` no admite un segundo recolector · **b)** No compila: falta el tipo explícito en `comparingByValue` · **c)** `reversed()` no existe en `Comparator` · **d)** Compila y funciona
+
+??? success "Solución"
+
+    **b)** Hace falta `Map.Entry.<String, Double>comparingByValue().reversed()`.
+
+    Sin los tipos explícitos, el compilador no puede inferir qué `Comparator` es dentro de la cadena y da un error de inferencia que no dice nada útil — de los que te tienen veinte minutos mirando la línea equivocada.
+
+    Es una de esas cosas que no se deducen: se conocen o no. Y por eso está aquí.
+
+### T6.3 · ¿Qué devuelve?
+
+``` { .java .numerado }
+var media = ventas.stream().mapToInt(Venta::unidades).average();
+```
+
+**a)** `double` · **b)** `Optional<Double>` · **c)** `OptionalDouble` · **d)** `int`
+
+??? success "Solución"
+
+    **c)** `OptionalDouble`, no `Optional<Double>`. Los streams de primitivos (`IntStream`, `LongStream`, `DoubleStream`) tienen sus propios `Optional` sin genéricos, justo para no hacer autoboxing.
+
+    Es `Optional` porque **la lista puede estar vacía**, y la media de nada no existe. Por eso casi siempre se escribe `.average().orElse(0)`.
+
+### T6.4 · ¿Por qué falla?
+
+``` { .java .numerado }
+List<Producto> leer(Path ruta) throws IOException {
+    var lineas = Files.lines(ruta);
+    return lineas.map(l -> l.split(","))
+                 .map(c -> new Producto(Integer.parseInt(c[0]), c[1]))
+                 .toList();
+}
+```
+
+**a)** `Files.lines` no existe · **b)** Falta cerrar el stream y falta saltar la cabecera · **c)** `split` devuelve `List` · **d)** No falla
+
+??? success "Solución"
+
+    **b)** Dos fallos, y los dos caen.
+
+    1. **`Files.lines` devuelve un stream que mantiene el fichero abierto.** Hay que envolverlo en un *try-with-resources*. Si no, el descriptor se queda colgado hasta que pase el recolector de basura — y con muchos ficheros se agota el límite del sistema.
+    2. **Falta `skip(1)`.** La primera línea es la cabecera, así que `Integer.parseInt("id")` lanza `NumberFormatException` en la primera vuelta.
+
+    Faltaría un tercero si el fichero acaba en línea en blanco: `filter(l -> !l.isBlank())`.
+
+### T6.5 · ¿Qué imprime?
+
+``` { .java .numerado }
+IO.println("4,Casco,,".split(",").length);
+IO.println("4,Casco,,".split(",", -1).length);
+```
+
+**a)** `4` y `4` · **b)** `2` y `4` · **c)** `4` y `2` · **d)** `2` y `2`
+
+??? success "Solución"
+
+    **b)** `2` y `4`.
+
+    Por defecto, `split` **descarta los campos vacíos del final**. Con `-1` los conserva.
+
+    Es el origen del `ArrayIndexOutOfBoundsException` más común de toda la unidad: el CSV tiene cuatro columnas, pero en las filas donde las últimas están vacías te llega un array de dos, y `c[3]` revienta.
+
+    La regla: **para leer CSV, siempre `split(",", -1)`**.
+
+### T6.6 · ¿Cuál es correcta?
+
+Quieres escribir `12.5` en un CSV que se va a leer en otro país.
+
+**a)** `String.format("%.2f", 12.5)` · **b)** `String.format(Locale.ROOT, "%.2f", 12.5)` · **c)** `"" + 12.5` · **d)** `Double.toString(12.5)`
+
+??? success "Solución"
+
+    **b)** Con la configuración regional española, `%.2f` escribe **`12,50`** — con coma. En un CSV separado por comas eso parte el campo en dos y corrompe el fichero.
+
+    `Locale.ROOT` fuerza el punto decimal, siempre.
+
+    La **c)** y la **d)** también dan punto, pero pierden el control del número de decimales: `12.5` sale como `12.5` y no como `12.50`.
+
+    Es la clase de fallo que no aparece en tu máquina y sí en la del cliente.
+
+### T6.7 · ¿Qué imprime?
+
+``` { .java .numerado }
+var f = LocalDate.of(2026, 3, 14);
+f.plusDays(7);
+IO.println(f);
+```
+
+**a)** `2026-03-21` · **b)** `2026-03-14` · **c)** Error de compilación · **d)** `null`
+
+??? success "Solución"
+
+    **b)** `2026-03-14`. **Todo `java.time` es inmutable.** `plusDays` no modifica la fecha: devuelve una nueva, y aquí se tira.
+
+    ```java
+    var nueva = f.plusDays(7);   // así sí
+    ```
+
+    El compilador no avisa porque la expresión es válida; simplemente no hace nada. Exactamente el mismo error que `cadena.trim();` sin asignar.
+
+### T6.8 · ¿Cuántas noches?
+
+``` { .java .numerado }
+var entrada = LocalDate.of(2026, 7, 1);
+var salida  = LocalDate.of(2026, 7, 3);
+IO.println(ChronoUnit.DAYS.between(entrada, salida));
+```
+
+**a)** `2` · **b)** `3` · **c)** `1` · **d)** `0`
+
+??? success "Solución"
+
+    **a)** `2`. Del 1 al 3 hay **dos noches**: la del 1 al 2 y la del 2 al 3.
+
+    Si lo que quieres es el número de **días de estancia** —incluyendo los dos extremos— son tres, y hay que sumar uno.
+
+    Ese `±1` es el fallo clásico de cualquier aplicación de reservas, y por eso está en el test. Antes de escribir la fórmula, decide qué estás contando.
+
+### T6.9 · ¿Por qué falla?
+
+``` { .java .numerado }
+if (!salida.isAfter(entrada)) {
+    throw new IllegalArgumentException("La salida debe ser posterior");
+}
+```
+
+Alguien lo «simplifica» a `if (salida.isBefore(entrada))`. ¿Qué se rompe?
+
+**a)** Nada · **b)** Deja de rechazar que entrada y salida sean el mismo día · **c)** No compila · **d)** Rechaza reservas válidas
+
+??? success "Solución"
+
+    **b)** `isBefore` es estrictamente menor. Con entrada y salida el mismo día, `isBefore` es `false` y la reserva **pasa**: una reserva de cero noches.
+
+    `!isAfter(...)` cubre «anterior **o igual**». Es la diferencia entre `<` y `<=`, y es justo donde viven los fallos de los rangos.
+
+    Cuando escribas una validación de rango, prueba siempre **los tres casos**: antes, igual y después.
+
+### T6.10 · ¿Qué hace falta?
+
+``` { .java .numerado }
+record ProductoApi(int id, String nombre, double precio) {}
+
+var mapper = new ObjectMapper();
+List<ProductoApi> ps = mapper.readValue(json,
+        new TypeReference<List<ProductoApi>>() {});
+```
+
+El JSON trae además un campo `stock`. ¿Qué pasa?
+
+**a)** Se ignora sin más · **b)** `UnrecognizedPropertyException` · **c)** `stock` se guarda en el record · **d)** Devuelve una lista vacía
+
+??? success "Solución"
+
+    **b)** Por defecto Jackson **falla** ante un campo que no sabe colocar.
+
+    Se arregla de dos formas:
+
+    ```java
+    new ObjectMapper().configure(
+            DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    ```
+
+    ```java
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record ProductoApi(int id, String nombre, double precio) {}
+    ```
+
+    Y hay que hacerlo **siempre** que consumas una API ajena. Si no, el día que el proveedor añada un campo —y lo hará, sin avisarte— tu aplicación deja de funcionar sin que hayas tocado una línea.
+
+### T6.11 · ¿Por qué `TypeReference`?
+
+Si escribes `mapper.readValue(json, List.class)` en vez de usar `TypeReference`, obtienes…
+
+**a)** Lo mismo · **b)** Una `List<LinkedHashMap>`, no de tus objetos · **c)** Un error de compilación · **d)** `null`
+
+??? success "Solución"
+
+    **b)** Una lista de `LinkedHashMap`. Y lo peor: **compila y no falla hasta que usas un elemento**, donde salta un `ClassCastException` lejos de la causa.
+
+    El motivo es el borrado de tipos: en tiempo de ejecución, `List<ProductoApi>` y `List` son lo mismo, así que Jackson no tiene forma de saber qué poner dentro. `TypeReference` es una clase anónima cuyo único propósito es **conservar el tipo genérico** para que Jackson lo pueda leer.
+
+### T6.12 · ¿Qué está mal?
+
+``` { .java .numerado }
+class ProductoServicio {
+    private final ProductoRepositorioCsv repositorio;
+
+    ProductoServicio() {
+        this.repositorio = new ProductoRepositorioCsv(Path.of("datos/productos.csv"));
+    }
+}
+```
+
+**a)** Nada · **b)** Depende de la implementación y la crea él mismo: no se puede probar ni cambiar el origen · **c)** Falta `static` · **d)** El campo no debería ser `final`
+
+??? success "Solución"
+
+    **b)** Dos fallos que en realidad son el mismo.
+
+    1. Depende de **`ProductoRepositorioCsv`**, la clase concreta, y no de la interfaz. Cambiar a JSON obliga a tocar el servicio.
+    2. Hace el **`new` dentro**. Como nadie puede sustituir ese objeto desde fuera, para probar el servicio hace falta **un fichero CSV de verdad en el disco**.
+
+    La versión correcta recibe la interfaz por constructor:
+
+    ```java
+    ProductoServicio(ProductoRepositorio repositorio) {
+        this.repositorio = repositorio;
+    }
+    ```
+
+    Esto es la *D* de SOLID, y es exactamente el problema que resuelve la inyección de dependencias de Spring en la UT4.
+
+### T6.13 · ¿Dónde va?
+
+«El precio con IVA es el precio por 1,21.» ¿En qué clase?
+
+**a)** En el repositorio · **b)** En el servicio · **c)** En el `main` · **d)** En el fichero CSV
+
+??? success "Solución"
+
+    **b)** Es una **regla de negocio**, y las reglas viven en el servicio.
+
+    El repositorio solo sabe traer y guardar. Si le metes el IVA, el día que necesites el precio sin IVA —para un informe, para una exportación— tendrás que deshacerlo, y el día que cambies a JSON tendrás que copiar la regla en la otra implementación.
+
+    La prueba: **la misma regla tiene que valer aunque los datos vengan de otro sitio**. Si es así, es de negocio.
+
+### T6.14 · ¿Qué devuelve el repositorio?
+
+``` { .java .numerado }
+Optional<Producto> buscarPorId(int id);
+```
+
+¿Por qué `Optional` y no devolver `null` o lanzar la excepción ahí mismo?
+
+**a)** Por rendimiento · **b)** Porque el repositorio no sabe si no encontrarlo es un error; eso lo decide el servicio · **c)** Porque lo exige Jackson · **d)** Por convenio, sin más
+
+??? success "Solución"
+
+    **b)** «No está» es un **hecho**, no un error. Si el repositorio lanzara la excepción, estaría decidiendo por quien lo llama.
+
+    Y hay casos en los que no encontrarlo es perfectamente normal: comprobar si un identificador está libre, por ejemplo.
+
+    El servicio es el que sabe qué significa en cada caso:
+
+    ```java
+    repositorio.buscarPorId(id)
+               .orElseThrow(() -> new ProductoNoEncontradoException(id));
+    ```
+
+    Frente a `null`, la ventaja es que **el compilador te obliga** a tratar el caso. Con `null` te obliga la `NullPointerException`, y en producción.
+
+### T6.15 · ¿Qué demuestra este test?
+
+``` { .java .numerado }
+ProductoRepositorio enMemoria = new ProductoRepositorio() {
+    public List<Producto> listar() { return List.of(); }
+    public Optional<Producto> buscarPorId(int id) { return Optional.empty(); }
+};
+var servicio = new ProductoServicio(enMemoria);
+
+assertThrows(ProductoNoEncontradoException.class, () -> servicio.obtener(99));
+```
+
+**a)** Que el CSV se lee bien · **b)** Que el servicio lanza la excepción cuando no hay dato, sin tocar el disco · **c)** Que la interfaz es innecesaria · **d)** Que `Optional` es lento
+
+??? success "Solución"
+
+    **b)** Y fíjate en lo que **no** hace: no abre ningún fichero, no necesita que exista un CSV de prueba y corre en milisegundos.
+
+    Eso es posible **solo porque el servicio depende de la interfaz**. Si dependiera de `ProductoRepositorioCsv`, este test sería imposible sin preparar datos en el disco — y entonces ya no estarías probando el servicio, estarías probando el disco.
+
+    Esta es la razón práctica de todo lo anterior. Cuando en un examen te pregunten «¿para qué sirve la interfaz?», la respuesta buena no es «para desacoplar»: es **esto**.
+
+### T6.16 · ¿Cuántas líneas hay que tocar?
+
+Tienes el catálogo funcionando con CSV y te piden pasarlo a JSON. El servicio y el resto del programa están bien hechos. ¿Cuántas líneas cambias, además de escribir la nueva implementación?
+
+**a)** Ninguna · **b)** Una · **c)** Todas las del servicio · **d)** Depende del tamaño del fichero
+
+??? success "Solución"
+
+    **b)** Una: la del `main` donde se decide qué implementación se construye.
+
+    ```java
+    ProductoRepositorio repo = new ProductoRepositorioJson(Path.of("datos/productos.json"));
+    var servicio = new ProductoServicio(repo);   // ni se entera
+    ```
+
+    Si al hacer el cambio te ves tocando el servicio, **las capas no están bien separadas** — y eso es lo que se mira en el ejercicio E38.
+
+    En la UT4 esa línea desaparece del `main` y pasa a ser una anotación: Spring decide qué implementación inyectar. El principio es el mismo; lo que cambia es quién escribe el `new`.
+
+---
+
+## Simulacro cronometrado
+
+Cuando hayas hecho las 46, siéntate **55 minutos con un reloj** y responde estas 30 seguidas, sin desplegar nada:
+
+> **T1.1 · T1.3 · T1.5 · T1.6 · T1.8 · T2.1 · T2.2 · T2.5 · T2.6 · T3.1 · T3.2 · T3.5 · T4.1 · T4.3 · T4.5 · T5.1 · T5.3 · T6.1 · T6.2 · T6.4 · T6.5 · T6.6 · T6.7 · T6.8 · T6.10 · T6.11 · T6.12 · T6.13 · T6.15 · T6.16**
+
+**Menos de dos minutos por pregunta**, que es el ritmo real del examen.
+
+| Aciertos | Lectura |
+|:-:|---|
+| **24 o más** | Vas sobrado |
+| **18 a 23** | Aprobado holgado. Repasa el bloque que peor te fue |
+| **15 a 17** | Justo. Rehaz los programas E31–E38 |
+| **menos de 15** | Faltan los ejercicios. No es cuestión de releer |
+
+!!! tip "El formato del examen"
+    **30 preguntas en 55 minutos**, opción múltiple con una sola correcta. Acierto **+1**, fallo **−0,25**, en blanco **0**.
+
+    Con esa penalización, contestar al azar entre cuatro opciones sale neutro; **descartar una sola opción ya hace que compense arriesgar**. Lo que no compensa es dejar en blanco una pregunta en la que tienes intuición.

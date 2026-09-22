@@ -2,7 +2,7 @@
 
 **Dominio: una tienda de bicicletas.** Distinto del de las prácticas guiadas a propósito.
 
-**30 ejercicios agrupados por tema**, con solución. Todos se ejecutan con `java Fichero.java` salvo los de Jackson, que necesitan Maven.
+**38 ejercicios agrupados por tema**, con solución: 30 fragmentos y **8 programas completos** (E31–E38), que son la práctica integradora de la unidad. Todos se ejecutan con `java Fichero.java` salvo los de Jackson, que necesitan Maven.
 
 | Tema | Ejercicios | Sesiones |
 |---|---|:-:|
@@ -11,6 +11,7 @@
 | 3 · JSON y Jackson | E15–E20 | S5–S6 |
 | 4 · Fechas y validación | E21–E25 | S7 |
 | 5 · Repositorio y capas | E26–E30 | S8–S9 |
+| **6 · Taller largo: ocho programas** | **E31–E38** | S1–S9 |
 
 ---
 
@@ -557,9 +558,322 @@ Coge tres ejercicios que ya hayas resuelto y **escribe una pregunta de test sobr
 
 ---
 
+## Taller largo: ocho programas completos
+
+!!! reto "Del E31 al E38 se entrega un programa que funciona"
+    Los treinta primeros son fragmentos; estos son **programas enteros**, uno por bloque del temario. Eran el antiguo «reto con tests»: ahora están aquí, resueltos, porque en esta unidad lo que hay que entrenar es **reconocer**, no entregar.
+
+    El dominio es distinto a propósito: un catálogo de productos, para que no valga copiar del de bicis.
+
+### E31 ● — Elige la estructura y justifícalo
+
+Declara la estructura adecuada para cada caso: (a) últimas 10 búsquedas, la más reciente primero · (b) correos suscritos · (c) ranking alfabético sin repetidos · (d) las notas de cada alumno · (e) cola de impresión.
+
+??? success "Solución"
+
+    ```java
+    var busquedas = new ArrayDeque<String>();                 // (1)
+    var correos   = new HashSet<String>();                    // (2)
+    var ranking   = new TreeSet<String>();                    // (3)
+    var notas     = new HashMap<String, List<Integer>>();     // (4)
+    var impresion = new ArrayDeque<String>();                 // (5)
+    ```
+
+    1.  Como **pila**: `push` y `pop`. El último en entrar es el primero en salir.
+    2.  Sin repetidos y el orden da igual. Búsqueda en tiempo constante.
+    3.  Sin repetidos **y ordenado**. Cuesta más que `HashSet`, y a cambio no hay que ordenar después.
+    4.  Un alumno → sus notas. La clave es lo que buscas.
+    5.  Como **cola**: `offer` y `poll`. El primero en entrar es el primero en salir.
+
+    `ArrayDeque` sirve de pila **y** de cola; lo que cambia son los métodos que usas. No uses `Stack` ni `Vector`: están obsoletos desde hace veinte años.
+
+    | | Busca por | Orden | Repetidos |
+    |---|---|---|:-:|
+    | `ArrayList` | Posición | De inserción | Sí |
+    | `HashSet` | Contenido | Ninguno | No |
+    | `TreeSet` | Contenido | Natural | No |
+    | `HashMap` | Clave | Ninguno | Claves no |
+    | `TreeMap` | Clave | Natural | Claves no |
+    | `ArrayDeque` | Extremos | De inserción | Sí |
+
+### E32 ●● — Informe de ventas
+
+Con `record Venta(String vendedor, String producto, int unidades, double precio)`, calcula: facturación por vendedor, producto más vendido en unidades, media de unidades y el ranking de vendedores por facturación descendente.
+
+??? success "Solución"
+
+    ```java
+    var facturacion = ventas.stream().collect(Collectors.groupingBy(
+            Venta::vendedor,
+            Collectors.summingDouble(v -> v.unidades() * v.precio())));
+
+    var top = ventas.stream()
+            .collect(Collectors.groupingBy(Venta::producto,
+                     Collectors.summingInt(Venta::unidades)))
+            .entrySet().stream()
+            .max(Map.Entry.comparingByValue())                    // (1)
+            .map(Map.Entry::getKey)
+            .orElse("—");
+
+    var media = ventas.stream().mapToInt(Venta::unidades).average().orElse(0);
+
+    var ranking = facturacion.entrySet().stream()
+            .sorted(Map.Entry.<String, Double>comparingByValue().reversed())   // (2)
+            .map(Map.Entry::getKey)
+            .toList();
+    ```
+
+    1.  Para sacar el máximo de un mapa hay que **volver a hacer stream sobre `entrySet()`**. Es el paso que más cuesta ver.
+    2.  Ojo al `<String, Double>` explícito: sin él, el compilador no sabe inferir el tipo dentro de `sorted` y da un error que no dice nada.
+
+    `average()` devuelve **`OptionalDouble`**, no `double`, porque la lista puede estar vacía. De ahí el `orElse(0)`.
+
+### E33 ●● — Lector de CSV
+
+Crea `datos/productos.csv` con cabecera y cinco productos. Escribe `List<Producto> leer(Path)` que lo convierta en objetos, saltando la cabecera y las líneas en blanco.
+
+??? success "Solución"
+
+    ```java
+    List<Producto> leer(Path ruta) throws IOException {
+        try (var lineas = Files.lines(ruta, StandardCharsets.UTF_8)) {   // (1)
+            return lineas
+                    .skip(1)                                             // (2)
+                    .filter(l -> !l.isBlank())                           // (3)
+                    .map(l -> l.split(",", -1))                          // (4)
+                    .map(c -> new Producto(
+                            Integer.parseInt(c[0].trim()),
+                            c[1].trim(),
+                            c[2].trim(),
+                            Double.parseDouble(c[3].trim())))
+                    .toList();
+        }
+    }
+    ```
+
+    1.  `Files.lines` devuelve un stream que **hay que cerrar**: mantiene el fichero abierto. De ahí el *try-with-resources*. Y el juego de caracteres se dice siempre: si no, usa el del sistema y en Windows salen los acentos rotos.
+    2.  `skip(1)` para la cabecera. Sin él, `Integer.parseInt("id")` revienta.
+    3.  Las líneas en blanco del final son la causa número uno de `ArrayIndexOutOfBounds`.
+    4.  El `-1` conserva los campos vacíos del final. Sin él, `"4,Casco,,"` devuelve **dos** elementos y no cuatro.
+
+    Esos cuatro detalles son, literalmente, cuatro preguntas del test.
+
+### E34 ●● — Escribir y capturar el fallo
+
+Escribe los productos de más de 100 € en `caros.csv` conservando la cabecera. Después provoca y captura un `NoSuchFileException`.
+
+??? success "Solución"
+
+    ```java
+    void escribir(Path ruta, List<Producto> productos) throws IOException {
+        var sb = new StringBuilder("id,nombre,categoria,precio\n");
+        for (var p : productos) {
+            sb.append("%d,%s,%s,%.2f%n"
+                    .formatted(p.id(), p.nombre(), p.categoria(), p.precio()));
+        }
+        Files.writeString(ruta, sb.toString(), StandardCharsets.UTF_8);
+    }
+
+    void main() throws IOException {
+        var todos = leer(Path.of("datos/productos.csv"));
+        escribir(Path.of("datos/caros.csv"),
+                 todos.stream().filter(p -> p.precio() > 100).toList());
+
+        try {
+            Files.readString(Path.of("datos/fantasma.csv"));
+        } catch (NoSuchFileException e) {
+            IO.println("No existe: " + e.getFile());       // (1)
+        }
+    }
+    ```
+
+    1.  `NoSuchFileException` trae `getFile()` con la ruta. Capturar `IOException` a secas también funciona y pierdes esa información.
+
+    Dos cosas sobre el formato: `%.2f` usa la coma decimal si la configuración regional es española, y eso **rompe un CSV separado por comas**. Para ficheros de intercambio conviene `Locale.ROOT`:
+
+    ```java
+    String.format(Locale.ROOT, "%.2f", 12.5)   // "12.50" siempre
+    ```
+
+    Y `%n` es el salto de línea **del sistema**; `\n` es siempre `\n`. Para un fichero que se va a leer en otra máquina, `\n` es más predecible.
+
+### E35 ●● — De CSV a JSON
+
+Convierte tu CSV en un `productos.json` legible, con Jackson.
+
+??? success "Solución"
+
+    ```java
+    var mapper = new ObjectMapper();
+    mapper.writerWithDefaultPrettyPrinter()
+          .writeValue(Path.of("datos/productos.json").toFile(), leer(csv));
+    ```
+
+    Tres líneas. Abre el JSON generado: cada `record` se ha convertido en un objeto y la lista en un array, **sin escribir nada de conversión**.
+
+    Lo que hay que saber para el test:
+
+    | Quiero | Se hace con |
+    |---|---|
+    | Objeto → JSON | `writeValue` / `writeValueAsString` |
+    | JSON → objeto | `readValue` |
+    | Que salga con sangría | `writerWithDefaultPrettyPrinter()` |
+    | Fechas en ISO, no como números | `registerModule(new JavaTimeModule())` + desactivar `WRITE_DATES_AS_TIMESTAMPS` |
+    | Que no salgan los nulos | `@JsonInclude(NON_NULL)` |
+
+    Sin el módulo de `java.time`, un `LocalDate` sale como `[2026,3,14]`. Es la pregunta de Jackson que más cae.
+
+### E36 ●● — Consumir JSON ajeno
+
+Te llega esto de una API. Diseña el record y deserialízalo sin que falle por el campo `stock`, que no te interesa.
+
+```json
+[{"id":1,"nombre":"Patinete","precio":120.0,"stock":8},
+ {"id":2,"nombre":"Casco","precio":35.0,"stock":40}]
+```
+
+??? success "Solución"
+
+    ```java
+    record ProductoApi(int id, String nombre, double precio) {}
+
+    var mapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);   // (1)
+
+    List<ProductoApi> productos =
+            mapper.readValue(json, new TypeReference<List<ProductoApi>>() {});      // (2)
+    ```
+
+    1.  Sin esto: `UnrecognizedPropertyException: "stock"`. Al consumir APIs de terceros se desactiva **siempre**: el día que añadan un campo, tu programa se cae en producción sin que hayas tocado nada.
+    2.  Para una **lista** hace falta `TypeReference`. Con `readValue(json, List.class)` obtienes una lista de `LinkedHashMap`, no de tus objetos: el tipo genérico se pierde al compilar.
+
+    La alternativa a desactivarlo globalmente es `@JsonIgnoreProperties(ignoreUnknown = true)` sobre el record. Hace lo mismo, acotado a esa clase.
+
+### E37 ●●● — Reservas validadas
+
+Crea `record Reserva(String cliente, String email, LocalDate entrada, LocalDate salida)` que valide en el constructor: cliente no vacío, correo con formato, entrada no pasada y salida posterior a la entrada. Añade `noches()`.
+
+??? success "Solución"
+
+    ```java
+    record Reserva(String cliente, String email, LocalDate entrada, LocalDate salida) {
+
+        private static final Pattern CORREO =
+                Pattern.compile("^[\\w.+-]+@[\\w-]+\\.[\\w.]{2,}$");   // (1)
+
+        Reserva {
+            if (cliente == null || cliente.isBlank()) {
+                throw new IllegalArgumentException("Cliente obligatorio");
+            }
+            if (email == null || !CORREO.matcher(email).matches()) {
+                throw new IllegalArgumentException("Correo no válido: " + email);
+            }
+            if (entrada.isBefore(LocalDate.now())) {
+                throw new IllegalArgumentException("La entrada no puede ser pasada");
+            }
+            if (!salida.isAfter(entrada)) {                              // (2)
+                throw new IllegalArgumentException("La salida debe ser posterior");
+            }
+        }
+
+        long noches() { return ChronoUnit.DAYS.between(entrada, salida); }
+    }
+    ```
+
+    1.  El `Pattern` es **`static final`**: compilarlo en cada validación es caro y no cambia nunca.
+    2.  `!salida.isAfter(entrada)` y no `salida.isBefore(entrada)`: así también se rechaza que sean el mismo día. Es la diferencia entre `<` y `<=`, y es donde viven los fallos.
+
+    Y el recordatorio permanente de `java.time`: **todo es inmutable**.
+
+    ```java
+    var f = LocalDate.of(2026, 3, 14);
+    f.plusDays(7);              // no hace nada: se pierde
+    var nueva = f.plusDays(7);  // así sí
+    ```
+
+    `ChronoUnit.DAYS.between` da **noches**, no días de estancia: del 1 al 3 son 2 noches. Ese `±1` es el fallo clásico de cualquier aplicación de reservas.
+
+### E38 ●●● — Catálogo en capas, entero
+
+Monta: `Producto` (record) · `ProductoRepositorio` (interfaz) · `ProductoRepositorioCsv` · `ProductoServicio` · `App`. Después añade `ProductoRepositorioJson` y comprueba que **el servicio no cambia**. Termina con un test que use un repositorio en memoria.
+
+??? success "Solución"
+
+    ```java
+    interface ProductoRepositorio {
+        List<Producto> listar();
+        Optional<Producto> buscarPorId(int id);
+    }
+
+    class ProductoRepositorioCsv implements ProductoRepositorio {
+        private final Path fichero;
+        ProductoRepositorioCsv(Path fichero) { this.fichero = fichero; }
+
+        @Override public List<Producto> listar() { /* el E33 */ }
+        @Override public Optional<Producto> buscarPorId(int id) {
+            return listar().stream().filter(p -> p.id() == id).findFirst();
+        }
+    }
+
+    class ProductoServicio {
+        private final ProductoRepositorio repositorio;
+
+        ProductoServicio(ProductoRepositorio repositorio) {    // (1)
+            this.repositorio = repositorio;
+        }
+
+        Producto obtener(int id) {
+            return repositorio.buscarPorId(id)
+                    .orElseThrow(() -> new ProductoNoEncontradoException(id));
+        }
+
+        double precioConIva(int id) { return obtener(id).precio() * 1.21; }
+    }
+    ```
+
+    1.  **Por constructor, y la interfaz.** Nunca `new ProductoRepositorioCsv(...)` dentro del servicio.
+
+    Las cinco cosas que se comprueban:
+
+    | | |
+    |---|---|
+    | 1 | El servicio **recibe** la interfaz; no crea la implementación |
+    | 2 | El repositorio **no tiene reglas de negocio**: nada de IVA ni de umbrales |
+    | 3 | `buscarPorId` devuelve `Optional`; **el servicio** decide si eso es un error |
+    | 4 | Cambiar de CSV a JSON toca **una línea**, la del `main` |
+    | 5 | El test usa un repositorio en memoria, **sin tocar el disco** |
+
+    La línea que lo demuestra todo:
+
+    ```java
+    ProductoRepositorio repo = new ProductoRepositorioJson(Path.of("datos/productos.json"));
+    var servicio = new ProductoServicio(repo);   // ni se entera del cambio
+    ```
+
+    Y el test, que es lo que hace que todo lo anterior tenga sentido:
+
+    ```java
+    @Test
+    void lanzaSiNoExiste() {
+        ProductoRepositorio enMemoria = new ProductoRepositorio() {
+            public List<Producto> listar() { return List.of(); }
+            public Optional<Producto> buscarPorId(int id) { return Optional.empty(); }
+        };
+        var servicio = new ProductoServicio(enMemoria);
+
+        assertThrows(ProductoNoEncontradoException.class, () -> servicio.obtener(99));
+    }
+    ```
+
+    Sin la interfaz, este test necesitaría un fichero CSV de prueba en el disco. **Por eso existe la interfaz**, y esa es la respuesta que hay que saber dar.
+
+    En la UT4 esto mismo lo hace Spring por ti: la interfaz es la misma, el `new` lo pone el marco de trabajo y se llama inyección de dependencias.
+
+---
+
 ## Del ejercicio a la pregunta de test
 
-El examen de esta unidad es un **test práctico sobre fragmentos de código** ([formato aquí](examen.md)). No se pide escribir un programa: se pide leer código y saber qué hace.
+El examen de esta unidad es un **test práctico sobre fragmentos de código** ([batería de test aquí](autoevaluacion.md)). No se pide escribir un programa: se pide leer código y saber qué hace.
 
 La correspondencia es directa. Cada bloque de ejercicios alimenta un bloque de preguntas:
 

@@ -59,20 +59,21 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 | **S16** | `ddl-auto` no vale para producción: **Flyway** | [6. De H2 a producción](06-produccion.md) §1–2 |
 | **S17** | PostgreSQL con Docker y perfiles · tests con `@DataJpaTest` | [6. De H2 a producción](06-produccion.md) §3–4 |
 | **S18** | Laboratorio: la escuela de música de principio a fin | [Batería de ejercicios](ejercicios.md) |
-| **S19** | Repaso: las seis trampas y cómo se ven en el *log* | [Preparar el examen](examen.md) |
-| **S20** | :material-laptop: **Examen práctico de RA6 (100 %)** | [Preparar el examen](examen.md) |
+| **S19** | Repaso: las seis trampas y cómo se ven en el *log* | [Reto R3, a entregar](retos.md) |
+| **S20** | :material-laptop: **Examen práctico de RA6 (100 %)** | [Reto R3, a entregar](retos.md) |
 
 ## Cómo se evalúa
 
-:material-laptop: **Examen práctico (100 %)**, 2 sesiones. Se te da un esqueleto con el modelo y un fichero de datos, y tienes que montar la persistencia completa: entidades, relaciones, repositorios, consultas, transacciones y tests. Rúbrica en la [página de preparación](examen.md).
+:material-laptop: **Examen práctico (100 %)**, 2 sesiones. Se te da un esqueleto con el modelo y un fichero de datos, y tienes que montar la persistencia completa: entidades, relaciones, repositorios, consultas, transacciones y tests. La rúbrica es la del **[reto R3](retos.md)**, que es un enunciado equivalente.
 
 ## Material
 
-- [Prácticas guiadas](practicas.md) — migramos la TiendaAPI a base de datos, paso a paso.
-- [Batería de ejercicios](ejercicios.md) — 14 ejercicios resueltos, del mapeo al bloqueo optimista.
-- [Preparar el examen](examen.md) — formato, rúbrica y los errores que más cuestan.
-- [Chuleta de JPA](chuleta.md) — anotaciones y consultas en una página.
-- [Comprobar tu trabajo](../comprobar-tu-trabajo.md) — los tests del proyecto `spring-base`.
+| | |
+|---|---|
+| [**Retos**](retos.md) | Dos retos **resueltos** que se construyen en clase y **un tercero que se entrega**, con los mismos criterios que el examen |
+| [**Batería de ejercicios**](ejercicios.md) | 30 ejercicios con solución sobre otro dominio, para comprobar que lo sabes hacer tú |
+| [Chuleta](chuleta.md) | Anotaciones y estructura en una página |
+| [Comprobar tu trabajo](../comprobar-tu-trabajo.md) | Pégale tu código y te dice si aguanta la rúbrica |
 
 ## Antes de la S1
 

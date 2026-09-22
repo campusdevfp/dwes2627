@@ -1,309 +1,310 @@
-# Banco de preguntas — UT1 · RA1
+# Simulacro de test — UT1
 
-Banco amplio organizado **por tema/sesión**. Úsalo para:
-- **Autoevaluación** del alumno tras cada sesión (aula invertida).
-- Montar **tests** variados (elige N preguntas por tema).
-- El **test oficial de cierre** está aparte en el test oficial (se hace en clase).
+**72 preguntas con solución.** Mismo formato que el test de la unidad: opción múltiple, **una sola correcta**, sin penalización por fallo.
 
-Formato: opción múltiple (una correcta salvo aviso). **Solucionario al final de cada bloque.** En total, ~80 preguntas.
+!!! info "De dónde sale todo lo que se pregunta"
+    De **los temas 1 a 6** y de la **[batería de ejercicios](ejercicios.md)**. Nada más.
 
----
+    Los temas [7](07-java-en-2026.md), [8](08-servidores-y-despliegue.md) y [9](09-seguridad-y-logs.md) son divulgación: **no entran**.
 
-## Tema 1 — El viaje de una petición (S1)
+| Bloque | De dónde sale | Preguntas |
+|---|---|:-:|
+| **A** | Temas 1–2 · el viaje y los actores | 10 |
+| **B** | Tema 3 · arquitecturas y MVC | 10 |
+| **C** | Tema 4 · HTTP | 16 |
+| **D** | Tema 5 · APIs | 14 |
+| **E** | Tema 6 · web dinámica y Java | 8 |
+| **F** | Directamente sobre los ejercicios | 14 |
 
-1. El código **front-end** se ejecuta en…
-   a) el servidor web · b) el navegador del usuario · c) la base de datos · d) el proxy
-
-2. ¿Dónde debe hacerse SIEMPRE la validación de seguridad?
-   a) en el cliente · b) en el servidor · c) en ninguno · d) en el DNS
-
-3. La validación en el cliente sirve sobre todo para…
-   a) seguridad · b) mejorar la experiencia de usuario (UX) · c) cifrar datos · d) balancear carga
-
-4. El **despliegue** es…
-   a) escribir el código · b) el paso de desarrollo a producción · c) diseñar la BD · d) un test unitario
-
-5. ¿Cuál NO es un objetivo del despliegue?
-   a) accesibilidad · b) estabilidad · c) escalabilidad · d) ofuscación del código
-
-6. En un correo web, "obtener los mensajes de la base de datos" es tarea del…
-   a) cliente · b) servidor · c) navegador · d) CSS
-
-7. Comprobar la longitud mínima de una contraseña mientras el usuario escribe conviene hacerlo en el…
-   a) servidor únicamente · b) cliente (y también validar en servidor) · c) DNS · d) balanceador
-
-> **Soluciones T1:** 1b · 2b · 3b · 4b · 5d · 6b · 7b
+**El test oficial son 30 preguntas en 55 minutos.** Se aprueba con 15. Al final de esta página tienes la selección exacta para hacer un simulacro cronometrado.
 
 ---
 
-## Tema 2 — Cliente y servidor (S2)
+## Bloque A · El viaje y los actores
 
-1. Un **back-end agnóstico/universal** se caracteriza por…
-   a) tener una única interfaz web · b) exponer APIs consumibles por cualquier cliente · c) no usar base de datos · d) ejecutarse en el navegador
+**1.** El código que se ejecuta en el navegador del usuario es…
+a) el back-end · b) el front-end · c) la base de datos · d) el proxy
 
-2. El formato de datos preferido hoy para las APIs es…
-   a) HTML · b) JSON · c) PDF · d) TXT
+**2.** ¿Dónde tiene que hacerse **siempre** la validación de seguridad?
+a) En el cliente · b) En el servidor · c) En los dos, indistintamente · d) En el DNS
 
-3. ¿Cuál es una **aplicación web** (no una simple página)?
-   a) un portafolio estático · b) Google Docs · c) una landing page · d) un PDF online
+**3.** Validar en el cliente sirve sobre todo para…
+a) Seguridad · b) Mejorar la experiencia de usuario · c) Cifrar los datos · d) Repartir la carga
 
-4. "Front-end" y "cliente" son…
-   a) exactamente lo mismo · b) distintos: un cliente puede ser una app móvil sin front web · c) sinónimos de back-end · d) tipos de servidor
+**4.** En el viaje de una petición, ¿qué ocurre **justo antes** de abrir la conexión TCP?
+a) Se pinta la página · b) Se resuelve el nombre por DNS · c) Se consulta la base de datos · d) Se descargan las imágenes
 
-5. Una página web **estática**…
-   a) siempre requiere servidor · b) puede visualizarse localmente sin servidor · c) necesita base de datos · d) genera HTML al vuelo
+**5.** Al cargar una página cualquiera, el navegador lanza…
+a) Exactamente una petición · b) Una por cada imagen, nada más · c) Muchas: el documento y todos sus recursos · d) Ninguna si hay caché
 
-6. Un mismo back-end puede servir a la vez a…
-   a) solo webs · b) web, móvil, escritorio y otros servicios · c) solo apps móviles · d) solo otro back-end
+**6.** Ocultar con CSS el botón «Borrar» a quien no es admin…
+a) Basta para proteger la operación · b) No protege nada: la comprobación va en el servidor · c) Es la forma recomendada · d) Equivale a un 403
 
-7. La tabla de tecnologías sitúa en el **cliente**…
-   a) Java/JSP · b) PHP · c) HTML+CSS+JavaScript · d) ASP.NET
+**7.** «Calcular el total del carrito» debe hacerse en el servidor porque…
+a) El cliente no sabe multiplicar · b) Si lo hace el cliente, el precio se puede manipular · c) Es más rápido · d) Lo exige HTTP
 
-> **Soluciones T2:** 1b · 2b · 3b · 4b · 5b · 6b · 7c
+**8.** El término **despliegue** designa…
+a) Escribir el código · b) El paso de desarrollo a producción · c) Diseñar la base de datos · d) Ejecutar los tests
 
----
+**9.** En un correo web, «recuperar los mensajes del almacén» es tarea…
+a) Del navegador · b) Del servidor · c) Del CSS · d) Del DNS
 
-## Tema 3 — Arquitecturas y MVC (S3)
+**10.** Comprobar mientras el usuario escribe que la contraseña tiene 8 caracteres conviene hacerlo…
+a) Solo en el servidor · b) En el cliente, **y también** en el servidor · c) Solo en el cliente · d) En el balanceador
 
-1. La arquitectura **monolítica** se caracteriza por…
-   a) servicios pequeños autónomos · b) agrupar UI, lógica y datos en un bloque · c) no tener lógica · d) ejecutarse sin servidor
-
-2. Una ventaja de la arquitectura **por capas** es…
-   a) mezclar responsabilidades · b) permitir cambiar una capa sin afectar a las demás · c) eliminar la BD · d) impedir el mantenimiento
-
-3. Los **microservicios** aportan sobre todo…
-   a) menor complejidad de gestión · b) escalado y despliegue independientes por servicio · c) un único punto de fallo · d) una sola tecnología obligatoria
-
-4. La arquitectura **serverless** implica que…
-   a) no hay servidores en absoluto · b) el proveedor gestiona la infraestructura y tú escribes funciones · c) no se puede escalar · d) siempre es gratis
-
-5. Para un **MVP** con 1 desarrollador y poco presupuesto conviene…
-   a) microservicios · b) monolito o capas · c) SOA distribuida · d) 20 funciones serverless
-
-6. En **MVC**, ¿quién accede a la base de datos?
-   a) la Vista · b) el Controlador · c) el Modelo · d) el navegador
-
-7. El problema del **Fat Controller** es…
-   a) la vista muy pesada · b) meter lógica de negocio en el controlador · c) que el modelo no accede a datos · d) que hay demasiadas vistas
-
-8. El principio **SRP** de SOLID dice que una clase debe…
-   a) tener muchas responsabilidades · b) tener una sola razón para cambiar · c) no cambiar nunca · d) depender de clases concretas
-
-9. La arquitectura **EDA** se basa en…
-   a) capas · b) eventos · c) un monolito · d) ficheros
-
-10. La comunicación entre microservicios, frente al monolito, tiene…
-    a) menos latencia · b) más sobrecarga (va por red) · c) ninguna diferencia · d) menos complejidad
-
-> **Soluciones T3:** 1b · 2b · 3b · 4b · 5b · 6c · 7b · 8b · 9b · 10b
+> **Soluciones A:** 1b · 2b · 3b · 4b · 5c · 6b · 7b · 8b · 9b · 10b
 
 ---
 
-## Tema 4 — HTTP a fondo (S4–S5)
+## Bloque B · Arquitecturas y MVC
 
-1. HTTP es un protocolo…
-   a) con estado · b) sin estado (stateless) · c) cifrado por defecto · d) orientado a conexión permanente
+**11.** La razón **principal** para adoptar microservicios en una empresa grande es…
+a) Que el código va más rápido · b) Poder desplegar cada parte por separado · c) Ahorrar memoria · d) Evitar usar base de datos
 
-2. Para **crear** un recurso en una API REST se usa…
-   a) GET · b) POST · c) DELETE · d) HEAD
+**12.** Seis «microservicios» que comparten base de datos y se despliegan juntos son…
+a) Microservicios correctos · b) Un monolito distribuido · c) Arquitectura serverless · d) Una arquitectura hexagonal
 
-3. El código **404** significa…
-   a) todo OK · b) creado · c) no encontrado · d) error del servidor
+**13.** Para un proyecto de dos personas y seis semanas, lo razonable es…
+a) Microservicios · b) Un monolito en capas · c) Serverless con veinte funciones · d) Una arquitectura orientada a eventos
 
-4. El código **500** indica…
-   a) éxito · b) redirección · c) error del cliente · d) error del servidor
+**14.** Un formulario de contacto que se usa diez veces al día encaja bien en…
+a) Serverless · b) Un clúster de microservicios · c) Un mainframe · d) Una arquitectura peer-to-peer
 
-5. El código **401** significa…
-   a) prohibido · b) no autenticado (¿quién eres?) · c) no encontrado · d) creado
+**15.** En una arquitectura en capas, el `SELECT` vive en…
+a) La capa de presentación · b) La capa de negocio · c) La capa de datos · d) La vista
 
-6. La cabecera que indica el formato del contenido devuelto es…
-   a) Host · b) User-Agent · c) Content-Type · d) Accept-Language
+**16.** En MVC, decidir que se devuelve un `404` es responsabilidad…
+a) Del modelo · b) Del controlador · c) De la vista · d) De la base de datos
 
-7. **HTTPS** aporta frente a HTTP…
-   a) más contenido dinámico · b) cifrado (confidencialidad e integridad) con TLS · c) eliminar la autenticación · d) más velocidad siempre
+**17.** Formatear una fecha como `14/03/2026` corresponde a…
+a) El modelo · b) El controlador · c) La vista · d) El repositorio
 
-8. Para que un servidor "recuerde" quién eres entre peticiones necesitas…
-   a) nada, HTTP lo recuerda · b) enviar cookie o token en cada petición · c) usar solo GET · d) un código 200
+**18.** «Este pedido no es de este usuario» es una decisión…
+a) Del controlador, porque devuelve 403 · b) Del modelo: es una regla de negocio · c) De la vista · d) Del servidor web
 
-9. El método que pide solo las cabeceras (sin cuerpo) es…
-   a) GET · b) POST · c) HEAD · d) PUT
+**19.** Un `switch (tipoPago)` que hay que tocar cada vez que se añade una pasarela incumple el principio…
+a) De responsabilidad única · b) Abierto/cerrado · c) De sustitución de Liskov · d) De segregación de interfaces
 
-10. La confianza en un certificado HTTPS la da…
-    a) el navegador solo · b) una Autoridad de Certificación (AC) · c) el usuario · d) el servidor DNS
+**20.** Hacer `new PostgresRepositorio()` dentro de un servicio incumple…
+a) La inversión de dependencias · b) La responsabilidad única · c) Liskov · d) Ninguno: es correcto
 
-> **Soluciones T4:** 1b · 2b · 3c · 4d · 5b · 6c · 7b · 8b · 9c · 10b
-
----
-
-## Tema 5 — APIs a fondo (S6–S7)
-
-1. Un servicio web (API) está diseñado para…
-   a) mostrar HTML a un usuario · b) exponer datos/funcionalidad a otras aplicaciones · c) sustituir a la BD · d) renderizar CSS
-
-2. El estilo de API más usado hoy, sobre HTTP y con JSON, es…
-   a) SOAP · b) REST · c) gRPC · d) MQTT
-
-3. **GraphQL** destaca por…
-   a) usar XML · b) permitir pedir exactamente los datos necesarios · c) ser binario · d) no usar HTTP
-
-4. Para comunicación **en tiempo real** (chat) conviene…
-   a) SOAP · b) REST · c) WebSocket · d) HEAD
-
-5. **gRPC** usa como formato…
-   a) JSON · b) XML · c) Protocol Buffers (binario) · d) YAML
-
-6. Un **JWT** consta de tres partes:
-   a) usuario, clave, rol · b) header, payload, signature · c) IP, puerto, host · d) get, post, put
-
-7. Sobre el **payload** de un JWT…
-   a) está cifrado y es secreto · b) está en Base64: cualquiera puede leerlo, pero no modificarlo sin romper la firma · c) contiene la contraseña · d) no viaja al cliente
-
-8. La arquitectura de **Netflix** se basa principalmente en…
-   a) un monolito · b) microservicios en la nube (AWS) · c) serverless puro · d) SOAP
-
-9. Un **webhook** es…
-   a) una base de datos · b) un callback HTTP que notifica ante un evento · c) un tipo de cifrado · d) un navegador
-
-> **Soluciones T5:** 1b · 2b · 3b · 4c · 5c · 6b · 7b · 8b · 9b
+> **Soluciones B:** 11b · 12b · 13b · 14a · 15c · 16b · 17c · 18b · 19b · 20a
 
 ---
 
-## Tema 6 — Web dinámica y lenguajes (S8)
+## Bloque C · HTTP
 
-1. Una web es **dinámica** cuando…
-   a) tiene animaciones CSS · b) el servidor genera la respuesta según datos/usuario · c) usa muchas imágenes · d) está en la nube
+**21.** En un mensaje HTTP, cabeceras y cuerpo se separan por…
+a) Una coma · b) Una línea en blanco · c) La etiqueta `<body>` · d) Un punto y coma
 
-2. **SSR** significa…
-   a) Simple Server Response · b) Server Side Rendering: el servidor "cocina" el HTML · c) Secure Socket Reply · d) Static Site Render
+**22.** Un `POST` que crea un recurso debería responder…
+a) `200 OK` · b) `201 Created` con `Location` · c) `204 No Content` · d) `302 Found`
 
-3. Una página **estática**…
-   a) consulta la BD en cada visita · b) se envía tal cual, sin procesamiento · c) cambia por usuario · d) requiere Tomcat
+**23.** Un `DELETE` que borra correctamente suele responder…
+a) `200` con el recurso borrado · b) `204 No Content` · c) `404` · d) `201`
 
-4. Una ventaja de la generación dinámica es…
-   a) ser más rápida siempre · b) contenido personalizado y actualizado desde BD · c) no necesitar servidor · d) evitar HTTP
+**24.** `401` frente a `403`: el `401` significa…
+a) No sé quién eres · b) Sé quién eres y no puedes · c) No existe · d) Formato no admitido
 
-5. Mezclar código lógico y HTML sin control produce…
-   a) código limpio · b) "código espagueti" · c) una API REST · d) un microservicio
+**25.** Mandar `Content-Type: text/plain` a una API que solo acepta JSON produce…
+a) `400` · b) `406` · c) `415` · d) `422`
 
-6. Los frameworks modernos evitan el espagueti con el patrón…
-   a) monolito · b) MVC · c) serverless · d) SOAP
+**26.** Un JSON bien formado con `{"edad": -5}` en una API que exige edad positiva produce…
+a) `415` · b) `422` (o `400`) · c) `409` · d) `500`
 
-7. En una **SPA**, el HTML final lo construye…
-   a) el servidor · b) el navegador con JSON · c) la base de datos · d) el DNS
+**27.** Intentar registrar un correo que ya existe encaja con…
+a) `400` · b) `404` · c) `409` · d) `403`
 
-> **Soluciones T6:** 1b · 2b · 3b · 4b · 5b · 6b · 7b
+**28.** ¿Qué métodos son **seguros**?
+a) `GET` y `POST` · b) Solo `GET` (y `HEAD`/`OPTIONS`) · c) `GET`, `PUT` y `DELETE` · d) Todos
 
----
+**29.** ¿Cuál **no** es idempotente?
+a) `GET` · b) `PUT` · c) `DELETE` · d) `POST`
 
-## Tema 7 — Java en 2026 (S8)
+**30.** `DELETE` se considera idempotente aunque el segundo intento devuelva `404` porque…
+a) El `404` también es correcto · b) La idempotencia habla del estado final, no del código · c) `curl` lo reintenta solo · d) Es un convenio sin base
 
-1. PHP y Python son lenguajes de…
-   a) código nativo · b) scripting (interpretado) · c) bytecode · d) ensamblador
+**31.** La cabecera que envía **el cliente** para decir qué formatos entiende es…
+a) `Content-Type` · b) `Accept` · c) `Allow` · d) `Vary`
 
-2. Java se ejecuta como…
-   a) interpretado línea a línea · b) nativo del SO · c) bytecode sobre la JVM · d) no se ejecuta
+**32.** Si el servidor no sabe producir ninguno de los formatos pedidos responde…
+a) `415` · b) `406` · c) `400` · d) `501`
 
-3. La ventaja del bytecode/JVM es…
-   a) el máximo rendimiento absoluto · b) portabilidad ("write once, run anywhere") · c) no necesitar compilar nunca · d) prescindir del SO
+**33.** Un `304 Not Modified` significa que…
+a) El recurso se borró · b) Lo que hay en caché sigue valiendo y no se envía cuerpo · c) Hay que autenticarse · d) El servidor falló
 
-4. El stack **LAMP** es…
-   a) Linux, Apache, MySQL, PHP · b) Linux, Angular, Mongo, Python · c) Windows, IIS, SQL Server, C# · d) Linux, Apache, Maven, Perl
+**34.** `If-None-Match` se usa junto a…
+a) `Location` · b) `ETag` · c) `Set-Cookie` · d) `Authorization`
 
-5. El framework estrella de **Java** para servicios es…
-   a) Laravel · b) Django · c) Spring Boot · d) Express
+**35.** El atributo de cookie que impide que JavaScript la lea es…
+a) `Secure` · b) `SameSite` · c) `HttpOnly` · d) `Max-Age`
 
-6. **MEAN/MERN** es un stack basado en…
-   a) Java · b) JavaScript (full stack JS) · c) C# · d) Python
+**36.** Las cookies existen porque…
+a) HTTP es lento · b) HTTP no mantiene estado entre peticiones · c) Lo exige TLS · d) Sustituyen al DNS
 
-7. La integración "código incrustado en HTML" es típica de…
-   a) SPA · b) MVC server-side (JSP, plantillas) · c) gRPC · d) Docker
-
-8. Un lenguaje **compilado a nativo** es…
-   a) PHP · b) Python · c) Go · d) JavaScript
-
-> **Soluciones T7:** 1b · 2c · 3b · 4a · 5c · 6b · 7b · 8c
+> **Soluciones C:** 21b · 22b · 23b · 24a · 25c · 26b · 27c · 28b · 29d · 30b · 31b · 32b · 33b · 34b · 35c · 36b
 
 ---
 
-## Tema 8 — Servidores web y de aplicaciones (S9)
+## Bloque D · APIs
 
-1. Un **servidor web** (Apache/Nginx) se encarga sobre todo de…
-   a) ejecutar la lógica de negocio · b) servir estáticos y hacer de proxy/puerta de entrada · c) almacenar datos · d) compilar código
+**37.** En una API REST bien diseñada, listar libros es…
+a) `GET /obtenerLibros` · b) `GET /api/v1/libros` · c) `POST /libros/listar` · d) `GET /libro?accion=listar`
 
-2. Un **servidor de aplicaciones** (Tomcat) se encarga de…
-   a) servir solo imágenes · b) ejecutar la lógica (Servlets/JSP, apps) · c) el DNS · d) el cifrado TLS únicamente
+**38.** Filtrar por autor debe expresarse…
+a) `/libros/autor/Saramago` · b) `/libros?autor=Saramago` · c) `/buscarPorAutor/Saramago` · d) En una cabecera
 
-3. Un **VirtualHost** permite…
-   a) cifrar datos · b) alojar varias webs en un mismo servidor/IP · c) balancear entre nubes · d) crear una BD
+**39.** Pedir un recurso concreto, `/users/1`, debe devolver…
+a) Un array de un elemento · b) Un objeto · c) Una cadena · d) Un `204`
 
-4. Nginx destaca frente a Apache por…
-   a) usar .htaccess · b) su arquitectura orientada a eventos (más carga con menos RAM) · c) no servir estáticos · d) ejecutar Java
+**40.** La versión de la API conviene ponerla…
+a) Nunca · b) En la ruta, desde el principio: `/api/v1/` · c) Solo cuando haya clientes · d) En una cookie
 
-5. En producción, lo recomendable con Tomcat es…
-   a) exponerlo directo a internet en el 8080 · b) poner Nginx/Apache delante como proxy · c) desactivar los logs · d) abrir el puerto de la BD
+**41.** Un JWT está…
+a) Cifrado: nadie puede leerlo · b) Firmado: cualquiera lo lee, pero no se puede alterar · c) Comprimido · d) Hasheado con bcrypt
 
-6. **Redis** es un gestor de datos…
-   a) relacional en disco · b) NoSQL clave-valor en memoria (caché/sesiones) · c) documental XML · d) un servidor web
+**42.** Las tres partes de un JWT son…
+a) Usuario, contraseña, rol · b) Cabecera, contenido y firma · c) Clave, valor y caducidad · d) Origen, destino y cuerpo
 
-7. Nunca debes exponer directamente a internet…
-   a) el puerto 443 · b) el puerto de la base de datos (ej. 3306) · c) el 80 · d) el proxy inverso
+**43.** ¿Por qué no se guardan datos sensibles en el contenido de un JWT?
+a) Porque ocupan mucho · b) Porque van en Base64 y los lee cualquiera · c) Porque el navegador los borra · d) Porque rompen la firma
 
-> **Soluciones T8:** 1b · 2b · 3b · 4b · 5b · 6b · 7b
+**44.** Si alguien cambia `"rol":"ADMIN"` en un JWT y lo reenvía…
+a) Funciona: el servidor confía · b) Falla: la firma deja de cuadrar · c) Devuelve `404` · d) El token se cifra solo
 
----
+**45.** «Solo los administradores pueden borrar usuarios» es…
+a) Autenticación · b) Autorización · c) Cifrado · d) Trazabilidad
 
-## Tema 8 (cont.) — Despliegue (S9)
+**46.** Validar el token en cada petición es…
+a) Autenticación · b) Autorización · c) Auditoría · d) Negociación
 
-1. La escalabilidad **vertical** consiste en…
-   a) poner más máquinas · b) poner una máquina más potente (más CPU/RAM) · c) usar Docker · d) usar un CDN
+**47.** Una app móvil que necesita cinco endpoints para pintar una pantalla sufre…
+a) Sobrefetching solamente · b) Infrafetching, y encaja bien con GraphQL · c) Un problema de DNS · d) Falta de caché
 
-2. La escalabilidad **horizontal** requiere…
-   a) nada especial · b) un balanceador de carga que reparta el tráfico · c) apagar servidores · d) un único servidor gigante
+**48.** Entre dos microservicios internos con muchísimo tráfico, lo más eficiente suele ser…
+a) REST con JSON · b) gRPC · c) SOAP · d) GraphQL
 
-3. **Docker** soluciona sobre todo el problema de…
-   a) "en mi máquina funcionaba" (empaqueta dependencias) · b) el cifrado · c) el DNS · d) el diseño de la BD
+**49.** Para un panel que debe mostrar pedidos según entran, lo adecuado es…
+a) Preguntar cada segundo con REST · b) WebSocket o SSE · c) gRPC · d) Un `PUT` periódico
 
-4. **Kubernetes** sirve para…
-   a) crear un contenedor · b) orquestar muchos contenedores (autoescalado, recuperación) · c) compilar Java · d) servir HTML
+**50.** La ventaja de REST que se pierde al pasar a GraphQL es…
+a) La seguridad · b) La caché de HTTP · c) El uso de JSON · d) La autenticación
 
-5. En el modelo **PaaS**…
-   a) alquilas máquinas virtuales y lo instalas todo · b) subes tu código y el proveedor pone el servidor · c) usas software final como Gmail · d) compras hardware físico
+**51.** El formato estándar para devolver errores en HTTP se llama…
+a) Problem Details · b) ErrorObject · c) HTTP-Fault · d) RFC-Error
 
-6. **CI** (Integración Continua) significa…
-   a) desplegar a mano · b) ejecutar los tests automáticamente en cada push · c) cifrar el tráfico · d) crear VirtualHosts
+**52.** Nunca se debe mandar al cliente…
+a) El código de estado · b) La traza de la excepción · c) Un mensaje de error · d) La cabecera `Content-Type`
 
-7. Frente a una VM, un contenedor Docker es más ligero porque…
-   a) incluye su propio SO invitado · b) comparte el núcleo del SO anfitrión · c) no usa CPU · d) no tiene dependencias
+**53.** «Un profesor solo ve sus grupos» requiere…
+a) Solo comprobar el rol · b) Comprobar, para cada grupo concreto, que es suyo · c) Ocultar el menú · d) Un `401`
 
-> **Soluciones T9:** 1b · 2b · 3a · 4b · 5b · 6b · 7b
+**54.** Un `POST` que se reintenta tras un error de red puede…
+a) No pasar nada nunca · b) Crear el recurso dos veces · c) Devolver siempre `409` · d) Convertirse en `GET`
 
----
-
-## Tema 9 — Seguridad y monitorización (S9)
-
-1. **Autenticación** responde a la pregunta…
-   a) ¿qué puedes hacer? · b) ¿quién eres? · c) ¿dónde estás? · d) ¿cuánto pesa?
-
-2. **Autorización** responde a…
-   a) ¿quién eres? · b) ¿qué puedes hacer? · c) ¿qué hora es? · d) ¿qué IP tienes?
-
-3. **HTTP Basic** es inseguro si…
-   a) se usa con HTTPS · b) no va sobre HTTPS (la clave viaja en Base64 legible) · c) se usa JWT · d) se rota el log
-
-4. Los **access logs** registran…
-   a) por qué falla el servidor · b) quién entra, qué pide y con qué código · c) la contraseña · d) el código fuente
-
-5. La **rotación de logs** evita que…
-   a) el servidor se cifre · b) el disco se llene y el servidor caiga · c) haya autenticación · d) se pierdan cookies
-
-6. El token moderno para autenticar APIs es…
-   a) HTTP Basic · b) Digest · c) JWT · d) CLF
-
-> **Soluciones T10:** 1b · 2b · 3b · 4b · 5b · 6c
+> **Soluciones D:** 37b · 38b · 39b · 40b · 41b · 42b · 43b · 44b · 45b · 46a · 47b · 48b · 49b · 50b · 51a · 52b · 53b · 54b
 
 ---
 
-## Cómo usar este banco
+## Bloque E · Web dinámica y Java
 
-- **Autoevaluación por sesión:** el alumno responde el bloque del tema tras leerlo (aula invertida) y se corrige con el solucionario.
-- **Test de clase:** elige 2–3 preguntas por tema para un test rápido de 15–20 preguntas.
+**55.** Una página **estática** es aquella que…
+a) No tiene CSS · b) Existe ya como fichero y se envía tal cual · c) No usa HTTP · d) Carga sin JavaScript
+
+**56.** La portada de un periódico, generada cada pocos minutos y guardada en CDN, es…
+a) Estática pura · b) Dinámica, aunque se sirva como estática · c) Un error de diseño · d) Renderizado en cliente
+
+**57.** Para un blog que vive del buscador conviene…
+a) CSR · b) SSR · c) Solo JavaScript · d) Una SPA sin servidor
+
+**58.** La forma más rápida de saber si una página es SSR es…
+a) Mirar la URL · b) Ver el código fuente y buscar el texto · c) Medir el tiempo de carga · d) Mirar las cookies
+
+**59.** En una aplicación con CSR, el primer HTML suele contener…
+a) Todo el texto · b) Prácticamente nada más que un contenedor vacío · c) La base de datos · d) El CSS en línea
+
+**60.** `java Servidor.java` permite…
+a) Compilar a `.class` y ejecutarlo después · b) Ejecutar el fuente directamente, sin proyecto · c) Crear un `.war` · d) Arrancar Tomcat
+
+**61.** Spring Boot, respecto al servidor web…
+a) Exige instalar Tomcat aparte · b) Lleva un servidor embebido dentro del `.jar` · c) Solo funciona con nginx · d) No necesita servidor
+
+**62.** La pieza que traduce entre objetos Java y tablas es…
+a) Maven · b) JPA / Hibernate · c) Thymeleaf · d) JUnit
+
+> **Soluciones E:** 55b · 56b · 57b · 58b · 59b · 60b · 61b · 62b
+
+---
+
+## Bloque F · Sobre los ejercicios
+
+Estas preguntas salen directamente de lo que hiciste en la [batería](ejercicios.md).
+
+**63.** Dada esta respuesta, el cliente debe buscar el recurso creado en…
+
+```http
+HTTP/1.1 201 Created
+Location: /api/v1/pedidos/8841
+```
+
+a) El cuerpo, siempre · b) La cabecera `Location` · c) Una cookie · d) La URL original
+
+**64.** Ejecutas esto y sale `415`. La causa es…
+
+```bash
+curl -i -X POST https://api.example/pedidos -d '{"a":1}'
+```
+
+a) Falta el token · b) Falta `-H "Content-Type: application/json"` · c) La URL está mal · d) `POST` no admite cuerpo
+
+**65.** En la salida de `curl -w`, el tramo `time_starttransfer − time_appconnect` mide…
+a) El DNS · b) El cifrado TLS · c) Lo que tardó el servidor en pensar · d) La descarga
+
+**66.** Repites la misma orden `curl -w` dos veces seguidas y `time_namelookup` baja casi a cero. Es porque…
+a) El servidor va más rápido · b) El DNS quedó cacheado · c) `curl` reutiliza la conexión TLS · d) Se activó HTTP/3
+
+**67.** Lanzas esto. La segunda orden devuelve…
+
+```bash
+curl -i https://httpbin.org/etag/abc123
+curl -i -H 'If-None-Match: "abc123"' https://httpbin.org/etag/abc123
+```
+
+a) `200` con cuerpo · b) `304` sin cuerpo · c) `404` · d) `412`
+
+**68.** Al decodificar la segunda parte de un JWT con `base64 -d` obtienes `{"sub":"ana@iesx.es","rol":"ALUMNO"}`. Eso demuestra que…
+a) El token está roto · b) El contenido de un JWT es legible por cualquiera · c) La firma es inválida · d) Falta cifrarlo
+
+**69.** En `curl`, `-c galletas.txt` sirve para…
+a) Enviar cookies · b) Guardar las cookies que manda el servidor · c) Borrar la caché · d) Comprimir la respuesta
+
+**70.** `curl -i` sin `-L` ante una redirección muestra…
+a) La página final · b) La respuesta `302` con su `Location`, y para ahí · c) Un error · d) Un `404`
+
+**71.** En el ejercicio del `Servidor.java`, `/hora` cambia en cada recarga y `hora.html` no. La razón es…
+a) El navegador cachea el HTML · b) El código de `/hora` se ejecuta en cada petición · c) El `.html` está mal escrito · d) El servidor no sirve ficheros
+
+**72.** Dos personas reservan la misma pista a la vez. La solución correcta es…
+a) Un `synchronized` en el servicio · b) Una restricción de unicidad en la base de datos y devolver `409` · c) Preguntar antes si está libre · d) Guardar las dos y avisar por correo
+
+> **Soluciones F:** 63b · 64b · 65c · 66b · 67b · 68b · 69b · 70b · 71b · 72b
+
+---
+
+## Simulacro cronometrado
+
+Cuando lleves la unidad hecha, siéntate **55 minutos con un reloj** y contesta estas 30, sin mirar nada:
+
+> **2 · 6 · 7 · 11 · 12 · 15 · 16 · 18 · 20 · 22 · 24 · 25 · 26 · 28 · 29 · 31 · 33 · 35 · 37 · 41 · 43 · 45 · 47 · 51 · 53 · 56 · 61 · 64 · 68 · 72**
+
+| Aciertos | Lectura |
+|:-:|---|
+| **24 o más** | Vas sobrado. Repasa solo lo que fallaste |
+| **18 a 23** | Aprobado holgado. Vuelve a los ejercicios del bloque que peor te fue |
+| **15 a 17** | Justo. Rehaz la batería entera antes del test |
+| **menos de 15** | Suspenso. El problema casi nunca es de memoria: es que faltan los ejercicios de consola |
+
+!!! tip "Cómo sacarle partido de verdad"
+    Contestar y mirar la solución sirve de poco. Lo que rinde es, **por cada fallo**, escribir en una línea *por qué* la tuya estaba mal. Si no sabes escribirla, ahí tienes lo que hay que releer.
+
+    Las respuestas de este banco siguen un orden fijo para poder corregir rápido; en el test real **el orden de las opciones está mezclado**, así que no memorices letras.

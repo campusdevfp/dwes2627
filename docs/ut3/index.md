@@ -32,8 +32,8 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 | **S6** | Jackson: serializar, deserializar, anidados y fechas | [3. JSON y Jackson](03-json-y-jackson.md) §3–5 |
 | **S7** | Fechas con `java.time` · validación y expresiones regulares | [4. Fechas y validación](04-fechas-y-validacion.md) |
 | **S8** | El patrón **Repositorio**, las capas y el proyecto integrador | [5. Repositorio y capas](05-repositorio-y-capas.md) completo |
-| **S9** | Laboratorio con la batería · repaso y dudas | [Batería de ejercicios](ejercicios.md) + [Preparar el examen](examen.md) |
-| **S10** | :material-form-select: **Test práctico de RA3 (100 %)** | [Preparar el examen](examen.md) |
+| **S9** | Laboratorio con la batería · repaso y dudas | [Batería de ejercicios](ejercicios.md) |
+| **S10** | :material-form-select: **Test práctico de RA3 (100 %)** | [Batería de test](autoevaluacion.md) |
 
 ## Cómo se evalúa
 
@@ -51,21 +51,15 @@ Acierto **+1**, fallo **−0,25**, en blanco **0**. Se examina con la chuleta im
 !!! warning "Que sea un test no significa que no haya que programar"
     Las opciones incorrectas de cada pregunta son **exactamente los fallos que se cometen escribiendo ese código**. Se reconoce un `ConcurrentModificationException` en un fragmento porque te ha saltado antes en tu propia pantalla.
 
-    Las prácticas y la batería siguen siendo la preparación, y siguen haciéndose programando.
+    La batería sigue siendo la preparación, y sigue haciéndose programando.
 
-**Lo que se evalúa** (detalle en la [página de preparación](examen.md)): elección de estructuras y orden · *streams* y agrupaciones · lectura de ficheros y las trampas del CSV · JSON con Jackson y fechas ISO · validación y rangos · qué va en cada capa.
+**Lo que se evalúa:** elección de estructuras y orden · *streams* y agrupaciones · lectura de ficheros y las trampas del CSV · JSON con Jackson y fechas ISO · validación y rangos · qué va en cada capa.
 
 ## Material
 
-- [Prácticas guiadas](practicas.md)
-    — 8 ejercicios con solución que construyen el proyecto integrador.
-- [Batería de ejercicios prácticos](ejercicios.md)
-    — 12 ejercicios de examen resueltos, con datos de partida y salidas esperadas.
-- [Preparar el examen](examen.md)
-    — formato, los cinco tipos de pregunta con ejemplos resueltos y un simulacro.
-- [Batería de test](autoevaluacion.md)
-    — preguntas del mismo tipo que las del examen, con solución razonada.
-- [comprobar tu trabajo con los tests](../comprobar-tu-trabajo.md)
-    — feedback de tu código + simulacros de examen.
-- [Chuleta de la UT3](chuleta.md)
-    — colecciones, ficheros, JSON y fechas en una página.
+| | |
+|---|---|
+| [**Batería de ejercicios**](ejercicios.md) | 38 con solución: 30 fragmentos y **8 programas completos** (E31–E38), que son la práctica integradora |
+| [**Batería de test**](autoevaluacion.md) | 46 preguntas del mismo tipo que las del examen, con solución razonada, y un simulacro cronometrado de 30 |
+| [Chuleta de la UT3](chuleta.md) | Colecciones, ficheros, JSON y fechas en una página |
+| [Comprobar tu trabajo](../comprobar-tu-trabajo.md) | Pega tu código y recibe comentarios |

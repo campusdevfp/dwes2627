@@ -164,11 +164,8 @@ nav:
       - 9. Seguridad y monitorización: ut1/09-seguridad-y-logs.md
       - 10. Resumen y autoevaluación: ut1/10-resumen-y-autoevaluacion.md
       - Chuleta: ut1/chuleta.md
-      - Prácticas guiadas: ut1/practicas.md
-      - Caso HuertoVecino (formativa): ut1/practica-evaluable.md
       - Batería de ejercicios: ut1/ejercicios.md
-      - Autoevaluación (tests): ut1/autoevaluacion.md
-      - Preparar el examen: ut1/examen.md
+      - Simulacro de test: ut1/autoevaluacion.md
     - UT2 · RA2 · Java moderno:
       - ut2/index.md
       - 1. Primeros pasos: ut2/01-primeros-pasos.md
@@ -178,10 +175,8 @@ nav:
       - 5. Excepciones y Optional: ut2/05-excepciones-y-optional.md
       - 6. Proyectos y testing: ut2/06-proyectos-y-testing.md
       - Chuleta de Java 25: ut2/chuleta.md
-      - Prácticas guiadas: ut2/practicas.md
       - Batería de ejercicios: ut2/ejercicios.md
-      - Autoevaluación (tests): ut2/autoevaluacion.md
-      - Preparar el examen: ut2/examen.md
+      - Simulacro de test: ut2/autoevaluacion.md
     - UT3 · RA3 · Datos, ficheros y JSON:
       - ut3/index.md
       - 1. Estructuras de datos: ut3/01-estructuras-de-datos.md
@@ -190,10 +185,8 @@ nav:
       - 4. Fechas y validación: ut3/04-fechas-y-validacion.md
       - 5. Repositorio y capas: ut3/05-repositorio-y-capas.md
       - Chuleta: ut3/chuleta.md
-      - Reto con tests: ut3/practicas.md
       - Batería de ejercicios: ut3/ejercicios.md
       - Batería de test: ut3/autoevaluacion.md
-      - Preparar el examen: ut3/examen.md
     - UT4 · RA5 · Capas con Spring Boot:
       - ut4/index.md
       - 1. Spring Boot: ut4/01-spring-boot.md
@@ -203,9 +196,8 @@ nav:
       - 5. Errores y configuración: ut4/05-errores-y-configuracion.md
       - 6. Testing en Spring: ut4/06-testing-en-spring.md
       - Chuleta: ut4/chuleta.md
-      - Reto con tests: ut4/practicas.md
+      - Retos: ut4/retos.md
       - Batería de ejercicios: ut4/ejercicios.md
-      - Preparar el examen: ut4/examen.md
     - UT5 · RA6 · Acceso a datos (JPA):
       - ut5/index.md
       - 1. Qué hace JPA por debajo: ut5/01-que-hace-jpa-por-debajo.md
@@ -215,9 +207,8 @@ nav:
       - 5. Transacciones e integridad: ut5/05-transacciones.md
       - 6. De H2 a producción: ut5/06-produccion.md
       - Chuleta: ut5/chuleta.md
-      - Reto con tests: ut5/practicas.md
+      - Retos: ut5/retos.md
       - Batería de ejercicios: ut5/ejercicios.md
-      - Preparar el examen: ut5/examen.md
     - UT6 · RA7 · Servicios web:
       - ut6/index.md
       - 1. Diseño de APIs REST: ut6/01-diseno-rest.md
@@ -229,9 +220,8 @@ nav:
       - 7. Testing de APIs: ut6/07-testing-apis.md
       - 8. Consumir APIs: ut6/08-consumir-apis.md
       - Chuleta: ut6/chuleta.md
-      - Reto con tests: ut6/practicas.md
+      - Retos: ut6/retos.md
       - Batería de ejercicios: ut6/ejercicios.md
-      - Preparar el examen: ut6/examen.md
 
   - 2.º trimestre · 80 h:
     - Proyecto · Pulso de Madrid:
