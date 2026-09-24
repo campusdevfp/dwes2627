@@ -19,22 +19,25 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 - [ ] Aplicar **POO**: clases, interfaces y `record`, y saber cuándo toca cada uno.
 - [ ] Manipular **colecciones** y encadenar operaciones con la API de *streams*.
 - [ ] Gestionar errores con **excepciones y `Optional`**, sin devolver `null`.
-- [ ] Montar un proyecto con **Maven o Gradle** y escribir sus primeros **tests con JUnit 5**.
+- [ ] Montar un proyecto con **Maven**, añadirle una dependencia y empaquetarlo en un `.jar` ejecutable.
 
 ## Calendario
 
 | Sesión (55') | En clase | Lectura previa |
 |---|---|---|
-| **S1** | Entorno: JDK 25, IntelliJ, tu primer programa | [IntelliJ](../entorno/intellij.md) + [1. Primeros pasos](01-primeros-pasos.md) |
-| **S2** | Tipos, `var`, operadores, control de flujo y el `switch` moderno | [2. Sintaxis y tipos](02-sintaxis-y-tipos.md) completo |
-| **S3** | Clases y objetos · **records**, enums y `equals`/`toString` | [3. POO en Java](03-poo-en-java.md) §1–4 |
-| **S4** | Herencia, interfaces y polimorfismo | [3. POO en Java](03-poo-en-java.md) §5–6 |
-| **S5** | Colecciones: `List`, `Map`, `Set` | [4. Colecciones y funcional](04-colecciones-y-funcional.md) §1–2 |
-| **S6** | Lambdas y **Streams** (el gran salto) | [4. Colecciones y funcional](04-colecciones-y-funcional.md) §3–4 |
-| **S7** | Excepciones y `Optional` · Maven, librerías y testing con JUnit 5 | [5. Excepciones y Optional](05-excepciones-y-optional.md) + [6. Proyectos y testing](06-proyectos-y-testing.md) |
-| **S8** | :material-form-select: **Test de RA2 (100 %)** — 30 preguntas | Repasa con la [autoevaluación](autoevaluacion.md) |
+| **S1** | Entorno y primer programa · tipos, `var`, cadenas y `switch` moderno | [1. Primeros pasos](01-primeros-pasos.md) + [2. Sintaxis y tipos](02-sintaxis-y-tipos.md) |
+| **S2** | Clases, encapsulación, **`record`** y `enum`, en `jshell` | [3. POO en Java](03-poo-en-java.md) §1–4 |
+| **S3** | **Interfaces** y el ejemplo largo de pedidos, paso a paso | [3. POO en Java](03-poo-en-java.md) §5–6 |
+| **S4** | Colecciones a fondo: `List`, `Set`, `Map` y cuál elegir | [4. Colecciones y funcional](04-colecciones-y-funcional.md) §1–6 |
+| **S5** | Lambdas, **streams** y `groupingBy` | [4. Colecciones y funcional](04-colecciones-y-funcional.md) §7–8 |
+| **S6** | Excepciones y `Optional`: cuándo cada uno | [5. Excepciones y Optional](05-excepciones-y-optional.md) |
+| **S7** | **Proyecto Maven paso a paso**: se junta toda la unidad | [6. Un proyecto Maven](06-proyecto-maven.md) |
+| **S8** | :material-form-select: **Test de RA2 (100 %)** — 30 preguntas | [Simulacro](autoevaluacion.md) |
 
-Cada página incluye **Pruébalo ahora** (código que ejecutas) y **Ejercicios con solución**.
+Cada página incluye **Pruébalo ahora** —código que se teclea en `jshell`— y **Ejercicios con solución**.
+
+!!! tip "Las sesiones 2 a 6 se dan con `jshell` en pantalla"
+    Los temas 3, 4 y 5 están escritos para eso: cada concepto lleva un fragmento que se teclea y devuelve el resultado al instante. Abre una terminal, escribe `jshell` y ve copiando.
 
 ## Antes de la S1
 

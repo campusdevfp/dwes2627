@@ -221,40 +221,44 @@ Collections.sort(resultado);
     Y no siempre gana: un bucle con varias condiciones cruzadas y efectos laterales suele quedar **más claro como bucle**. La regla es la legibilidad, no la moda.
 
 
-### E12 ●●● — Proyecto Maven con tests
+### E12 ●●● — Un proyecto Maven que arranca
 
-Monta un proyecto Maven con la clase `Liga` y escribe cuatro tests con JUnit 5: fichar correctamente, dorsal duplicado, buscar existente y buscar inexistente.
+Monta un proyecto Maven con la clase `Liga`, hazlo ejecutable con `mvn exec:java` y empaquétalo en un `.jar` que funcione con `java -jar`.
 
 ??? success "Solución"
 
-    ```java
-    class LigaTest {
-        private Liga liga;
-        @BeforeEach void preparar() { liga = new Liga(); }
+    `pom.xml`, lo mínimo que hace falta:
 
-        @Test void fichaUnJugadorNuevo() {
-            liga.fichar(new Jugador("Ana", 7, BASE, 0));
-            assertThat(liga.tamano()).isEqualTo(1);
-        }
-
-        @Test void dorsalDuplicadoLanzaExcepcion() {
-            liga.fichar(new Jugador("Ana", 7, BASE, 0));
-            assertThatThrownBy(() -> liga.fichar(new Jugador("Luis", 7, PIVOT, 0)))
-                .isInstanceOf(DorsalOcupadoException.class)
-                .hasMessageContaining("7");
-        }
-
-        @Test void buscaElQueExiste() {
-            liga.fichar(new Jugador("Ana", 7, BASE, 0));
-            assertThat(liga.buscarPorDorsal(7)).isPresent();
-        }
-
-        @Test void devuelveVacioSiNoExiste() {
-            assertThat(liga.buscarPorDorsal(99)).isEmpty();
-        }
-    }
+    ```xml
+    <properties>
+      <maven.compiler.release>25</maven.compiler.release>            <!-- (1) -->
+      <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+      <exec.mainClass>es.iesx.liga.Main</exec.mainClass>
+    </properties>
     ```
-    Los cuatro tests cubren el patrón que vas a repetir todo el curso: **camino bueno, error, encontrado y no encontrado**. El `@BeforeEach` garantiza que cada test parte de cero; compartir estado entre tests es la causa número uno de tests que pasan solos y fallan juntos.
+
+    1.  **Sin esta línea no compila un `record`.** Maven usa por defecto una versión antigua y el error es `records are not supported in -source 8`.
+
+    ```bash
+    mvn clean compile     # compila a target/classes
+    mvn exec:java         # ejecuta exec.mainClass
+    mvn clean package     # genera target/liga-1.0.0.jar
+    java -jar target/liga-1.0.0.jar
+    ```
+
+    Ese último da `no main manifest attribute`: el `.jar` no dice cuál es su clase principal. Se arregla con el complemento *shade* del [tema 6](06-proyecto-maven.md), o por la vía rápida:
+
+    ```bash
+    java -cp target/liga-1.0.0.jar es.iesx.liga.Main
+    ```
+
+    Y dos cosas que se preguntan:
+
+    | | |
+    |---|---|
+    | El código va en | `src/main/java/es/iesx/liga/` |
+    | Los datos y la configuración, en | `src/main/resources/` |
+    | `target/` | Generado. **Nunca se sube a Git** |
 
 
 ---
@@ -1098,47 +1102,65 @@ Escribe `CatalogoRepositorio` con `Optional<Producto> buscarPorNombre(String)` y
 
     Y la excepción de dominio no es decoración: en la UT4 se traduce automáticamente a un **404** sin que el servicio sepa nada de HTTP.
 
-### E35 ●●● — Tu primer test
+### E35 ●●● — El catálogo entero, en un proyecto Maven
 
-Para una `CalculadoraPrecios` con la regla «10 % de descuento desde 6 unidades», escribe tres tests: caso normal, caso con descuento y caso de error.
+Junta toda la unidad en un solo proyecto: `record` con validación, `enum` con datos, una interfaz con dos implementaciones, colecciones, *streams* y una excepción propia. Que se ejecute con `mvn exec:java`.
 
 ??? success "Solución"
 
+    La estructura mínima:
+
+    ```
+    catalogo/
+    ├── pom.xml
+    └── src/main/java/es/iesx/catalogo/
+        ├── Producto.java                    ← record con constructor compacto
+        ├── Categoria.java                   ← enum con descripción
+        ├── CatalogoRepositorio.java         ← interfaz
+        ├── CatalogoEnMemoria.java           ← implementación
+        ├── CatalogoServicio.java            ← las reglas y los streams
+        ├── ProductoNoEncontradoException.java
+        └── Main.java
+    ```
+
+    Lo que tiene que cumplir, y es lo que se evalúa:
+
     ```java
-    import org.junit.jupiter.api.Test;
-    import static org.junit.jupiter.api.Assertions.*;
+    public class CatalogoServicio {
 
-    class CalculadoraPreciosTest {
+        private final CatalogoRepositorio repositorio;
 
-        private final CalculadoraPrecios calculadora = new CalculadoraPrecios();
-
-        @Test
-        void noAplicaDescuentoConMenosDeSeisUnidades() {
-            assertEquals(40.0, calculadora.total(2, 20.0), 0.001);   // (1)
+        public CatalogoServicio(CatalogoRepositorio repositorio) {   // (1)
+            this.repositorio = repositorio;
         }
 
-        @Test
-        void aplicaDiezPorCientoDesdeSeisUnidades() {
-            assertEquals(180.0, calculadora.total(10, 20.0), 0.001);
+        public Producto obtener(String codigo) {
+            return repositorio.buscarPorCodigo(codigo)               // (2)
+                    .orElseThrow(() -> new ProductoNoEncontradoException(codigo));
         }
 
-        @Test
-        void rechazaCantidadNegativa() {
-            assertThrows(IllegalArgumentException.class,
-                    () -> calculadora.total(-1, 20.0));
+        public Map<Categoria, Long> conteoPorCategoria() {
+            return repositorio.listar().stream()
+                    .collect(Collectors.groupingBy(Producto::categoria,
+                             TreeMap::new,                           // (3)
+                             Collectors.counting()));
         }
     }
     ```
 
-    1.  El tercer parámetro es la **tolerancia**. Comparar `double` con `==` falla por redondeo: `assertEquals(0.3, 0.1 + 0.2)` no pasa.
+    1.  **Recibe la interfaz por constructor.** Ningún `new` de una implementación concreta dentro del servicio.
+    2.  El repositorio devuelve `Optional`; **el servicio decide** que no encontrarlo es un error.
+    3.  `TreeMap::new` para que el informe salga siempre en el mismo orden.
 
-    Lo que se evalúa en este ejercicio no es la sintaxis de JUnit, son **tres decisiones**:
+    Y la prueba de que está bien montado: escribe una segunda implementación del repositorio y **cambia solo la línea del `main`**.
 
-    - **Los nombres describen la regla de negocio**, no el método. Si falla `aplicaDiezPorCientoDesdeSeisUnidades`, ya sabes qué se rompió sin abrir el código. `test1` no dice nada.
-    - **Hay un caso de error.** Un conjunto de tests que solo prueba el camino feliz no prueba casi nada.
-    - **Está el límite.** Con 6 unidades exactas, ¿hay descuento? Los fallos viven en los bordes: prueba 5, 6 y 7.
+    ```java
+    CatalogoRepositorio repositorio = new CatalogoEnFichero(...);   // única línea que cambia
+    var servicio = new CatalogoServicio(repositorio);               // ni se entera
+    ```
 
-    La estructura de los tres es la misma, y se llama **AAA**: *Arrange* (preparar), *Act* (ejecutar), *Assert* (comprobar).
+    Si al hacer ese cambio te ves tocando el servicio, las piezas no están bien separadas. El desarrollo completo, paso a paso, está en el [tema 6](06-proyecto-maven.md).
+
 
 ---
 
@@ -1157,7 +1179,7 @@ Para una `CalculadoraPrecios` con la regla «10 % de descuento desde 6 unidades�
 | E9 · Excepciones propias | ●● | S8 | Prepara la UT4 |
 | E10 · `Optional` | ●● | S8 | |
 | E11 · Bucles a streams | ●●● | S8 | |
-| E12 · Maven y tests | ●●● | S9 | Prepara todo el curso |
+| E12 · Un proyecto Maven | ●●● | S8 | Prepara todo el curso |
 | **E13 · Bloques de texto** | ● | S3 | Reaparece en la UT6 con JSON |
 | **E14 · `var` bien y mal** | ● | S3 | Criterio, no sintaxis |
 | **E15 · `instanceof` con patrón** | ●● | S5 | |
@@ -1180,7 +1202,7 @@ Para una `CalculadoraPrecios` con la regla «10 % de descuento desde 6 unidades�
 | **E32 · Métodos de pago** | ●● | S5 | **Prepara la UT4** |
 | **E33 · Informe de ventas** | ●●● | S7 | |
 | **E34 · Repositorio robusto** | ●●● | S8 | **Prepara la UT3 y la UT4** |
-| **E35 · Tu primer test** | ●●● | S9 | El patrón de todo el curso |
+| **E35 · El catálogo entero** | ●●● | S8 | Cierra la unidad y prepara la UT4 |
 
 !!! tip "Los doce primeros son el núcleo"
     Del **E13 al E27** es ampliación; del **E28 al E35** son programas completos, uno por tema. En un grupo que va rodado se hacen en clase; en uno que va justo, quedan como refuerzo guiado. El **E27** conviene hacerlo siempre: es la unidad entera en un solo ejercicio.

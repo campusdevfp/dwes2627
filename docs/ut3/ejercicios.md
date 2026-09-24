@@ -2,20 +2,21 @@
 
 **Dominio: una tienda de bicicletas.** Distinto del de las prácticas guiadas a propósito.
 
-**38 ejercicios agrupados por tema**, con solución: 30 fragmentos y **8 programas completos** (E31–E38), que son la práctica integradora de la unidad. Todos se ejecutan con `java Fichero.java` salvo los de Jackson, que necesitan Maven.
+**40 ejercicios agrupados por bloque**, con solución: 32 fragmentos y **8 programas completos** (E33–E40), que son la práctica integradora de la unidad. Todos se ejecutan con `java Fichero.java` salvo los de Jackson, que necesitan Maven.
 
-| Tema | Ejercicios | Sesiones |
+| Bloque | Ejercicios | Sesiones |
 |---|---|:-:|
-| 1 · Estructuras de datos | E1–E7 | S1–S2 |
-| 2 · Ficheros | E8–E14 | S3–S4 |
-| 3 · JSON y Jackson | E15–E20 | S5–S6 |
-| 4 · Fechas y validación | E21–E25 | S7 |
-| 5 · Repositorio y capas | E26–E30 | S8–S9 |
-| **6 · Taller largo: ocho programas** | **E31–E38** | S1–S9 |
+| 1 · Estructuras aplicadas | E1–E7 | S1–S2 |
+| 2 · CSV | E8–E14 | S3 |
+| 3 · JSON con Jackson | E15–E20 | S4–S5 |
+| 4 · Fechas y validación | E21–E25 | S6–S7 |
+| **5 · Base de datos con JDBC** | **E26–E31** | **S8–S9** |
+| Cierre · escribe tú las preguntas | E32 | S10 |
+| 6 · Taller largo: programas completos | E33–E40 | S1–S9 |
 
 ---
 
-# Tema 1 · Estructuras de datos
+# Tema 1 · Estructuras de datos, aplicadas
 
 ### E1 ● — Elegir la estructura
 
@@ -125,7 +126,7 @@ for (Bici b : bicis) if (!marcas.contains(b.marca())) marcas.add(b.marca());
 
 ---
 
-# Tema 2 · Ficheros
+# Tema 2 · CSV: leer y escribir
 
 ### E8 ● — Leer y contar
 
@@ -217,27 +218,37 @@ Que un fallo a mitad de la escritura no deje el fichero corrupto.
     Si el proceso muere a mitad, el fichero original sigue intacto. Es lo que hace cualquier editor de texto al guardar.
 
 
-### E13 ●● — Recorrer una carpeta
+### E13 ●● — El CSV del ERP
 
-Inventario de una carpeta: nombre, tamaño y fecha de todos los `.csv`, incluidos los de subcarpetas.
+Te pasan un fichero exportado de un programa español: separador `;`, decimales con coma y algún campo entrecomillado con comas dentro. Léelo.
 
 ??? success "Solución"
 
     ```java
-    try (var rutas = Files.walk(carpeta)) {
-        rutas.filter(Files::isRegularFile)
-             .filter(p -> p.toString().endsWith(".csv"))
-             .sorted(comparing(p -> p.getFileName().toString()))
-             .forEach(p -> {
-                 try {
-                     IO.println("%-30s %8d bytes  %s".formatted(
-                         p.getFileName(), Files.size(p),
-                         Files.getLastModifiedTime(p).toInstant()));
-                 } catch (IOException e) { throw new UncheckedIOException(e); }
-             });
+    var formato = CSVFormat.DEFAULT.builder()
+            .setDelimiter(';')                    // (1)
+            .setHeader().setSkipHeaderRecord(true)
+            .setIgnoreEmptyLines(true).setTrim(true)
+            .get();
+
+    var numeros = NumberFormat.getInstance(new Locale("es", "ES"));   // (2)
+
+    try (var lector = Files.newBufferedReader(ruta, StandardCharsets.UTF_8);
+         var csv = formato.parse(lector)) {
+
+        for (var fila : csv) {
+            var precio = numeros.parse(fila.get("precio")).doubleValue();
+            …
+        }
     }
     ```
-    El `UncheckedIOException` dentro del `forEach` es el patrón habitual: las lambdas no pueden lanzar excepciones comprobadas.
+
+    1.  Excel en español exporta con **punto y coma**, porque la coma ya la usa para los decimales.
+    2.  `Double.parseDouble("25,90")` lanza `NumberFormatException`. Hay que convertir teniendo en cuenta el idioma.
+
+    Y el campo entrecomillado con comas dentro —`"Cien años de soledad, edición especial"`— lo resuelve la librería sola. A mano, con `split`, ese campo se parte en dos y todo lo que viene detrás se desplaza.
+
+    **Es el motivo por el que se usa Commons CSV y no `split`.**
 
 
 ### E14 ●●● — Errores de E/S bien tratados
@@ -264,7 +275,7 @@ Trata por separado: fichero que no existe, sin permisos, y contenido mal formado
 
 ---
 
-# Tema 3 · JSON y Jackson
+# Tema 3 · JSON con Jackson
 
 ### E15 ● — De objeto a JSON
 
@@ -438,80 +449,237 @@ Valida matrícula, correo y código postal, y explica por qué el correo es un c
 
 ---
 
-# Tema 5 · Repositorio y capas
+# Tema 5 · Base de datos con JDBC
 
-### E26 ●● — La interfaz primero
+### E26 ● — Las cuatro piezas
 
-Define `BiciRepositorio` como interfaz y una implementación en memoria.
+Empareja cada clase de JDBC con lo que hace, y di cuáles hay que cerrar.
+
+`Connection` · `PreparedStatement` · `ResultSet` · `DriverManager`
 
 ??? success "Solución"
 
+    | Pieza | Qué hace | ¿Cerrar? |
+    |---|---|:-:|
+    | `DriverManager` | Fabrica conexiones a partir de la URL | No |
+    | `Connection` | La conexión abierta con la base de datos | **Sí** |
+    | `PreparedStatement` | La consulta con huecos `?` | **Sí** |
+    | `ResultSet` | El resultado, fila a fila | **Sí** |
+
+    Las tres se cierran, y por eso van siempre en un `try-with-resources`:
+
     ```java
-    public interface BiciRepositorio {
-        List<Bici> buscarTodas();
-        Optional<Bici> buscarPorBastidor(String bastidor);
-        Bici guardar(Bici bici);
-        boolean borrar(String bastidor);
+    try (var con = DriverManager.getConnection(url, usuario, clave);
+         var ps  = con.prepareStatement(sql);
+         var rs  = ps.executeQuery()) { … }
+    ```
+
+    Se cierran **en orden inverso** —`rs`, `ps`, `con`— y **todas**, aunque una falle al cerrarse.
+
+### E27 ●● — `executeQuery` o `executeUpdate`
+
+Di cuál se usa en cada caso y qué devuelve.
+
+(a) `SELECT * FROM producto` · (b) `INSERT INTO producto …` · (c) `UPDATE producto SET stock = ?` · (d) `DELETE FROM producto WHERE id = ?` · (e) `CREATE TABLE …`
+
+??? success "Solución"
+
+    | | Método | Devuelve |
+    |---|---|---|
+    | (a) `SELECT` | `executeQuery()` | Un `ResultSet` |
+    | (b) `INSERT` | `executeUpdate()` | Filas insertadas (1) |
+    | (c) `UPDATE` | `executeUpdate()` | **Filas modificadas** |
+    | (d) `DELETE` | `executeUpdate()` | **Filas borradas** |
+    | (e) `CREATE TABLE` | `execute()` | `boolean` (aquí, `false`) |
+
+    Y lo útil de verdad: **el número que devuelve `executeUpdate` dice si existía**, sin hacer antes un `SELECT`.
+
+    ```java
+    public boolean actualizarStock(String codigo, int stock) {
+        …
+        return ps.executeUpdate() == 1;      // false si ese código no está
     }
     ```
-    La interfaz es el contrato. En la UT4 aparecerá una implementación con Spring y en la UT5 otra con JPA, **sin tocar nada de lo que la usa**.
 
+### E28 ●●● — La inyección SQL, provocada
 
-### E27 ●● — Cambiar CSV por JSON tocando una línea
-
-Dos implementaciones del mismo repositorio, y que el servicio no se entere.
+Escribe la versión insegura de una búsqueda por código, pásale `x' OR '1'='1` y cuenta las filas. Después arréglala.
 
 ??? success "Solución"
 
     ```java
-    class BiciRepositorioCsv  implements BiciRepositorio { … }
-    class BiciRepositorioJson implements BiciRepositorio { … }
-    ```
-    ```java
-    BiciRepositorio repo = new BiciRepositorioJson(ruta);   // ← la única línea que cambia
-    var servicio = new BiciServicio(repo);
-    ```
-    Este ejercicio vale por toda la explicación teórica de las interfaces. Hazlo y comprueba que el servicio y sus tests siguen pasando sin tocarlos.
-
-
-### E28 ●● — El servicio con las reglas
-
-`vender(bastidor)`: no existe → excepción; ya vendida → otra excepción; si no, marca y devuelve.
-
-??? success "Solución"
-
-    ```java
-    public Bici vender(String bastidor) {
-        var bici = repositorio.buscarPorBastidor(bastidor)
-            .orElseThrow(() -> new BiciNoEncontradaException(bastidor));
-        if (bici.vendida()) throw new BiciYaVendidaException(bastidor);
-        return repositorio.guardar(bici.conVendida(true));
+    // INSEGURA · solo para verlo
+    var sql = "SELECT * FROM producto WHERE codigo = '" + codigo + "'";
+    try (var con = conectar(); var st = con.createStatement();
+         var rs = st.executeQuery(sql)) {
+        int n = 0; while (rs.next()) n++;
+        System.out.println("Filas: " + n);      // ← la tabla ENTERA
     }
     ```
-    El orden importa: **primero existencia, después estado**. Es exactamente el criterio que se evalúa en la UT4 y en el examen del trimestre.
 
+    La consulta que llega a la base de datos es:
 
-### E29 ●●● — Catálogo en capas completo
+    ```sql
+    SELECT * FROM producto WHERE codigo = 'x' OR '1'='1'
+    ```
 
-Monta repositorio, servicio y una capa de presentación por consola, con las tres separadas.
+    `'1'='1'` es siempre cierto. Y con un poco más: `x'; DROP TABLE producto; --`.
+
+    ```java
+    // SEGURA
+    try (var con = conectar();
+         var ps = con.prepareStatement("SELECT * FROM producto WHERE codigo = ?")) {
+        ps.setString(1, codigo);
+        …
+    }
+    ```
+
+    **La estructura de la consulta viaja primero y el valor va aparte.** Cuando la base de datos recibe el dato ya tiene decidido qué es una consulta y qué es un valor, así que el dato no puede cambiar nada: busca un código llamado literalmente `x' OR '1'='1` y no lo encuentra.
+
+    La regla, sin excepciones: **ningún valor que venga de fuera se concatena en un SQL. Nunca.**
+
+### E29 ●● — La comprobación con carrera
+
+```java
+if (dao.buscarPorCodigo(p.codigo()).isPresent()) {
+    throw new CodigoDuplicadoException(p.codigo());
+}
+dao.insertar(p);
+```
+
+Además de hacer dos consultas, ¿qué problema tiene?
 
 ??? success "Solución"
 
-    ``` { .text .sinajuste }
-    src/
-    ├── modelo/Bici.java  Tipo.java
-    ├── repositorio/BiciRepositorio.java  BiciRepositorioCsv.java
-    ├── servicio/BiciServicio.java  excepciones
-    └── ui/Consola.java  Main.java
-    ```
-    La regla que se comprueba: **`Consola` no importa nada de `repositorio`**. Si lo hace, las capas están rotas.
+    **Hay un hueco entre la comprobación y la inserción.** Si dos procesos hacen esto a la vez:
 
-    ```bash
-    grep -r "import.*repositorio" src/ui/     # no debe devolver nada
+    ```
+    Proceso A: ¿existe SEG-01? → no
+    Proceso B: ¿existe SEG-01? → no
+    Proceso A: INSERT SEG-01   → ok
+    Proceso B: INSERT SEG-01   → ¡duplicado!
     ```
 
+    Se llama **condición de carrera**, y no se arregla con más comprobaciones: se arregla dejando que lo garantice la base de datos.
 
-### E30 ●●● — Convierte tus propios ejercicios en preguntas
+    ```sql
+    codigo VARCHAR(20) NOT NULL UNIQUE
+    ```
+
+    ```java
+    try {
+        …
+        ps.executeUpdate();
+    } catch (SQLIntegrityConstraintViolationException e) {
+        throw new CodigoDuplicadoException(p.codigo(), e);
+    }
+    ```
+
+    La restricción `UNIQUE` es **atómica**: no tiene hueco. Es una consulta en vez de dos, y además es correcta.
+
+    Este mismo razonamiento reaparece en la UT5 con las entidades JPA.
+
+### E30 ●● — La conexión que se queda abierta
+
+```java
+public List<Producto> listar() throws SQLException {
+    var con = DriverManager.getConnection(url, usuario, clave);
+    var ps = con.prepareStatement("SELECT * FROM producto");
+    var rs = ps.executeQuery();
+    var lista = new ArrayList<Producto>();
+    while (rs.next()) lista.add(aProducto(rs));
+    return lista;
+}
+```
+
+Funciona en las pruebas y revienta en producción. ¿Por qué?
+
+??? success "Solución"
+
+    **No se cierra nada.** Cada llamada deja una conexión abierta, y las bases de datos tienen un límite:
+
+    ```
+    com.mysql.cj.jdbc.exceptions.CJCommunicationsException: Too many connections
+    ```
+
+    Lo traicionero es que el síntoma aparece **lejos de la causa y solo bajo carga**: en tu máquina, llamando cinco veces, nunca falla.
+
+    ```java
+    try (var con = conectar();
+         var ps  = con.prepareStatement("SELECT * FROM producto");
+         var rs  = ps.executeQuery()) {
+
+        var lista = new ArrayList<Producto>();
+        while (rs.next()) lista.add(aProducto(rs));
+        return List.copyOf(lista);
+    }
+    ```
+
+    Y un aviso para la UT4: abrir una conexión es **caro**. Por eso las aplicaciones de verdad usan un *pool* —HikariCP, que trae Spring Boot— que las reutiliza. El `try-with-resources` sigue haciendo falta: lo que hace `close()` entonces es devolverla al *pool*, no cerrarla.
+
+### E31 ●●● — El mismo código, otra base de datos
+
+Tienes el CRUD funcionando con H2 y te piden pasarlo a MySQL en Docker. ¿Qué tocas exactamente?
+
+??? success "Solución"
+
+    Dos cosas, y ninguna está en el DAO:
+
+    1. **La dependencia del driver** en el `pom.xml`:
+
+    ```xml
+    <dependency>
+      <groupId>com.mysql</groupId>
+      <artifactId>mysql-connector-j</artifactId>
+      <version>9.1.0</version>
+    </dependency>
+    ```
+
+    2. **La cadena de conexión**:
+
+    ```java
+    // antes
+    new ProductoDao("jdbc:h2:./datos/tienda", "sa", "");
+    // después
+    new ProductoDao("jdbc:mysql://localhost:3306/tienda?serverTimezone=Europe/Madrid",
+                    "alumno", "alumno");
+    ```
+
+    Y el `compose.yaml`, con las dos cosas que se olvidan:
+
+    ```yaml
+    services:
+      mysql:
+        image: mysql:8.4
+        environment:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: tienda
+          MYSQL_USER: alumno
+          MYSQL_PASSWORD: alumno
+        ports: ["3306:3306"]
+        volumes:
+          - datos-mysql:/var/lib/mysql       # (1)
+        healthcheck:                         # (2)
+          test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+          interval: 5s
+          retries: 10
+
+    volumes:
+      datos-mysql:
+    ```
+
+    1.  **Sin el volumen los datos desaparecen** con el contenedor. Y `docker compose down -v` sí los borra: esa `-v` es la peligrosa.
+    2.  Un contenedor arrancado **no es** una base de datos lista. El `healthcheck` dice cuándo acepta conexiones de verdad.
+
+    Que el DAO no se toque es exactamente lo que aporta JDBC: es un estándar, y el *driver* traduce.
+
+    El matiz profesional: **desarrolla contra el mismo motor que usarás en producción**. Probar con H2 y desplegar en MySQL es la forma más segura de descubrir las diferencias el día del despliegue.
+
+---
+
+# Cierre
+
+### E32 ●●● — Convierte tus propios ejercicios en preguntas
 
 Coge tres ejercicios que ya hayas resuelto y **escribe una pregunta de test sobre cada uno**, con sus cuatro opciones y los tres distractores plausibles.
 
@@ -560,12 +728,12 @@ Coge tres ejercicios que ya hayas resuelto y **escribe una pregunta de test sobr
 
 ## Taller largo: ocho programas completos
 
-!!! reto "Del E31 al E38 se entrega un programa que funciona"
+!!! reto "Del E33 al E40 se entrega un programa que funciona"
     Los treinta primeros son fragmentos; estos son **programas enteros**, uno por bloque del temario. Eran el antiguo «reto con tests»: ahora están aquí, resueltos, porque en esta unidad lo que hay que entrenar es **reconocer**, no entregar.
 
     El dominio es distinto a propósito: un catálogo de productos, para que no valga copiar del de bicis.
 
-### E31 ● — Elige la estructura y justifícalo
+### E33 ● — Elige la estructura y justifícalo
 
 Declara la estructura adecuada para cada caso: (a) últimas 10 búsquedas, la más reciente primero · (b) correos suscritos · (c) ranking alfabético sin repetidos · (d) las notas de cada alumno · (e) cola de impresión.
 
@@ -596,7 +764,7 @@ Declara la estructura adecuada para cada caso: (a) últimas 10 búsquedas, la m�
     | `TreeMap` | Clave | Natural | Claves no |
     | `ArrayDeque` | Extremos | De inserción | Sí |
 
-### E32 ●● — Informe de ventas
+### E34 ●● — Informe de ventas
 
 Con `record Venta(String vendedor, String producto, int unidades, double precio)`, calcula: facturación por vendedor, producto más vendido en unidades, media de unidades y el ranking de vendedores por facturación descendente.
 
@@ -628,7 +796,7 @@ Con `record Venta(String vendedor, String producto, int unidades, double precio)
 
     `average()` devuelve **`OptionalDouble`**, no `double`, porque la lista puede estar vacía. De ahí el `orElse(0)`.
 
-### E33 ●● — Lector de CSV
+### E35 ●● — Lector de CSV
 
 Crea `datos/productos.csv` con cabecera y cinco productos. Escribe `List<Producto> leer(Path)` que lo convierta en objetos, saltando la cabecera y las líneas en blanco.
 
@@ -658,7 +826,7 @@ Crea `datos/productos.csv` con cabecera y cinco productos. Escribe `List<Product
 
     Esos cuatro detalles son, literalmente, cuatro preguntas del test.
 
-### E34 ●● — Escribir y capturar el fallo
+### E36 ●● — Escribir y capturar el fallo
 
 Escribe los productos de más de 100 € en `caros.csv` conservando la cabecera. Después provoca y captura un `NoSuchFileException`.
 
@@ -697,7 +865,7 @@ Escribe los productos de más de 100 € en `caros.csv` conservando la cabecera.
 
     Y `%n` es el salto de línea **del sistema**; `\n` es siempre `\n`. Para un fichero que se va a leer en otra máquina, `\n` es más predecible.
 
-### E35 ●● — De CSV a JSON
+### E37 ●● — De CSV a JSON
 
 Convierte tu CSV en un `productos.json` legible, con Jackson.
 
@@ -723,7 +891,7 @@ Convierte tu CSV en un `productos.json` legible, con Jackson.
 
     Sin el módulo de `java.time`, un `LocalDate` sale como `[2026,3,14]`. Es la pregunta de Jackson que más cae.
 
-### E36 ●● — Consumir JSON ajeno
+### E38 ●● — Consumir JSON ajeno
 
 Te llega esto de una API. Diseña el record y deserialízalo sin que falle por el campo `stock`, que no te interesa.
 
@@ -749,7 +917,7 @@ Te llega esto de una API. Diseña el record y deserialízalo sin que falle por e
 
     La alternativa a desactivarlo globalmente es `@JsonIgnoreProperties(ignoreUnknown = true)` sobre el record. Hace lo mismo, acotado a esa clase.
 
-### E37 ●●● — Reservas validadas
+### E39 ●●● — Reservas validadas
 
 Crea `record Reserva(String cliente, String email, LocalDate entrada, LocalDate salida)` que valide en el constructor: cliente no vacío, correo con formato, entrada no pasada y salida posterior a la entrada. Añade `noches()`.
 
@@ -793,81 +961,86 @@ Crea `record Reserva(String cliente, String email, LocalDate entrada, LocalDate 
 
     `ChronoUnit.DAYS.between` da **noches**, no días de estancia: del 1 al 3 son 2 noches. Ese `±1` es el fallo clásico de cualquier aplicación de reservas.
 
-### E38 ●●● — Catálogo en capas, entero
+### E40 ●●● — El CRUD entero, de CSV a base de datos
 
-Monta: `Producto` (record) · `ProductoRepositorio` (interfaz) · `ProductoRepositorioCsv` · `ProductoServicio` · `App`. Después añade `ProductoRepositorioJson` y comprueba que **el servicio no cambia**. Termina con un test que use un repositorio en memoria.
+Monta un proyecto Maven que **cargue el CSV del E35, lo vuelque en una base de datos H2 y ofrezca las cuatro operaciones**: insertar, listar, actualizar el stock y borrar. Después repítelo contra MySQL en Docker sin tocar el DAO.
 
 ??? success "Solución"
 
-    ```java
-    interface ProductoRepositorio {
-        List<Producto> listar();
-        Optional<Producto> buscarPorId(int id);
-    }
+    El esqueleto:
 
-    class ProductoRepositorioCsv implements ProductoRepositorio {
-        private final Path fichero;
-        ProductoRepositorioCsv(Path fichero) { this.fichero = fichero; }
-
-        @Override public List<Producto> listar() { /* el E33 */ }
-        @Override public Optional<Producto> buscarPorId(int id) {
-            return listar().stream().filter(p -> p.id() == id).findFirst();
-        }
-    }
-
-    class ProductoServicio {
-        private final ProductoRepositorio repositorio;
-
-        ProductoServicio(ProductoRepositorio repositorio) {    // (1)
-            this.repositorio = repositorio;
-        }
-
-        Producto obtener(int id) {
-            return repositorio.buscarPorId(id)
-                    .orElseThrow(() -> new ProductoNoEncontradoException(id));
-        }
-
-        double precioConIva(int id) { return obtener(id).precio() * 1.21; }
-    }
+    ```
+    crud/
+    ├── pom.xml                      ← h2, mysql-connector-j, commons-csv
+    ├── compose.yaml
+    ├── datos/productos.csv
+    └── src/main/java/es/iesx/crud/
+        ├── Producto.java            ← record con validación y BigDecimal
+        ├── ProductoDao.java         ← las cinco operaciones
+        ├── AccesoDatosException.java
+        ├── CodigoDuplicadoException.java
+        └── Main.java
     ```
 
-    1.  **Por constructor, y la interfaz.** Nunca `new ProductoRepositorioCsv(...)` dentro del servicio.
+    **La carga inicial**, que es lo que junta los dos temas:
 
-    Las cinco cosas que se comprueban:
+    ```java
+    var dao = new ProductoDao("jdbc:h2:./datos/tienda", "sa", "");
+    dao.crearTabla();
 
-    | | |
+    int cargados = 0, duplicados = 0, descartados = 0;
+
+    for (var fila : leerCsv(Path.of("datos/productos.csv"))) {        // (1)
+        try {
+            dao.insertar(fila);
+            cargados++;
+        } catch (CodigoDuplicadoException e) {
+            duplicados++;                                            // (2)
+        }
+    }
+    System.out.printf("Cargados %d · duplicados %d · descartados %d%n",
+                      cargados, duplicados, descartados);
+    ```
+
+    1.  El lector del E35, con Commons CSV y contando los descartes por formato.
+    2.  **El duplicado no se comprueba antes: se deja fallar** y se traduce. Es una consulta en vez de dos y, sobre todo, no tiene la carrera del E29.
+
+    Las cuatro operaciones, con lo que se evalúa de cada una:
+
+    | Operación | Clave |
     |---|---|
-    | 1 | El servicio **recibe** la interfaz; no crea la implementación |
-    | 2 | El repositorio **no tiene reglas de negocio**: nada de IVA ni de umbrales |
-    | 3 | `buscarPorId` devuelve `Optional`; **el servicio** decide si eso es un error |
-    | 4 | Cambiar de CSV a JSON toca **una línea**, la del `main` |
-    | 5 | El test usa un repositorio en memoria, **sin tocar el disco** |
+    | `insertar` | `PreparedStatement` con `?` y `RETURN_GENERATED_KEYS` |
+    | `listar` | `try-with-resources` con las **tres** piezas |
+    | `actualizarStock` | Devolver `executeUpdate() == 1` en vez de hacer antes un `SELECT` |
+    | `borrar` | Lo mismo |
+    | `buscarPorCodigo` | Devolver **`Optional`**, no `null` |
 
-    La línea que lo demuestra todo:
-
-    ```java
-    ProductoRepositorio repo = new ProductoRepositorioJson(Path.of("datos/productos.json"));
-    var servicio = new ProductoServicio(repo);   // ni se entera del cambio
-    ```
-
-    Y el test, que es lo que hace que todo lo anterior tenga sentido:
+    Y la comprobación que cierra la unidad:
 
     ```java
-    @Test
-    void lanzaSiNoExiste() {
-        ProductoRepositorio enMemoria = new ProductoRepositorio() {
-            public List<Producto> listar() { return List.of(); }
-            public Optional<Producto> buscarPorId(int id) { return Optional.empty(); }
-        };
-        var servicio = new ProductoServicio(enMemoria);
-
-        assertThrows(ProductoNoEncontradoException.class, () -> servicio.obtener(99));
-    }
+    System.out.println(dao.buscarPorCodigo("x' OR '1'='1").isPresent());   // false
     ```
 
-    Sin la interfaz, este test necesitaría un fichero CSV de prueba en el disco. **Por eso existe la interfaz**, y esa es la respuesta que hay que saber dar.
+    **El paso a MySQL: dos cambios y ninguno en el DAO.**
 
-    En la UT4 esto mismo lo hace Spring por ti: la interfaz es la misma, el `new` lo pone el marco de trabajo y se llama inyección de dependencias.
+    ```java
+    var dao = new ProductoDao(
+            "jdbc:mysql://localhost:3306/tienda?serverTimezone=Europe/Madrid",
+            "alumno", "alumno");
+    ```
+
+    ```bash
+    docker compose up -d
+    docker compose ps          # esperar a (healthy)
+    mvn exec:java
+    ```
+
+    Si al cambiar de motor has tenido que tocar el DAO, mira qué has tocado: casi siempre es un tipo concreto de H2 o un SQL que no era estándar. **Ese descubrimiento es el objetivo del ejercicio.**
+
+    !!! success "Lo que demuestra este ejercicio"
+        Que sabes llevar un dato desde un fichero que te dan hasta una base de datos consultable, contando lo que se pierde por el camino y sin dejar un agujero de seguridad.
+
+        Es, literalmente, la primera tarea que se le encarga a alguien que entra en un equipo de desarrollo.
 
 ---
 
@@ -879,11 +1052,11 @@ La correspondencia es directa. Cada bloque de ejercicios alimenta un bloque de p
 
 | Ejercicios | Preguntas del examen | Qué se pregunta exactamente |
 |---|:-:|---|
-| **E1–E7** · Estructuras | 8 preguntas | Qué imprime un `HashMap` frente a un `TreeMap`; qué devuelve `groupingBy`; en qué nivel actúa el `TreeMap::new`; el tipo que devuelve `counting()` |
-| **E8–E14** · Ficheros | 7 preguntas | Por qué falla un `split` sin `-1`; qué pasa sin `skip(1)`; el separador cambiado; `Files.lines` sin cerrar; la ruta relativa |
-| **E15–E20** · JSON | 6 preguntas | La fecha que sale como `[2026,3,14]`; el campo nulo que aparece; `get` frente a `path`; el campo desconocido que revienta |
-| **E21–E25** · Fechas y validación | 5 preguntas | `LocalDate` es inmutable: el `plusDays` que se pierde; solapes de rangos; el `BigDecimal` con `double` |
-| **E26–E29** · Repositorio y capas | 4 preguntas | Qué capa puede importar a cuál; el orden existencia → estado; qué devuelve el repositorio cuando no encuentra |
+| **E1–E7** · Estructuras | 7 preguntas | Qué imprime un `HashMap` frente a un `TreeMap`; qué devuelve `groupingBy`; en qué nivel actúa el `TreeMap::new` |
+| **E8–E14** · CSV | 6 preguntas | Por qué falla un `split` sin `-1`; qué pasa sin `skip(1)`; `Files.lines` sin cerrar; el decimal con coma que rompe el fichero |
+| **E15–E20** · JSON | 6 preguntas | La fecha que sale como `[2026,3,14]`; `get` frente a `path`; el campo desconocido que revienta; `TypeReference` |
+| **E21–E25** · Fechas y validación | 5 preguntas | La inmutabilidad de `java.time`; solapes de rangos; `BigDecimal` frente a `double` |
+| **E26–E31** · Base de datos | 6 preguntas | `executeQuery` o `executeUpdate`; la inyección SQL; la conexión sin cerrar; `UNIQUE` frente a comprobarlo tú |
 
 !!! reto "Las tres cosas que de verdad transfieren"
     Hacer ejercicios **no** prepara para un test por sí solo. Lo que transfiere es esto, y se puede practicar desde la primera sesión:
@@ -892,7 +1065,7 @@ La correspondencia es directa. Cada bloque de ejercicios alimenta un bloque de p
 
     2. **Romper tu propia solución.** Cuando un ejercicio te salga bien, quítale el `-1` al `split`, cambia el `TreeMap` por un `HashMap`, borra el `skip(1)`. Mira el error que sale y **apúntalo**. El tipo de pregunta 2 —«¿por qué falla?»— es literalmente eso.
 
-    3. **Escribir la pregunta tú (E30).** Inventar los tres distractores te obliga a saber por qué alguien se equivocaría. Es el paso que convierte «sé hacerlo» en «sé reconocerlo».
+    3. **Escribir la pregunta tú (E32).** Inventar los tres distractores te obliga a saber por qué alguien se equivocaría. Es el paso que convierte «sé hacerlo» en «sé reconocerlo».
 
     Después de cada ejercicio de esta batería, dedica **dos minutos** a los puntos 1 y 2. Son 60 minutos en toda la unidad y valen más que cualquier repaso de la víspera.
 
@@ -904,11 +1077,11 @@ La correspondencia es directa. Cada bloque de ejercicios alimenta un bloque de p
 |---|---|
 | Para arrancar la sesión, 10 min | E1 · E8 · E15 · E21 · E26 |
 | Taller de la sesión, 25-30 min | E4 · E9 · E16 · E24 · E28 |
-| Los que hay que hacer sí o sí | **E5 · E9 · E10 · E16 · E27** |
-| Para quien va sobrado | E7 · E12 · E14 · E19 · E25 · E29 |
-| Repaso antes del test | E5 · E10 · E16 · E30 + [autoevaluación](autoevaluacion.md) |
+| Los que hay que hacer sí o sí | **E5 · E9 · E10 · E16 · E28** |
+| Para quien va sobrado | E7 · E12 · E14 · E19 · E25 · E31 |
+| Repaso antes del test | E5 · E10 · E16 · E28 · E32 + [batería de test](autoevaluacion.md) |
 
 !!! tip "Los dos que más caen"
     El **E9** (CSV con sus trampas) y el **E16** (fechas ISO y sin nulos) concentran entre los dos **seis de las treinta preguntas**. Si vas justo de tiempo, esos dos antes que ninguno.
 
-    Y el **E30** hazlo siempre: es el puente entre haber resuelto los ejercicios y saber contestar sobre ellos.
+    Y el **E32** hazlo siempre: es el puente entre haber resuelto los ejercicios y saber contestar sobre ellos.

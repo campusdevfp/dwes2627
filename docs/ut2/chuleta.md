@@ -134,19 +134,31 @@ opt.orElseThrow(() -> new MiExcepcion())
 | Obliga el compilador | Sí | No |
 | Ejemplos | `IOException`, `SQLException` | `NullPointerException`, `IllegalArgumentException` |
 
-## Testing (JUnit 5)
+## Maven, lo justo
 
-```java
-@Test
-void aplicaDescuento() {
-    var c = new Calculadora();          // Arrange
-    var r = c.total(10, 20.0);          // Act
-    assertEquals(180.0, r);             // Assert
-}
-
-assertTrue / assertFalse / assertNull / assertNotNull
-assertThrows(IllegalArgumentException.class, () -> c.total(-1, 20.0));
+```xml
+<properties>
+  <maven.compiler.release>25</maven.compiler.release>
+  <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  <exec.mainClass>es.iesx.app.Main</exec.mainClass>
+</properties>
 ```
+
+```bash
+mvn compile            # compila a target/classes
+mvn exec:java          # ejecuta exec.mainClass
+mvn clean package      # genera target/app-1.0.0.jar
+mvn dependency:tree    # todas las librerías, incluidas las indirectas
+mvn -o compile         # sin conexión
+```
+
+| Dónde va | Qué |
+|---|---|
+| `src/main/java/` | El código |
+| `src/main/resources/` | Datos y configuración (viajan dentro del `.jar`) |
+| `target/` | Generado. **No se sube a Git** |
+
+Coordenadas de una librería: `groupId:artifactId:version`.
 
 ## Maven
 

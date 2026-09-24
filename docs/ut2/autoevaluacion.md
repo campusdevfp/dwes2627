@@ -1,6 +1,6 @@
 # Simulacro de test — UT2
 
-**80 preguntas con solución.** Mismo formato que el test de la unidad: opción múltiple, **una sola correcta**, sin penalización por fallo.
+**81 preguntas con solución.** Mismo formato que el test de la unidad: opción múltiple, **una sola correcta**, sin penalización por fallo.
 
 !!! info "De dónde sale todo lo que se pregunta"
     De **los temas 1 a 6** y de la **[batería de ejercicios](ejercicios.md)**. Nada más.
@@ -14,7 +14,7 @@
 | 3 | POO | 10 |
 | 4 | Colecciones y streams | 10 |
 | 5 | Excepciones y `Optional` | 9 |
-| 6 | Proyectos y testing | 9 |
+| 6 | Un proyecto Maven | 10 |
 | **7** | **Directamente sobre los ejercicios** | **26** |
 
 **El test oficial son 30 preguntas en 55 minutos.** Se aprueba con 15.
@@ -101,19 +101,20 @@
 
 ---
 
-## Bloque 6 — Proyectos y testing
+## Bloque 6 — Un proyecto Maven
 
 1. Las dependencias de un proyecto Maven se declaran en… a) `build.gradle` · b) **`pom.xml`** · c) `package.json` · d) `application.properties`
-2. El código de producción va en… a) `src/test/java` · b) **`src/main/java`** · c) `target/` · d) la raíz
-3. Los tests van en… a) `src/main/java` · b) **`src/test/java`** · c) `resources` · d) donde sea
-4. `mvn package` genera… a) los tests · b) **el .jar** · c) la documentación · d) el pom
-5. El patrón AAA es… a) Add-Assert-Apply · b) **Arrange-Act-Assert** · c) Api-App-Assert · d) Assert-Any-All
-6. Un test **sin aserciones**… a) falla siempre · b) **pasa siempre aunque el código esté mal** · c) no compila · d) es correcto
-7. `assertThrows` comprueba que… a) no hay error · b) **se lanza la excepción esperada** · c) el valor es null · d) el test es lento
-8. Merece más la pena testear… a) getters triviales · b) **la lógica de negocio y los casos límite** · c) el toString · d) las librerías externas
-9. Un buen nombre de test es… a) `test1()` · b) **`aplicaDescuentoDesde6Unidades()`** · c) `pruebaCalculadora()` · d) `x()`
+2. El código va en… a) `src/test/java` · b) **`src/main/java`** · c) `target/` · d) la raíz
+3. Un CSV de datos o un `.properties` van en… a) `src/main/java` · b) **`src/main/resources`** · c) `target/` · d) la raíz
+4. `mvn package` genera… a) la documentación · b) **el `.jar` en `target/`** · c) el `pom.xml` · d) las dependencias
+5. `target/` en Git… a) se sube siempre · b) **no se sube: es generado** · c) se sube comprimido · d) es obligatorio
+6. Sin `<maven.compiler.release>25</maven.compiler.release>`… a) no pasa nada · b) **falla al compilar un `record`** · c) va más lento · d) no descarga dependencias
+7. Las coordenadas de una librería son… a) nombre y autor · b) **`groupId`, `artifactId` y `version`** · c) la URL · d) el `.jar`
+8. `mvn dependency:tree` sirve para… a) borrar dependencias · b) **ver todas, incluidas las indirectas** · c) actualizar versiones · d) compilar
+9. `java -jar mi.jar` responde «no main manifest attribute» porque… a) falta Java · b) **el `.jar` no declara su clase principal** · c) el código no compila · d) falta `target/`
+10. `mvn -o compile` significa… a) compilar solo · b) **compilar sin conexión, con lo ya descargado** · c) compilar optimizado · d) compilar los tests
 
-> **Soluciones:** 1b · 2b · 3b · 4b · 5b · 6b · 7b · 8b · 9b
+> **Soluciones:** 1b · 2b · 3b · 4b · 5b · 6b · 7b · 8b · 9b · 10b
 
 ## Bloque 7 — Sobre los ejercicios
 
@@ -170,17 +171,22 @@ a) Es correcto y eficiente · b) **Obliga a quien llama a acordarse de comprobar
 **15.** `orElseThrow(() -> new ProductoNoEncontradoException(nombre))` se usa cuando…
 a) La ausencia es normal · b) **La ausencia es un error** · c) Siempre · d) Nunca
 
-**16.** En `assertEquals(40.0, calculadora.total(2, 20.0), 0.001)`, el tercer parámetro es…
-a) El número de intentos · b) **La tolerancia al comparar decimales** · c) El tiempo máximo · d) El mensaje de error
+**16.** ¿Qué imprime?
 
-**17.** ¿Por qué `assertEquals(0.3, 0.1 + 0.2)` falla sin tolerancia?
-a) Porque `assertEquals` no admite `double` · b) **Por el redondeo de la coma flotante** · c) Porque falta el `import` · d) No falla
+```java
+System.out.println(0.1 + 0.2);
+```
 
-**18.** Un conjunto de tests que solo prueba el camino feliz…
-a) Es suficiente · b) **Deja fuera justo donde están los fallos** · c) Es obligatorio · d) No compila
+a) `0.3` · b) **`0.30000000000000004`** · c) Error · d) `0.30`
 
-**19.** Con la regla «descuento desde 6 unidades», los valores que hay que probar son…
-a) 1 y 100 · b) **5, 6 y 7** · c) Solo 10 · d) Solo 0
+**17.** En el proyecto del catálogo, el servicio recibe `CatalogoRepositorio` por constructor. Si en su lugar hiciera `new CatalogoEnMemoria()` dentro…
+a) Sería más eficiente · b) **Quedaría atado a esa implementación y no se podría cambiar ni sustituir** · c) No compilaría · d) Daría igual
+
+**18.** `Optional.ofNullable(mapa.get(clave))` sirve para…
+a) Acelerar la búsqueda · b) **Convertir el posible `null` del mapa en un `Optional`** · c) Ordenar el mapa · d) Evitar duplicados
+
+**19.** En el catálogo se usa `LinkedHashMap` y no `HashMap` porque…
+a) Es más rápido · b) **El listado sale en el orden en que se cargaron los productos** · c) Admite claves nulas · d) Ocupa menos
 
 **20.** ¿Qué imprime?
 
@@ -221,7 +227,8 @@ Con la unidad hecha, siéntate **55 minutos con un reloj** y contesta, sin mirar
 - **Del tema 3:** las 5 primeras.
 - **Del tema 4:** las 6 primeras.
 - **Del tema 5:** las 4 primeras.
-- **Del bloque 7:** las preguntas 1, 4, 7, 10, 20 y 23.
+- **Del bloque 6:** las preguntas 1, 6 y 9.
+- **Del bloque 7:** las preguntas 1, 4, 20 y 23.
 
 Son **30 preguntas**, la misma proporción que el test real: la mayoría de código, y la mitad salidas de la batería.
 

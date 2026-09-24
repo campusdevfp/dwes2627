@@ -9,7 +9,7 @@
 
 ---
 
-## Tema 1 — Estructuras de datos y streams
+## Tema 1 — Estructuras de datos, aplicadas
 
 ### T1.1 · ¿Qué imprime?
 
@@ -172,7 +172,7 @@ for (var p : productos) {
 
 ---
 
-## Tema 2 — Ficheros
+## Tema 2 — CSV
 
 ### T2.1 · ¿Por qué falla?
 
@@ -510,90 +510,165 @@ IO.println(LocalDate.parse("2026-7-10"));
 
 ---
 
-## Tema 5 — Repositorio y capas
+## Tema 5 — Base de datos con JDBC
 
-### T5.1 · ¿Dónde va cada cosa?
+### T5.1 · ¿Qué devuelve?
 
-Coloca en su capa: *(a)* abrir el CSV y devolver una lista · *(b)* calcular la recaudación por escenario · *(c)* imprimir la tabla alineada · *(d)* descartar las filas con aforo negativo.
+``` { .java .numerado }
+var ps = con.prepareStatement("UPDATE producto SET stock = ? WHERE codigo = ?");
+ps.setInt(1, 30);
+ps.setString(2, "NO-EXISTE");
+int n = ps.executeUpdate();
+```
+
+**a)** `-1` · **b)** `0` · **c)** `1` · **d)** Lanza `SQLException`
 
 ??? success "Solución"
 
-    | | Capa | Por qué |
-    |---|---|---|
-    | (a) abrir el CSV | **Repositorio** | Es acceso a datos. Es lo único que sabe que hay un fichero |
-    | (b) recaudación por escenario | **Servicio** | Es una regla de negocio |
-    | (c) imprimir la tabla | **Presentación** | Es la única que sabe que hay una consola |
-    | (d) descartar aforo negativo | **Depende** | Si es «este fichero trae basura», repositorio. Si es «un concierto sin aforo no es válido para el negocio», servicio |
+    **b)** `0`. `executeUpdate` devuelve **cuántas filas ha afectado**, y si el código no existe no afecta a ninguna.
 
-    La (d) es la interesante, y la respuesta honesta es que hay que decidirlo y ser coherente. En este módulo se hace **en el repositorio**: la limpieza de la fuente se queda en la frontera con la fuente.
+    Eso es útil, no un inconveniente: permite saber si el producto estaba **sin hacer antes un `SELECT`**.
 
-    **La prueba de que están bien separadas:** cambiar el CSV por una base de datos debería tocar solo el repositorio; cambiar la consola por una web, solo la presentación.
+    ```java
+    return ps.executeUpdate() == 1;      // false si no existía
+    ```
 
-### T5.2 · ¿Por qué esto está mal?
+    Y ojo: para un `SELECT` no se usa `executeUpdate` sino `executeQuery`, que devuelve un `ResultSet`.
+
+### T5.2 · ¿Por qué falla en producción?
 
 ``` { .java .numerado }
-public class ConciertoRepositorio {
-    public List<Concierto> cargar(Path csv) throws IOException {
-        var lista = /* ... leer el fichero ... */;
-        System.out.printf("Cargados %d conciertos%n", lista.size());
-        return lista;
-    }
+public List<Producto> listar() throws SQLException {
+    var con = DriverManager.getConnection(url, usuario, clave);
+    var ps = con.prepareStatement("SELECT * FROM producto");
+    var rs = ps.executeQuery();
+    var lista = new ArrayList<Producto>();
+    while (rs.next()) lista.add(aProducto(rs));
+    return lista;
 }
 ```
 
-**a)** No compila · **b)** El repositorio no debe imprimir · **c)** Debería devolver `Optional` · **d)** Está bien
+**a)** El SQL está mal · **b)** No cierra la conexión: acaba en `Too many connections` · **c)** Falta `executeUpdate` · **d)** No compila
 
 ??? success "Solución"
 
-    **b)** El `System.out` ata el repositorio a la consola.
+    **b)** No se cierra nada. Cada llamada deja una conexión abierta y las bases de datos tienen un límite.
 
-    Se ve enseguida al querer reutilizarlo: el día que esa carga se ejecute desde una web o desde un test, seguirá escribiendo en la salida estándar sin que nadie se lo haya pedido. Y en un test, ensucia la salida.
-
-    Lo que devuelve el repositorio es **datos**; quien decide si se enseñan y cómo es la presentación. Si hace falta dejar constancia, se usa un *logger*, no `System.out`.
-
-### T5.3 · ¿Cuál es correcta?
-
-> El servicio necesita los conciertos. ¿Cómo se los damos?
-
-**a)** El servicio crea el repositorio dentro: `new ConciertoRepositorio()`
-**b)** El servicio lo recibe en el constructor
-**c)** El repositorio es `static` y se llama directamente
-**d)** El servicio lee el fichero él mismo
-
-??? success "Solución"
-
-    **b)** **Por el constructor.** Es inyección de dependencias hecha a mano, y es exactamente lo que la UT4 le va a pedir a Spring que haga solo.
+    Lo traicionero es que **en tu máquina nunca falla**: llamando cinco veces no se nota. Falla en producción, bajo carga, y el mensaje aparece lejos de la causa.
 
     ```java
-    public class InformeService {
-        private final FuenteConciertos fuente;
-        public InformeService(FuenteConciertos fuente) { this.fuente = fuente; }
+    try (var con = conectar();
+         var ps  = con.prepareStatement("SELECT * FROM producto");
+         var rs  = ps.executeQuery()) { … }
+    ```
+
+    Se cierran las tres, **en orden inverso**, pase lo que pase.
+
+### T5.3 · ¿Qué devuelve esta consulta?
+
+``` { .java .numerado }
+var codigo = "x' OR '1'='1";
+var sql = "SELECT * FROM producto WHERE codigo = '" + codigo + "'";
+var rs = st.executeQuery(sql);
+```
+
+**a)** Nada: no existe ese código · **b)** Un error de sintaxis · **c)** **La tabla entera** · **d)** Solo la primera fila
+
+??? success "Solución"
+
+    **c)** La consulta que llega a la base de datos es:
+
+    ```sql
+    SELECT * FROM producto WHERE codigo = 'x' OR '1'='1'
+    ```
+
+    `'1'='1'` es siempre cierto, así que la condición se cumple para todas las filas. Y con un poco más de imaginación: `x'; DROP TABLE producto; --`.
+
+    Con `PreparedStatement` no puede pasar:
+
+    ```java
+    var ps = con.prepareStatement("SELECT * FROM producto WHERE codigo = ?");
+    ps.setString(1, codigo);
+    ```
+
+    La estructura de la consulta viaja **antes** que el valor. Cuando la base de datos recibe el dato ya ha decidido qué es consulta y qué es valor, así que busca un código llamado literalmente `x' OR '1'='1`.
+
+    **Ningún valor que venga de fuera se concatena en un SQL. Nunca.**
+
+### T5.4 · ¿Cuál es correcta?
+
+Quieres que no haya dos productos con el mismo código.
+
+**a)** Comprobar con `buscarPorCodigo` antes de insertar · **b)** Una restricción `UNIQUE` en la tabla y traducir el error · **c)** Un `HashSet` en memoria con los códigos · **d)** Ordenar la tabla por código
+
+??? success "Solución"
+
+    **b)** La **a** parece razonable y tiene una condición de carrera:
+
+    ```
+    Proceso A: ¿existe SEG-01? → no
+    Proceso B: ¿existe SEG-01? → no
+    Proceso A: INSERT           → ok
+    Proceso B: INSERT           → duplicado
+    ```
+
+    Entre la comprobación y la inserción hay un hueco. La restricción `UNIQUE` **no lo tiene**: es atómica.
+
+    ```sql
+    codigo VARCHAR(20) NOT NULL UNIQUE
+    ```
+
+    ```java
+    catch (SQLIntegrityConstraintViolationException e) {
+        throw new CodigoDuplicadoException(p.codigo(), e);
     }
     ```
 
-    Lo que se gana, y es la razón de todo el tema: **el servicio se puede probar sin fichero**. Le pasas un doble con conciertos inventados y compruebas los cálculos.
+    Además es **una consulta en vez de dos**. La **c** es peor todavía: la memoria de tu proceso no sabe lo que hacen los demás.
 
-    - **(a)** y **(c)** dejan el servicio atado al fichero para siempre.
-    - **(d)** borra la separación de capas.
+### T5.5 · ¿Qué hay que cambiar?
 
-### T5.4 · ¿Qué gana el programa con la interfaz?
+Tienes el CRUD funcionando con H2 y te piden MySQL.
 
-``` { .java .numerado }
-public interface FuenteConciertos {
-    ResultadoCarga cargar();
-}
-```
-
-**a)** Va más rápido · **b)** Se puede cambiar el origen sin tocar el servicio, y probarlo con un doble · **c)** Es obligatorio en Java · **d)** Ahorra memoria
+**a)** Reescribir el DAO · **b)** La URL de conexión y la dependencia del driver · **c)** Cambiar `PreparedStatement` por `Statement` · **d)** Traducir todas las consultas
 
 ??? success "Solución"
 
-    **b)** Las dos cosas, y la segunda es la que se nota a diario.
+    **b)** Y nada más, si el SQL es estándar:
 
-    - **Cambiar el origen**: el día que los conciertos vengan de PostgreSQL o de una API, se escribe otra implementación y el servicio no se entera.
-    - **Probar sin fichero**: en el test se le pasa un doble que devuelve una lista fija. El test corre en milisegundos, sin disco y sin depender de que el CSV exista.
+    ```java
+    // antes
+    new ProductoDao("jdbc:h2:./datos/tienda", "sa", "");
+    // después
+    new ProductoDao("jdbc:mysql://localhost:3306/tienda?serverTimezone=Europe/Madrid",
+                    "alumno", "alumno");
+    ```
 
-    Ninguna de las otras tres tiene nada que ver: una interfaz no acelera nada, no es obligatoria y no ahorra memoria.
+    **Eso es lo que significa que JDBC sea un estándar:** tu código habla JDBC y el *driver* traduce a lo que entiende cada motor.
+
+    Lo que sí puede dar guerra son los tipos concretos, el juego de caracteres y la zona horaria. Por eso lo profesional es **desarrollar contra el mismo motor que se usará en producción** — y por eso existe Docker: levantar MySQL de verdad cuesta una orden.
+
+### T5.6 · ¿Dónde están los datos?
+
+Un compañero levanta MySQL con Docker, inserta productos, hace `docker compose down` y al arrancar de nuevo la tabla está vacía. ¿Qué le falta?
+
+**a)** Un `commit` · **b)** El volumen en el `compose.yaml` · **c)** El `healthcheck` · **d)** Abrir el puerto 3306
+
+??? success "Solución"
+
+    **b)** Sin volumen, los datos viven **dentro del contenedor** y desaparecen con él.
+
+    ```yaml
+    volumes:
+      - datos-mysql:/var/lib/mysql
+
+    volumes:
+      datos-mysql:
+    ```
+
+    Y el matiz que hay que saber: **`docker compose down -v` borra también el volumen**. Esa `-v` es la que destruye los datos de verdad; sin ella, `down` solo para los contenedores.
+
+    El `healthcheck` de la **c** sirve para otra cosa igual de importante: un contenedor arrancado **no es** una base de datos lista para aceptar conexiones, y sin `healthcheck` tu programa se conecta antes de tiempo y falla.
 
 ---
 
@@ -813,121 +888,100 @@ Si escribes `mapper.readValue(json, List.class)` en vez de usar `TypeReference`,
 ### T6.12 · ¿Qué está mal?
 
 ``` { .java .numerado }
-class ProductoServicio {
-    private final ProductoRepositorioCsv repositorio;
-
-    ProductoServicio() {
-        this.repositorio = new ProductoRepositorioCsv(Path.of("datos/productos.csv"));
-    }
-}
+var sql = "SELECT * FROM producto WHERE nombre LIKE '%" + texto + "%'";
+var rs = st.executeQuery(sql);
 ```
 
-**a)** Nada · **b)** Depende de la implementación y la crea él mismo: no se puede probar ni cambiar el origen · **c)** Falta `static` · **d)** El campo no debería ser `final`
+**a)** Nada, el `LIKE` es seguro · **b)** Es inyectable: el texto viene de fuera y se concatena · **c)** Falta `ORDER BY` · **d)** `LIKE` no admite `%`
 
 ??? success "Solución"
 
-    **b)** Dos fallos que en realidad son el mismo.
-
-    1. Depende de **`ProductoRepositorioCsv`**, la clase concreta, y no de la interfaz. Cambiar a JSON obliga a tocar el servicio.
-    2. Hace el **`new` dentro**. Como nadie puede sustituir ese objeto desde fuera, para probar el servicio hace falta **un fichero CSV de verdad en el disco**.
-
-    La versión correcta recibe la interfaz por constructor:
+    **b)** Que sea un `LIKE` no cambia nada: **cualquier valor que venga de fuera y se concatene es inyectable**.
 
     ```java
-    ProductoServicio(ProductoRepositorio repositorio) {
-        this.repositorio = repositorio;
-    }
+    var ps = con.prepareStatement("SELECT * FROM producto WHERE nombre LIKE ?");
+    ps.setString(1, "%" + texto + "%");        // (1)
     ```
 
-    Esto es la *D* de SOLID, y es exactamente el problema que resuelve la inyección de dependencias de Spring en la UT4.
+    1.  Los `%` se ponen **en el valor**, no en el SQL. Así siguen siendo parte del dato.
 
-### T6.13 · ¿Dónde va?
+    La regla no tiene excepciones, y esta es la variante en la que más gente se cree a salvo.
 
-«El precio con IVA es el precio por 1,21.» ¿En qué clase?
+### T6.13 · ¿Qué tipo de columna?
 
-**a)** En el repositorio · **b)** En el servicio · **c)** En el `main` · **d)** En el fichero CSV
+Para el precio de un producto:
+
+**a)** `DOUBLE` · **b)** `FLOAT` · **c)** `DECIMAL(10,2)` · **d)** `VARCHAR(20)`
 
 ??? success "Solución"
 
-    **b)** Es una **regla de negocio**, y las reglas viven en el servicio.
+    **c)** Por lo mismo que `BigDecimal` en Java: `DOUBLE` y `FLOAT` guardan en binario y arrastran errores de redondeo que, sumando miles de importes, acaban en un descuadre que alguien tiene que explicar.
 
-    El repositorio solo sabe traer y guardar. Si le metes el IVA, el día que necesites el precio sin IVA —para un informe, para una exportación— tendrás que deshacerlo, y el día que cambies a JSON tendrás que copiar la regla en la otra implementación.
+    `DECIMAL(10,2)` son diez dígitos en total y dos decimales: hasta `99999999,99`.
 
-    La prueba: **la misma regla tiene que valer aunque los datos vengan de otro sitio**. Si es así, es de negocio.
+    Y en Java se lee y se escribe con `getBigDecimal` y `setBigDecimal`. Mezclar `DECIMAL` en la tabla con `double` en el código deshace la ventaja.
 
-### T6.14 · ¿Qué devuelve el repositorio?
+### T6.14 · ¿Qué devuelve el DAO cuando no encuentra?
 
 ``` { .java .numerado }
-Optional<Producto> buscarPorId(int id);
+Optional<Producto> buscarPorCodigo(String codigo)
 ```
 
-¿Por qué `Optional` y no devolver `null` o lanzar la excepción ahí mismo?
+¿Por qué `Optional` y no `null` ni una excepción?
 
-**a)** Por rendimiento · **b)** Porque el repositorio no sabe si no encontrarlo es un error; eso lo decide el servicio · **c)** Porque lo exige Jackson · **d)** Por convenio, sin más
+**a)** Por rendimiento · **b)** Porque el DAO no sabe si no encontrarlo es un error; eso lo decide quien llama · **c)** Porque lo exige JDBC · **d)** Por convenio, sin más
 
 ??? success "Solución"
 
-    **b)** «No está» es un **hecho**, no un error. Si el repositorio lanzara la excepción, estaría decidiendo por quien lo llama.
+    **b)** «No está» es un **hecho**, no un error. Hay casos en los que no encontrarlo es perfectamente normal: comprobar si un código está libre, por ejemplo.
 
-    Y hay casos en los que no encontrarlo es perfectamente normal: comprobar si un identificador está libre, por ejemplo.
-
-    El servicio es el que sabe qué significa en cada caso:
+    Quien llama es el que sabe qué significa en su caso:
 
     ```java
-    repositorio.buscarPorId(id)
-               .orElseThrow(() -> new ProductoNoEncontradoException(id));
+    dao.buscarPorCodigo(codigo)
+       .orElseThrow(() -> new ProductoNoEncontradoException(codigo));
     ```
 
-    Frente a `null`, la ventaja es que **el compilador te obliga** a tratar el caso. Con `null` te obliga la `NullPointerException`, y en producción.
+    Y frente a `null`, la ventaja es que **el compilador te obliga** a tratar el caso. Con `null` te obliga la `NullPointerException`, y en producción.
 
-### T6.15 · ¿Qué demuestra este test?
+### T6.15 · ¿Qué pasa la segunda vez?
 
-``` { .java .numerado }
-ProductoRepositorio enMemoria = new ProductoRepositorio() {
-    public List<Producto> listar() { return List.of(); }
-    public Optional<Producto> buscarPorId(int id) { return Optional.empty(); }
-};
-var servicio = new ProductoServicio(enMemoria);
+Ejecutas el CRUD contra `jdbc:h2:./datos/tienda`, que inserta tres productos. Lo vuelves a ejecutar.
 
-assertThrows(ProductoNoEncontradoException.class, () -> servicio.obtener(99));
-```
-
-**a)** Que el CSV se lee bien · **b)** Que el servicio lanza la excepción cuando no hay dato, sin tocar el disco · **c)** Que la interfaz es innecesaria · **d)** Que `Optional` es lento
+**a)** Inserta otros tres · **b)** Lanza `CodigoDuplicadoException` en los tres · **c)** No pasa nada · **d)** Borra la tabla
 
 ??? success "Solución"
 
-    **b)** Y fíjate en lo que **no** hace: no abre ningún fichero, no necesita que exista un CSV de prueba y corre en milisegundos.
+    **b)** Y eso es exactamente lo que se quiere demostrar: **los datos han sobrevivido al reinicio**.
 
-    Eso es posible **solo porque el servicio depende de la interfaz**. Si dependiera de `ProductoRepositorioCsv`, este test sería imposible sin preparar datos en el disco — y entonces ya no estarías probando el servicio, estarías probando el disco.
+    Es la diferencia con el CSV del tema 2 y con el `HashMap` de la UT2. La restricción `UNIQUE` sobre el código hace el resto.
 
-    Esta es la razón práctica de todo lo anterior. Cuando en un examen te pregunten «¿para qué sirve la interfaz?», la respuesta buena no es «para desacoplar»: es **esto**.
+    Si la URL fuera `jdbc:h2:mem:tienda`, la base de datos viviría en memoria y la segunda ejecución insertaría otra vez los tres: útil para pruebas, inútil para guardar.
 
 ### T6.16 · ¿Cuántas líneas hay que tocar?
 
-Tienes el catálogo funcionando con CSV y te piden pasarlo a JSON. El servicio y el resto del programa están bien hechos. ¿Cuántas líneas cambias, además de escribir la nueva implementación?
+Tienes el CRUD funcionando con H2 y te piden MySQL. El SQL es estándar. ¿Cuánto cambia del DAO?
 
-**a)** Ninguna · **b)** Una · **c)** Todas las del servicio · **d)** Depende del tamaño del fichero
+**a)** Todo · **b)** **Nada** · **c)** Las consultas · **d)** Depende del tamaño de la tabla
 
 ??? success "Solución"
 
-    **b)** Una: la del `main` donde se decide qué implementación se construye.
+    **b)** Nada del DAO. Cambian **la dependencia del driver** y **la cadena de conexión**, las dos fuera del DAO.
 
     ```java
-    ProductoRepositorio repo = new ProductoRepositorioJson(Path.of("datos/productos.json"));
-    var servicio = new ProductoServicio(repo);   // ni se entera
+    new ProductoDao("jdbc:mysql://localhost:3306/tienda?serverTimezone=Europe/Madrid",
+                    "alumno", "alumno");
     ```
 
-    Si al hacer el cambio te ves tocando el servicio, **las capas no están bien separadas** — y eso es lo que se mira en el ejercicio E38.
-
-    En la UT4 esa línea desaparece del `main` y pasa a ser una anotación: Spring decide qué implementación inyectar. El principio es el mismo; lo que cambia es quién escribe el `new`.
+    Si al hacer el cambio te ves tocando el DAO, mira qué has tocado: casi siempre es un tipo concreto de H2 o un SQL que no era estándar. **Ese descubrimiento vale más que el ejercicio.**
 
 ---
 
 ## Simulacro cronometrado
 
-Cuando hayas hecho las 46, siéntate **55 minutos con un reloj** y responde estas 30 seguidas, sin desplegar nada:
+Cuando hayas hecho las 48, siéntate **55 minutos con un reloj** y responde estas 30 seguidas, sin desplegar nada:
 
-> **T1.1 · T1.3 · T1.5 · T1.6 · T1.8 · T2.1 · T2.2 · T2.5 · T2.6 · T3.1 · T3.2 · T3.5 · T4.1 · T4.3 · T4.5 · T5.1 · T5.3 · T6.1 · T6.2 · T6.4 · T6.5 · T6.6 · T6.7 · T6.8 · T6.10 · T6.11 · T6.12 · T6.13 · T6.15 · T6.16**
+> **T1.1 · T1.3 · T1.5 · T1.6 · T2.1 · T2.2 · T2.5 · T3.1 · T3.2 · T3.5 · T4.1 · T4.3 · T4.5 · T5.1 · T5.2 · T5.3 · T5.4 · T5.6 · T6.1 · T6.4 · T6.5 · T6.7 · T6.8 · T6.10 · T6.11 · T6.12 · T6.13 · T6.14 · T6.15 · T6.16**
 
 **Menos de dos minutos por pregunta**, que es el ritmo real del examen.
 
@@ -935,7 +989,7 @@ Cuando hayas hecho las 46, siéntate **55 minutos con un reloj** y responde esta
 |:-:|---|
 | **24 o más** | Vas sobrado |
 | **18 a 23** | Aprobado holgado. Repasa el bloque que peor te fue |
-| **15 a 17** | Justo. Rehaz los programas E31–E38 |
+| **15 a 17** | Justo. Rehaz los programas E33–E40 |
 | **menos de 15** | Faltan los ejercicios. No es cuestión de releer |
 
 !!! tip "El formato del examen"

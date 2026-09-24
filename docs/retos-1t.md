@@ -42,38 +42,45 @@ Aquí casi todo se resuelve **con la consola y el navegador**. No se programa to
 
 ---
 
-## UT2 · Java moderno · 9 sesiones
+## UT2 · Java moderno · 8 sesiones
 
-En Java el micro-reto casi siempre tiene la misma forma: **predice qué imprime, ejecútalo, explica la diferencia**. Es además exactamente el formato del examen.
+En Java el micro-reto casi siempre tiene la misma forma: **predice qué imprime, ejecútalo, explica la diferencia**. Es además exactamente el formato del examen, y todo se hace en `jshell`.
 
 | Sesión | El micro-reto | Se resuelve con | Lo que queda claro |
 |:-:|---|:-:|---|
-| **S2** | *«¿Cuánto es `7/2` y cuánto `7/2.0`? Apuéstalo antes de ejecutar.»* | [E1](ut2/ejercicios.md) | La división entera, de una vez |
-| **S3** | *«Escribe una ficha de ocho líneas sin usar un solo `\n`.»* | [E13](ut2/ejercicios.md) | Bloques de texto, por necesidad |
-| **S4** | *«Este `Equipo` dice ser inmutable. Rompedlo.»* | [E23](ut2/ejercicios.md) · [E4](ut2/ejercicios.md) | `final` protege la referencia, no el contenido |
-| **S5** | *«Añade un tipo de evento nuevo y consigue que el compilador te obligue a tratarlo.»* | [E16](ut2/ejercicios.md) | `sealed` + `switch` sin `default` |
-| **S6** | *«Ordena por puntos y desempata por nombre. Aviso: el 80 % lo hará mal.»* | [E17](ut2/ejercicios.md) | Dónde va el `.reversed()` |
-| **S7** | *«Media y máximo anotador recorriendo la lista una sola vez.»* | [E19](ut2/ejercicios.md) | `teeing`, y que hay más que `forEach` |
-| **S8** | *«Este `catch` está vacío. Provocad el fallo y contad qué veis.»* | [E22](ut2/ejercicios.md) | Por qué tragarse una excepción es lo peor |
-| **S9** | *«Aquí hay un método de 2010. Tenéis 25 minutos.»* | [E27](ut2/ejercicios.md) | La unidad entera, en un ejercicio |
+| **S1** | *«¿Cuánto es `7/2` y cuánto `7/2.0`? Apostadlo antes de ejecutar.»* | [E1](ut2/ejercicios.md) · [E13](ut2/ejercicios.md) | La división entera, de una vez |
+| **S2** | *«Este `Equipo` dice ser inmutable. Rompedlo.»* | [E23](ut2/ejercicios.md) · [E4](ut2/ejercicios.md) | `final` protege la referencia, no el contenido |
+| **S3** | *«Escribid un notificador nuevo sin tocar el servicio. Y después probadlo sin mandar un solo correo.»* | [E32](ut2/ejercicios.md) · [el ejemplo largo del tema 3](ut2/03-poo-en-java.md) | Para qué sirve de verdad una interfaz |
+| **S4** | *«Buscad 200.000 veces en una lista y en un conjunto. Traed los dos tiempos.»* | [E5](ut2/ejercicios.md) | Que elegir la colección **es** el rendimiento |
+| **S5** | *«Ordenad por puntos y desempatad por nombre. Aviso: el 80 % lo hará mal.»* | [E17](ut2/ejercicios.md) · [E19](ut2/ejercicios.md) | Dónde va el `.reversed()` |
+| **S6** | *«Este `catch` está vacío. Provocad el fallo y contad qué veis.»* | [E22](ut2/ejercicios.md) | Por qué tragarse una excepción es lo peor |
+| **S7** | *«Quitad `<maven.compiler.release>` del `pom.xml` y compilad. Leed el error.»* | [E12](ut2/ejercicios.md) · [E35](ut2/ejercicios.md) | Que el `pom.xml` no es decoración |
+| **S8** | :material-form-select: Test de RA2 | — | — |
+
+!!! tip "El de la S3 es el que más rinde"
+    El ejemplo largo del tema 3 termina con un `NotificadorFalso` que solo apunta lo que le piden. Cuando ven que **así se puede probar el servicio sin enviar nada**, la inyección de dependencias de la UT4 deja de ser una anotación mágica.
 
 ---
 
-## UT3 · Datos, ficheros y JSON · 9 sesiones
+## UT3 · Datos, intercambio y base de datos · 10 sesiones
 
 La UT3 se examina con un [test práctico](ut3/autoevaluacion.md) sobre fragmentos de código, así que el micro-reto tiene aquí un papel extra: **generar las preguntas**.
 
 | Sesión | El micro-reto | Se resuelve con | Lo que queda claro |
 |:-:|---|:-:|---|
-| **S1** | *«Buscad 10.000 veces en una lista de 100.000 y luego en un mapa. Traed los dos tiempos.»* | [E2](ut3/ejercicios.md) | Que elegir la estructura **es** el trabajo |
-| **S2** | *«Agrupad por marca y por tipo, y que salga ordenado. Los dos niveles.»* | [E5](ut3/ejercicios.md) | Dónde va el `TreeMap::new` |
-| **S3** | *«Este CSV tiene cinco trampas. Encontradlas antes de programar nada.»* | [E9](ut3/ejercicios.md) | Que los datos reales vienen sucios |
-| **S4** | *«Contad los descartes y decid por qué se descartó cada uno.»* | [E10](ut3/ejercicios.md) | Vale un 20 % del examen él solo |
-| **S5** | *«Vuestro JSON escribe la fecha como `[2026,3,14]`. Arregladlo.»* | [E16](ut3/ejercicios.md) | El módulo de `java.time` en Jackson |
-| **S6** | *«Leed un JSON ajeno que trae tres campos que no esperáis, sin que reviente.»* | [E18](ut3/ejercicios.md) · [E20](ut3/ejercicios.md) | `path` frente a `get` |
-| **S7** | *«`fecha.plusDays(7)` no cambia nada. ¿Por qué?»* | [E21](ut3/ejercicios.md) | Inmutabilidad, otra vez y para siempre |
-| **S8** | *«Cambiad el origen de CSV a JSON tocando una sola línea.»* | [E27](ut3/ejercicios.md) · [E26](ut3/ejercicios.md) | Para qué sirve una interfaz |
-| **S9** | *«Escribid tres preguntas de examen a partir de vuestros ejercicios.»* | [E30](ut3/ejercicios.md) | El puente entre hacer y reconocer |
+| **S1** | *«Buscad 200.000 veces en una lista y en un conjunto. Traed los dos tiempos.»* | [E2](ut3/ejercicios.md) | Que elegir la estructura **es** el trabajo |
+| **S2** | *«Agrupad por categoría y por vendedor, y que salga ordenado. Los dos niveles.»* | [E5](ut3/ejercicios.md) | Dónde va el `TreeMap::new` |
+| **S3** | *«Este CSV tiene cinco trampas. Encontradlas antes de programar nada.»* | [E9](ut3/ejercicios.md) · [E13](ut3/ejercicios.md) | Que los datos reales vienen sucios |
+| **S4** | *«Vuestro JSON escribe la fecha como `[2026,3,14]`. Arregladlo.»* | [E16](ut3/ejercicios.md) | El módulo de `java.time` en Jackson |
+| **S5** | *«Leed un JSON ajeno con tres campos que no esperáis, sin que reviente.»* | [E18](ut3/ejercicios.md) · [E20](ut3/ejercicios.md) | `path` frente a `get` |
+| **S6** | *«`fecha.plusDays(7)` no cambia nada. ¿Por qué?»* | [E21](ut3/ejercicios.md) | Inmutabilidad, otra vez y para siempre |
+| **S7** | *«¿Se solapan estas tres reservas? Escribid la fórmula antes de mirar.»* | [E24](ut3/ejercicios.md) | El `<` y el `<=` de los rangos |
+| **S8** | *«Escribid la búsqueda concatenando el código y pasadle `x' OR '1'='1`. Contad las filas.»* | [E28](ut3/ejercicios.md) · [E30](ut3/ejercicios.md) | La inyección SQL, vista con sus ojos |
+| **S9** | *«Levantad MySQL y haced que el mismo programa funcione. ¿Cuántas líneas tocáis?»* | [E31](ut3/ejercicios.md) · [E40](ut3/ejercicios.md) | Para qué sirve que JDBC sea un estándar |
+| **S10** | :material-form-select: Test práctico de RA3 | [E32](ut3/ejercicios.md) | Escribir tú las preguntas |
+
+!!! danger "El de la S8 no se puede sacrificar"
+    Escribir la consulta concatenada, pasarle `x' OR '1'='1` y **ver el número de filas que devuelve** dura cuatro minutos y es la mejor clase de seguridad de todo el trimestre. Después se escribe con `?` y se repite: el contraste es el contenido.
 
 ---
 
@@ -99,9 +106,9 @@ Además de los micro-retos, cada unidad tiene **un reto de dos sesiones** que se
 
 === "UT3 · El taller de bicis"
 
-    > `datos/bicis.csv`, 300 filas sucias de verdad. **Cargadlo contando los descartes por motivo, sacad cuatro informes, exportadlo a JSON y dejadlo todo detrás de una interfaz** para que mañana se pueda cambiar el origen.
+    > `datos/bicis.csv`, 300 filas sucias de verdad. **Cargadlo contando los descartes por motivo, sacad cuatro informes, exportadlo a JSON y volcadlo en una base de datos H2** con las cuatro operaciones funcionando.
 
-    Es el [E29](ut3/ejercicios.md) con más datos y sin guion paso a paso. Y es, literalmente, lo que hace una aplicación de verdad antes de tener base de datos.
+    Es el [E40](ut3/ejercicios.md) con más datos y sin guion paso a paso. Y es, literalmente, la primera tarea que se le encarga a alguien que entra en un equipo de desarrollo.
 
     **Se entrega:** el proyecto y **tres preguntas de test** escritas por vosotros sobre los errores que cometisteis.
 

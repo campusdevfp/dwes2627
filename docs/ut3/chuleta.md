@@ -42,27 +42,36 @@ lista.stream().sorted(cmp).toList(); // devuelve una nueva
 .reduce(0.0, Double::sum)
 ```
 
-## Ficheros (NIO.2)
+## CSV
 
+```java
+// lo mínimo, con las tres trampas resueltas
+try (var lineas = Files.lines(ruta, StandardCharsets.UTF_8)) {
+    return lineas.skip(1)                    // cabecera
+                 .filter(l -> !l.isBlank())  // líneas en blanco
+                 .map(l -> l.split(",", -1)) // campos vacíos del final
+                 .map(c -> new Producto(c[0].trim(), …))
+                 .toList();
+}
 ```
-Path.of("datos", "productos.csv")          // nunca concatenes con "/"
-Files.exists(p)  Files.size(p)  Files.createDirectories(dir)
-Files.writeString(p, texto)
-Files.writeString(p, texto, StandardOpenOption.APPEND)
-Files.readString(p)          Files.readAllLines(p)
-try (var l = Files.lines(p)) { ... }        // grandes: perezoso + cerrar
-Files.copy(o, d, StandardCopyOption.REPLACE_EXISTING)
-Files.deleteIfExists(p)
+
+```java
+// con Apache Commons CSV: acceso por NOMBRE de columna
+var formato = CSVFormat.DEFAULT.builder()
+        .setHeader().setSkipHeaderRecord(true)
+        .setIgnoreEmptyLines(true).setTrim(true)
+        .setDelimiter(';')                   // Excel en español
+        .get();
+
+try (var lector = Files.newBufferedReader(ruta, StandardCharsets.UTF_8);
+     var csv = formato.parse(lector)) {
+    for (var fila : csv) { fila.get("precio"); }
+}
 ```
 
-Todo lanza `IOException` (checked). Usa **try-with-resources** siempre que abras algo.
-
-### CSV
-
-```
-lineas.skip(1)                     // saltar cabecera ← error clásico
-      .filter(l -> !l.isBlank())   // ignorar líneas vacías
-      .map(l -> l.split(","))
+```java
+String.format(Locale.ROOT, "%.2f", 25.9)     // "25.90" SIEMPRE
+// sin Locale.ROOT, en español sale "25,90" y rompe el CSV
 ```
 
 ## JSON con Jackson
@@ -120,12 +129,42 @@ cero o más ·
 
 opcional · `{n,m}` repeticiones · `[A-Z]` rango · ^ $ anclas
 
-## Arquitectura en capas
+## JDBC
 
-```
-Modelo (record)  ←  Repositorio (interfaz + impl)  ←  Servicio (reglas)  ←  App
+```java
+try (var con = DriverManager.getConnection(url, usuario, clave);
+     var ps  = con.prepareStatement("SELECT * FROM producto WHERE codigo = ?");
+     ) {
+    ps.setString(1, codigo);                 // NUNCA concatenar
+    try (var rs = ps.executeQuery()) {
+        return rs.next() ? Optional.of(aProducto(rs)) : Optional.empty();
+    }
+}
 ```
 
-- El servicio depende de la interfaz del repositorio, nunca de la implementación.
-- El repositorio no aplica reglas de negocio.
-- Para testear, se pasa un repositorio en memoria.
+| Para | Método | Devuelve |
+|---|---|---|
+| `SELECT` | `executeQuery()` | `ResultSet` |
+| `INSERT` / `UPDATE` / `DELETE` | `executeUpdate()` | **filas afectadas** |
+| `CREATE TABLE` | `execute()` | `boolean` |
+
+```java
+return ps.executeUpdate() == 1;   // ¿existía? sin hacer antes un SELECT
+```
+
+| URL | Motor |
+|---|---|
+| `jdbc:h2:./datos/tienda` | H2 en fichero (sobrevive al reinicio) |
+| `jdbc:h2:mem:tienda` | H2 en memoria (se pierde) |
+| `jdbc:mysql://localhost:3306/tienda` | MySQL |
+
+```sql
+codigo VARCHAR(20) NOT NULL UNIQUE     -- deja fallar y traduce el error
+precio DECIMAL(10,2) NOT NULL          -- nunca DOUBLE para dinero
+```
+
+```yaml
+# compose.yaml · lo que se olvida
+volumes: [datos-mysql:/var/lib/mysql]   # sin esto, los datos se van
+healthcheck: …                          # arrancado ≠ listo
+```

@@ -1,38 +1,40 @@
-# UT3 — Estructuras de datos, ficheros e intercambio
+# UT3 — Datos: estructuras, intercambio y base de datos
 
 **10 h · 10 sesiones · Trimestre 1.º** · Evaluación: :material-form-select: **test práctico (100 %)**
 
 > **RA3:** Escribe bloques de sentencias embebidos en lenguajes de marcas, seleccionando y utilizando las estructuras de programación.
 
-Última unidad de fundamentos. Aquí tu código empieza a **manejar datos de verdad**: estructuras complejas, ficheros, **JSON** (el formato de las APIs), fechas y validación. Y termina montando un **repositorio en capas** — el esqueleto que en la UT4 rellenará Spring.
+Última unidad de fundamentos, y la que junta todo con datos de verdad: elegir la estructura correcta, leer **CSV**, hablar **JSON** —el formato de las APIs—, manejar fechas y dinero sin equivocarse, y terminar con un **CRUD contra una base de datos**, primero H2 y después MySQL en Docker.
 
 !!! tip "El puente hacia Spring"
-    Todo lo de esta unidad reaparece en la UT4 automatizado por el framework. Si entiendes ahora **a mano** cómo se serializa un JSON o cómo se separa un repositorio, cuando Spring lo haga por ti sabrás qué está pasando por debajo — y podrás depurarlo.
+    Todo lo de esta unidad reaparece automatizado en la UT4 y la UT5. Si ahora escribes **a mano** el JSON, la conexión y el `SELECT`, cuando Jackson y JPA lo hagan por ti sabrás qué está pasando por debajo — y podrás depurarlo cuando haga algo raro, que lo hará.
 
 
 ## Al terminar sabrás hacer
 
 Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede sin marcar la semana del examen es exactamente lo que hay que repasar.
 
-- [ ] Elegir la **estructura de datos** correcta —`List`, `Set`, `Map`, `Deque`— y defender la elección.
-- [ ] **Leer y escribir ficheros** de texto y CSV cerrando siempre los recursos.
-- [ ] Convertir objetos a **JSON** y al revés con Jackson, controlando el contrato de campos.
-- [ ] Trabajar con **fechas** de la API `java.time` y **validar** datos de entrada.
-- [ ] Aislar el acceso a datos tras el **patrón Repositorio** y separar el programa en capas.
+- [ ] Elegir la **estructura de datos** correcta —`List`, `Set`, `Map`— y defender la elección.
+- [ ] **Agrupar y resumir** un montón de datos con `groupingBy` y comparadores.
+- [ ] Leer y escribir **CSV** con Apache Commons CSV, sin que las comas ni los acentos lo rompan.
+- [ ] Convertir objetos a **JSON** y al revés con Jackson, con las fechas en ISO.
+- [ ] Manejar **fechas** con `java.time` y **dinero** con `BigDecimal`, sin los errores clásicos.
+- [ ] **Validar** en el constructor para que un objeto no pueda existir mal formado.
+- [ ] Montar un **CRUD con JDBC** contra H2 y contra MySQL en Docker, sin inyección SQL.
 
 ## Calendario
 
 | Sesión (55') | En clase | Lectura previa |
 |---|---|---|
-| **S1** | Elegir estructura y ordenar: `List`, `Set`, `Map`, `Deque`, `Comparator` | [1. Estructuras de datos](01-estructuras-de-datos.md) §1–3 |
-| **S2** | `groupingBy`, `reduce` y estadísticas sobre datos reales | [1. Estructuras de datos](01-estructuras-de-datos.md) §4–6 |
-| **S3** | Rutas y ficheros de texto con NIO.2 | [2. Ficheros](02-ficheros.md) §1–2 |
-| **S4** | CSV: leer, escribir, recursos y errores de E/S | [2. Ficheros](02-ficheros.md) §3–4 |
-| **S5** | JSON: estructura y mapeo a objetos | [3. JSON y Jackson](03-json-y-jackson.md) §1–2 |
-| **S6** | Jackson: serializar, deserializar, anidados y fechas | [3. JSON y Jackson](03-json-y-jackson.md) §3–5 |
-| **S7** | Fechas con `java.time` · validación y expresiones regulares | [4. Fechas y validación](04-fechas-y-validacion.md) |
-| **S8** | El patrón **Repositorio**, las capas y el proyecto integrador | [5. Repositorio y capas](05-repositorio-y-capas.md) completo |
-| **S9** | Laboratorio con la batería · repaso y dudas | [Batería de ejercicios](ejercicios.md) |
+| **S1** | Elegir la estructura: lista, conjunto y mapa, con el coste medido | [1. Estructuras aplicadas](01-estructuras-de-datos.md) §1–2 |
+| **S2** | Agrupar, ordenar y sacar estadísticas de un montón de datos | [1. Estructuras aplicadas](01-estructuras-de-datos.md) §3–6 |
+| **S3** | Leer y escribir CSV: a mano, y con Apache Commons CSV | [2. CSV y JSON](02-csv-y-json.md) §1–3 |
+| **S4** | JSON y Jackson: objetos, listas, fechas y campos que no esperas | [2. CSV y JSON](02-csv-y-json.md) §4–7 |
+| **S5** | De CSV a JSON: el programa completo, con descartes contados | [2. CSV y JSON](02-csv-y-json.md) §8 |
+| **S6** | `java.time`: inmutabilidad, rangos y formatos | [3. Fechas y validación](03-fechas-y-validacion.md) §1–4 |
+| **S7** | Validar en el constructor · expresiones regulares · `BigDecimal` | [3. Fechas y validación](03-fechas-y-validacion.md) §5–8 |
+| **S8** | **JDBC y un CRUD con H2**, con la inyección SQL provocada en clase | [4. CRUD contra base de datos](04-base-de-datos.md) §1–7 |
+| **S9** | **MySQL en Docker**: el mismo código, otra base de datos | [4. CRUD contra base de datos](04-base-de-datos.md) §8 |
 | **S10** | :material-form-select: **Test práctico de RA3 (100 %)** | [Batería de test](autoevaluacion.md) |
 
 ## Cómo se evalúa
@@ -53,13 +55,13 @@ Acierto **+1**, fallo **−0,25**, en blanco **0**. Se examina con la chuleta im
 
     La batería sigue siendo la preparación, y sigue haciéndose programando.
 
-**Lo que se evalúa:** elección de estructuras y orden · *streams* y agrupaciones · lectura de ficheros y las trampas del CSV · JSON con Jackson y fechas ISO · validación y rangos · qué va en cada capa.
+**Lo que se evalúa:** elección de estructuras y agrupaciones · las trampas del CSV · JSON con Jackson y fechas ISO · inmutabilidad de `java.time`, rangos y `BigDecimal` · JDBC, `PreparedStatement` e inyección SQL.
 
 ## Material
 
 | | |
 |---|---|
-| [**Batería de ejercicios**](ejercicios.md) | 38 con solución: 30 fragmentos y **8 programas completos** (E31–E38), que son la práctica integradora |
-| [**Batería de test**](autoevaluacion.md) | 46 preguntas del mismo tipo que las del examen, con solución razonada, y un simulacro cronometrado de 30 |
+| [**Batería de ejercicios**](ejercicios.md) | 40 con solución: 32 fragmentos y **8 programas completos** (E33–E40), que son la práctica integradora |
+| [**Batería de test**](autoevaluacion.md) | 48 preguntas del mismo tipo que las del examen, con solución razonada, y un simulacro cronometrado de 30 |
 | [Chuleta de la UT3](chuleta.md) | Colecciones, ficheros, JSON y fechas en una página |
 | [Comprobar tu trabajo](../comprobar-tu-trabajo.md) | Pega tu código y recibe comentarios |

@@ -173,17 +173,16 @@ nav:
       - 3. POO en Java: ut2/03-poo-en-java.md
       - 4. Colecciones y funcional: ut2/04-colecciones-y-funcional.md
       - 5. Excepciones y Optional: ut2/05-excepciones-y-optional.md
-      - 6. Proyectos y testing: ut2/06-proyectos-y-testing.md
+      - 6. Un proyecto Maven paso a paso: ut2/06-proyecto-maven.md
       - Chuleta de Java 25: ut2/chuleta.md
       - Batería de ejercicios: ut2/ejercicios.md
       - Simulacro de test: ut2/autoevaluacion.md
     - UT3 · RA3 · Datos, ficheros y JSON:
       - ut3/index.md
-      - 1. Estructuras de datos: ut3/01-estructuras-de-datos.md
-      - 2. Ficheros: ut3/02-ficheros.md
-      - 3. JSON y Jackson: ut3/03-json-y-jackson.md
-      - 4. Fechas y validación: ut3/04-fechas-y-validacion.md
-      - 5. Repositorio y capas: ut3/05-repositorio-y-capas.md
+      - 1. Estructuras de datos, aplicadas: ut3/01-estructuras-de-datos.md
+      - 2. CSV y JSON: ut3/02-csv-y-json.md
+      - 3. Fechas y validación: ut3/03-fechas-y-validacion.md
+      - 4. Un CRUD contra base de datos: ut3/04-base-de-datos.md
       - Chuleta: ut3/chuleta.md
       - Batería de ejercicios: ut3/ejercicios.md
       - Batería de test: ut3/autoevaluacion.md
