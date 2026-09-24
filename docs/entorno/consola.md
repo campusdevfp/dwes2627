@@ -141,11 +141,10 @@ Es la consola interactiva de Java, y es utilísima para salir de dudas en dos se
 jshell
 ```
 ```java
-jshell> var lista = List.of(3, 1, 2);
-jshell> lista.stream().sorted().toList()
-$3 ==> [1, 2, 3]
-jshell> LocalDate.now().plusDays(10)
-jshell> /exit
+var lista = List.of(3, 1, 2);
+System.out.println(lista.stream().sorted().toList());   // [1, 2, 3]
+LocalDate.now().plusDays(10);
+System.out.println(/exit);
 ```
 
 Cuando en el examen dudes de qué imprime algo, esto lo resuelve antes que buscarlo.

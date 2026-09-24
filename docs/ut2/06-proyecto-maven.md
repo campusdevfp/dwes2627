@@ -507,13 +507,47 @@ Ese fichero es **un programa entero**: se copia a cualquier máquina con Java y 
 4. Añade un método `agotados()` al servicio que devuelva los productos sin stock, ordenados por categoría y nombre.
 5. Empaqueta con *shade* y ejecuta el `.jar` desde otra carpeta.
 
-??? success "Pistas de los puntos 3 y 4"
+??? success "Solución de las cinco"
+
+    **1.** Con la estructura del punto 5 y `mvn clean compile && mvn exec:java`, la salida es la de arriba. Si sale `no main manifest attribute`, estás lanzando el `.jar` sin el complemento *shade*: eso es el punto 5.
+
+    **2.** Al quitar la línea de la versión:
+
+    ```
+    [ERROR] /…/Producto.java:[3,8] records are not supported in -source 8
+    ```
+
+    Maven usa por defecto una versión antigua de Java. **Es el primer error que da todo proyecto creado a mano**, y por eso la línea no es opcional.
+
+    **3.** La segunda implementación, y la única línea que cambia:
 
     ```java
-    // 3 · la única línea que cambia en Main
-    CatalogoRepositorio repositorio = new CatalogoEnFichero(...);
+    public class CatalogoEnFichero implements CatalogoRepositorio {
 
-    // 4
+        private final List<Producto> productos;
+
+        public CatalogoEnFichero(List<Producto> productos) {
+            this.productos = List.copyOf(productos);
+        }
+
+        @Override public List<Producto> listar() { return productos; }
+
+        @Override public Optional<Producto> buscarPorCodigo(String codigo) {
+            return productos.stream().filter(p -> p.codigo().equals(codigo)).findFirst();
+        }
+    }
+    ```
+
+    ```java
+    // Main.java · la ÚNICA línea que cambia
+    CatalogoRepositorio repositorio = new CatalogoEnFichero(datosDePrueba());
+    ```
+
+    **Si has tenido que tocar `CatalogoServicio`, las capas no están separadas.** El servicio depende de la interfaz, así que no se entera de nada.
+
+    **4.** Los agotados, ordenados por dos criterios:
+
+    ```java
     public List<Producto> agotados() {
         return repositorio.listar().stream()
                 .filter(Producto::agotado)
@@ -523,13 +557,33 @@ Ese fichero es **un programa entero**: se copia a cualquier máquina con Java y 
     }
     ```
 
-    En el 4, ojo a `thenComparing`: si pones `.reversed()` al final, **invierte los dos criterios**, no solo el primero.
+    Ojo al `thenComparing`: si pones `.reversed()` al final, **invierte los dos criterios**, no solo el primero.
 
+    **5.** Con el complemento *shade* en el `pom.xml`:
+
+    ```bash
+    mvn clean package
+    cd /tmp
+    java -jar ~/catalogo/target/catalogo-1.0.0.jar     # funciona desde cualquier sitio
+    ```
+
+    Ese fichero **es el programa entero**: lleva tu código y las librerías dentro. Se copia a otra máquina con Java y funciona. Es, a grandes rasgos, lo que hará Spring Boot en la UT4 — solo que su `.jar` incluye además un servidor web.
 ---
 
 ## Ejercicios (con solución)
 
-??? success "E1 · ¿Por qué no compila?"
+### E1 — ¿Por qué no compila?
+
+Un proyecto con `record Producto(...)` y este `pom.xml` no compila. ¿Por qué?
+
+```xml
+<properties>
+  <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+</properties>
+```
+
+??? success "Solución"
+
 
     Un proyecto con `record Producto(...)` y este `pom.xml`:
 
@@ -547,9 +601,11 @@ Ese fichero es **un programa entero**: se copia a cualquier máquina con Java y 
 
     Es el primer error que da todo proyecto Maven recién creado a mano.
 
-??? success "E2 · Dónde va cada fichero"
+### E2 — Dónde va cada fichero
 
-    Coloca: (a) `Producto.java` · (b) `productos.csv` de datos · (c) `application.properties` · (d) el `.jar` generado
+Coloca: (a) `Producto.java` · (b) `productos.csv` de datos · (c) `application.properties` · (d) el `.jar` generado
+
+??? success "Solución"
 
     | | Dónde |
     |---|---|
@@ -560,7 +616,18 @@ Ese fichero es **un programa entero**: se copia a cualquier máquina con Java y 
 
     Todo lo que esté en `resources/` acaba **dentro del `.jar`**, así que viaja con el programa.
 
-??? success "E3 · Las coordenadas"
+### E3 — Las coordenadas
+
+¿Qué significa cada línea y para qué sirven las tres juntas?
+
+```xml
+<groupId>com.fasterxml.jackson.core</groupId>
+<artifactId>jackson-databind</artifactId>
+<version>2.18.2</version>
+```
+
+??? success "Solución"
+
 
     ```xml
     <groupId>com.fasterxml.jackson.core</groupId>
@@ -576,7 +643,12 @@ Ese fichero es **un programa entero**: se copia a cualquier máquina con Java y 
 
     Los tres juntos identifican **sin ambigüedad** una librería entre millones, y son lo que Maven usa para bajarla del repositorio central. Es el mismo formato que verás en cualquier documentación: `grupo:artefacto:versión`.
 
-??? success "E4 · `mvn package` sin conexión"
+### E4 — `mvn package` sin conexión
+
+Estás sin conexión y `mvn package` falla al intentar descargar algo. ¿Qué puedes hacer?
+
+??? success "Solución"
+
 
     Estás sin internet y `mvn package` falla al intentar bajar algo.
 
@@ -586,7 +658,17 @@ Ese fichero es **un programa entero**: se copia a cualquier máquina con Java y 
 
     Funcionará **si esa dependencia ya se descargó alguna vez**. Por eso conviene hacer un `mvn clean package` en casa antes del día del examen: lo que está en `~/.m2` ya no hace falta bajarlo.
 
-??? success "E5 · El `.jar` que no arranca"
+### E5 — El `.jar` que no arranca
+
+Has empaquetado y al lanzarlo sale esto. ¿Qué pasa y cómo se arregla?
+
+```
+$ java -jar target/catalogo-1.0.0.jar
+no main manifest attribute
+```
+
+??? success "Solución"
+
 
     ```
     $ java -jar target/catalogo-1.0.0.jar

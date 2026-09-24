@@ -122,11 +122,58 @@ Java es de **tipado estático**: el compilador comprueba los tipos antes de ejec
    ```
 3. **Rompe el programa a propósito**: quita un `;` y ejecuta. Lee el mensaje del compilador: te dice fichero, línea y qué esperaba. Aprender a leer errores es media asignatura.
 
+??? success "Solución de los tres"
+
+    **1.** El programa corto, tal cual:
+
+    ```java
+    void main() {
+        IO.println("Hola, mundo");
+    }
+    ```
+
+    ```bash
+    java Hola.java        # no hace falta javac ni crear un proyecto
+    ```
+
+    **2.** Con el nombre y la fecha:
+
+    ```java
+    import java.time.LocalDate;
+
+    void main() {
+        var nombre = "Iván";
+        IO.println("Hola, " + nombre + ". Hoy es " + LocalDate.now());
+    }
+    ```
+
+    El `import` va **antes** del método y `LocalDate.now()` devuelve el día de hoy. Si te da error de compilación en `IO.println`, comprueba con `java -version` que tienes el JDK 25: `IO` no existe en versiones anteriores.
+
+    **3.** Al quitar el `;` sale algo así:
+
+    ```
+    Hola.java:5: error: ';' expected
+        IO.println("Hola, " + nombre)
+                                    ^
+    1 error
+    ```
+
+    Tres cosas que se aprenden de ese mensaje, y que sirven para todo el curso:
+
+    | | |
+    |---|---|
+    | `Hola.java:5` | **Fichero y línea.** Empieza a mirar ahí |
+    | `';' expected` | Qué esperaba encontrar el compilador |
+    | `^` | La columna exacta |
+
+    Y el detalle que despista: cuando falta un `;`, el compilador suele señalar **la línea siguiente**, porque es donde se da cuenta de que algo no cuadra. Si la línea que marca parece correcta, mira la de arriba.
+
+
 ---
 
 ## Ejercicios (con solución)
 
-### Ejercicio 1 — ¿Compila o no?
+### E1 — ¿Compila o no?
 Di si cada línea da error de **compilación**, error de **ejecución** o funciona:
 (a) `int edad = 25;` · (b) `int edad = "25";` · (c) `String s = null; IO.println(s.length());` · (d) `var total = 10 / 2;` · (e) `IO.println("Hola")` · (f) `var x = 5; x = "cinco";`
 
@@ -135,7 +182,7 @@ Di si cada línea da error de **compilación**, error de **ejecución** o funcio
     (a) Funciona. (b) <b>Compilación</b>: no puedes meter un String en un int. (c) <b>Ejecución</b>: <code>NullPointerException</code> al llamar a un método sobre null — compila perfectamente. (d) Funciona (<code>x</code> es int, vale 5). (e) <b>Compilación</b>: falta el <code>;</code>. (f) <b>Compilación</b>: <code>var</code> infiere <code>int</code> en la declaración, y ese tipo ya no cambia.
 
 
-### Ejercicio 2 — JDK, JRE, JVM
+### E2 — JDK, JRE, JVM
 Un compañero dice: "he instalado la JRE, ya puedo programar en Java". ¿Tiene razón? ¿Qué necesita?
 
 ??? success "Solución"
@@ -143,7 +190,7 @@ Un compañero dice: "he instalado la JRE, ya puedo programar en Java". ¿Tiene r
     No. La <b>JRE</b> solo permite <i>ejecutar</i> programas Java. Para <i>desarrollar</i> necesita el <b>JDK</b>, que incluye el compilador <code>javac</code> (y la JRE dentro). En este curso: JDK 25 LTS.
 
 
-### Ejercicio 3 — Tu conversor
+### E3 — Tu conversor
 Escribe un programa que declare una temperatura en grados Celsius y muestre su equivalente en Fahrenheit (`F = C * 9/5 + 32`).
 
 ??? success "Solución"

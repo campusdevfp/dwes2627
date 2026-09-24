@@ -543,13 +543,29 @@ docker compose down -v         # parar Y borrar los datos
 4. Levanta MySQL con Docker, cambia la URL y ejecuta lo mismo.
 5. **Escribe la versión insegura** de `buscarPorCodigo` concatenando, y pásale `x' OR '1'='1`. Mira cuántas filas devuelve. Después bórrala.
 
-??? success "Pistas de los puntos 3 y 5"
+??? success "Solución de las cinco"
+
+    **1.** La primera ejecución inserta los tres productos. **La segunda da `CodigoDuplicadoException` en los tres**, y eso es exactamente lo que se quería ver: los datos han sobrevivido al reinicio.
+
+    Si te pasara lo contrario —que la segunda vez vuelva a insertar— mira la URL: con `jdbc:h2:mem:tienda` la base de datos vive en memoria y desaparece al terminar el programa.
+
+    **2.** La consola web:
+
+    ```bash
+    java -cp ~/.m2/repository/com/h2database/h2/2.3.232/h2-2.3.232.jar org.h2.tools.Server -web
+    ```
+
+    En `http://localhost:8082`, con la URL `jdbc:h2:./datos/tienda`, usuario `sa` y sin contraseña. Ahí se ve la tabla y se pueden lanzar consultas a mano.
+
+    **Ojo:** H2 no deja que dos procesos abran el mismo fichero a la vez. Si te da `Database may be already in use`, para el programa antes de abrir la consola.
+
+    **3.** El filtro por precio:
 
     ```java
-    // 3
     public List<Producto> buscarPorPrecioMenorQue(BigDecimal tope) {
         var sql = "SELECT id, codigo, nombre, precio, stock FROM producto "
                 + "WHERE precio < ? ORDER BY precio";
+
         try (var con = conectar(); var ps = con.prepareStatement(sql)) {
             ps.setBigDecimal(1, tope);
             try (var rs = ps.executeQuery()) {
@@ -563,27 +579,60 @@ docker compose down -v         # parar Y borrar los datos
     }
     ```
 
+    El `?` también para un número: **no se concatena nunca**, ni siquiera cuando «es un número y no puede ser peligroso».
+
+    **4.** Con MySQL levantado, el cambio es una línea:
+
     ```java
-    // 5 · SOLO para verlo, y después se borra
+    var dao = new ProductoDao(
+            "jdbc:mysql://localhost:3306/tienda?serverTimezone=Europe/Madrid",
+            "alumno", "alumno");
+    ```
+
+    ```bash
+    docker compose up -d
+    docker compose ps          # esperar a que ponga (healthy)
+    mvn exec:java
+    ```
+
+    **El DAO no se toca.** Si has tenido que tocarlo, mira qué: casi siempre es un tipo concreto de H2 o un SQL que no era estándar, y ese descubrimiento vale más que el ejercicio.
+
+    **5.** La versión insegura, solo para verla:
+
+    ```java
     var sql = "SELECT * FROM producto WHERE codigo = '" + codigo + "'";
     try (var con = conectar(); var st = con.createStatement();
          var rs = st.executeQuery(sql)) {
-        int n = 0; while (rs.next()) n++;
-        System.out.println("Filas devueltas: " + n);     // ← la tabla entera
+        int n = 0;
+        while (rs.next()) n++;
+        System.out.println("Filas devueltas: " + n);
     }
     ```
 
-    Ver ese número con tus ojos es la mejor clase de seguridad de la unidad.
+    ```
+    Filas devueltas: 3        ← la tabla entera
+    ```
 
+    Porque la consulta que llega a la base de datos es:
+
+    ```sql
+    SELECT * FROM producto WHERE codigo = 'x' OR '1'='1'
+    ```
+
+    Con `PreparedStatement` devuelve **0**: busca un código llamado literalmente `x' OR '1'='1` y no lo encuentra.
+
+    Ver ese `3` con tus ojos es la mejor clase de seguridad de la unidad. **Y después se borra**: no se deja código así ni comentado.
 ---
 
 ## Ejercicios (con solución)
 
-??? success "E1 · ¿Qué devuelve `executeUpdate`?"
+### E1 — ¿Qué devuelve `executeUpdate`?
 
-    ```java
-    int n = ps.executeUpdate();     // UPDATE producto SET stock = ? WHERE codigo = ?
-    ```
+```java
+int n = ps.executeUpdate();     // UPDATE producto SET stock = ? WHERE codigo = ?
+```
+
+??? success "Solución"
 
     **El número de filas afectadas.** Si el código no existe, devuelve `0`.
 
@@ -595,18 +644,20 @@ docker compose down -v         # parar Y borrar los datos
 
     Y ojo: para `SELECT` no se usa `executeUpdate`, sino `executeQuery`, que devuelve un `ResultSet`.
 
-??? success "E2 · La conexión que no se cierra"
+### E2 — La conexión que no se cierra
 
-    ```java
-    public List<Producto> listar() throws SQLException {
-        var con = DriverManager.getConnection(url, usuario, clave);
-        var ps = con.prepareStatement("SELECT * FROM producto");
-        var rs = ps.executeQuery();
-        var lista = new ArrayList<Producto>();
-        while (rs.next()) lista.add(aProducto(rs));
-        return lista;
-    }
-    ```
+```java
+public List<Producto> listar() throws SQLException {
+    var con = DriverManager.getConnection(url, usuario, clave);
+    var ps = con.prepareStatement("SELECT * FROM producto");
+    var rs = ps.executeQuery();
+    var lista = new ArrayList<Producto>();
+    while (rs.next()) lista.add(aProducto(rs));
+    return lista;
+}
+```
+
+??? success "Solución"
 
     **No se cierra nada.** Funciona las primeras veces y después la base de datos deja de aceptar conexiones: `Too many connections`.
 
@@ -620,7 +671,17 @@ docker compose down -v         # parar Y borrar los datos
 
     Se cierran los tres, en orden inverso, pase lo que pase.
 
-??? success "E3 · La inyección"
+### E3 — La inyección
+
+Este login se puede saltar sin saber la contraseña. ¿Qué habría que escribir en el campo `clave`?
+
+```java
+var sql = "SELECT * FROM usuario WHERE nombre = '" + nombre
+        + "' AND clave = '" + clave + "'";
+```
+
+??? success "Solución"
+
 
     ```java
     var sql = "SELECT * FROM usuario WHERE nombre = '" + nombre
@@ -643,16 +704,18 @@ docker compose down -v         # parar Y borrar los datos
 
     Con `?` es imposible: el valor nunca se interpreta como parte de la consulta.
 
-??? success "E4 · `UNIQUE` frente a comprobarlo tú"
+### E4 — `UNIQUE` frente a comprobarlo tú
 
-    ```java
-    if (buscarPorCodigo(p.codigo()).isPresent()) {
-        throw new CodigoDuplicadoException(p.codigo());
-    }
-    insertar(p);
-    ```
+```java
+if (buscarPorCodigo(p.codigo()).isPresent()) {
+    throw new CodigoDuplicadoException(p.codigo());
+}
+insertar(p);
+```
 
-    ¿Qué problema tiene, además de hacer dos consultas?
+¿Qué problema tiene, además de hacer dos consultas?
+
+??? success "Solución"
 
     **Una carrera.** Entre el `buscarPorCodigo` y el `insertar` hay un hueco en el que otro proceso puede insertar el mismo código. Los dos comprueban, los dos ven que está libre, los dos insertan.
 
@@ -666,7 +729,16 @@ docker compose down -v         # parar Y borrar los datos
 
     Esto reaparece, con el mismo argumento, en la UT5.
 
-??? success "E5 · `DECIMAL` o `DOUBLE`"
+### E5 — `DECIMAL` o `DOUBLE`
+
+¿Qué problema tiene esta columna para guardar un precio, y por cuál se cambia?
+
+```sql
+precio DOUBLE NOT NULL
+```
+
+??? success "Solución"
+
 
     ```sql
     precio DOUBLE NOT NULL
@@ -680,9 +752,11 @@ docker compose down -v         # parar Y borrar los datos
 
     `10` es el total de dígitos y `2` los decimales: hasta `99999999,99`. Y en Java, `BigDecimal` con `getBigDecimal` / `setBigDecimal`.
 
-??? success "E6 · El cambio de motor"
+### E6 — El cambio de motor
 
-    Tienes el CRUD funcionando con H2. Te piden pasarlo a MySQL. ¿Qué tocas?
+Tienes el CRUD funcionando con H2. Te piden pasarlo a MySQL. ¿Qué tocas?
+
+??? success "Solución"
 
     1. **La dependencia** del driver en el `pom.xml` (si no estaba).
     2. **La URL de conexión**, el usuario y la contraseña.
@@ -691,7 +765,12 @@ docker compose down -v         # parar Y borrar los datos
 
     Lo que sí puede dar guerra: tipos concretos de cada motor, el juego de caracteres y la zona horaria. Por eso lo profesional es **desarrollar contra el mismo motor que se usará en producción**, y por eso existe Docker: levantar el motor de verdad en tu máquina cuesta una orden.
 
-??? success "E7 · Los datos que desaparecieron"
+### E7 — Los datos que desaparecieron
+
+Un compañero levanta MySQL con Docker, mete datos, hace `docker compose down` y al volver a arrancar no hay nada. ¿Qué le falta en el `compose.yaml`?
+
+??? success "Solución"
+
 
     Un compañero levanta MySQL con Docker, mete datos, hace `docker compose down` y al volver a arrancar no hay nada.
 

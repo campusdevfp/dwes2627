@@ -35,15 +35,17 @@ Y lo que de verdad hay que retener:
     Buscar en una lista recorre la lista entera. Con 30 elementos da igual; con 200.000, no.
 
     ```java
-    jshell> var lista = new ArrayList<Integer>()
-    jshell> for (int i = 0; i < 200_000; i++) lista.add(i)
-    jshell> var conjunto = new HashSet<>(lista)
+    var lista = new ArrayList<Integer>();
+    for (int i = 0; i < 200_000; i++) lista.add(i);
+    var conjunto = new HashSet<>(lista);
 
-    jshell> long t = System.nanoTime(); lista.contains(199_999); (System.nanoTime()-t)/1000 + " µs"
-    $5 ==> "1483 µs"
+    long t = System.nanoTime();
+    lista.contains(199_999);
+    System.out.println((System.nanoTime() - t) / 1000 + " µs");      // 1483 µs
 
-    jshell> t = System.nanoTime(); conjunto.contains(199_999); (System.nanoTime()-t)/1000 + " µs"
-    $6 ==> "3 µs"
+    t = System.nanoTime();
+    conjunto.contains(199_999);
+    System.out.println((System.nanoTime() - t) / 1000 + " µs");      // 3 µs
     ```
 
     Quinientas veces. **Elegir la estructura no es estilo: es el rendimiento de la aplicación.**
@@ -71,7 +73,14 @@ var ventas = List.of(
     new Venta("Carla", "Cámara",       "repuestos", 12,   8.5));
 ```
 
-Cópialo en `jshell` con `import java.util.*` y `import java.util.stream.*` delante y ve probando.
+Pega eso en `jshell`, con los dos `import` delante, y ve probando lo que viene:
+
+```java
+import java.util.*;
+import java.util.stream.*;
+```
+
+Los bloques que siguen están escritos para **copiarlos y pegarlos tal cual**; el comentario de la derecha dice lo que tiene que salir.
 
 ---
 
@@ -80,10 +89,10 @@ Cópialo en `jshell` con `import java.util.*` y `import java.util.stream.*` dela
 **Cuánto factura cada vendedor.**
 
 ```java
-jshell> ventas.stream().collect(Collectors.groupingBy(
-   ...>     Venta::vendedor,
-   ...>     Collectors.summingDouble(Venta::importe)))
-$10 ==> {Bruno=325.0, Ana=1045.0, Carla=882.0}
+System.out.println(ventas.stream().collect(Collectors.groupingBy(
+        Venta::vendedor,
+        Collectors.summingDouble(Venta::importe))));
+// {Bruno=325.0, Ana=1045.0, Carla=882.0}
 ```
 
 Lee la instrucción en dos partes:
@@ -105,21 +114,20 @@ flowchart LR
 Cambiando el segundo parámetro sale otra cosa, sin tocar nada más:
 
 ```java
-jshell> ventas.stream().collect(Collectors.groupingBy(Venta::vendedor))
-$11 ==> {Bruno=[Venta[...], Venta[...]], Ana=[...], Carla=[...]}      // las ventas enteras
+System.out.println(ventas.stream().collect(Collectors.groupingBy(Venta::vendedor)));
+// {Bruno=[Venta[...], Venta[...]], Ana=[...], Carla=[...]}  las ventas enteras
+System.out.println(ventas.stream().collect(Collectors.groupingBy(
+        Venta::vendedor, Collectors.counting())));
+// {Bruno=2, Ana=3, Carla=2}          cuántas
 
-jshell> ventas.stream().collect(Collectors.groupingBy(
-   ...>     Venta::vendedor, Collectors.counting()))
-$12 ==> {Bruno=2, Ana=3, Carla=2}                                     // cuántas
+System.out.println(ventas.stream().collect(Collectors.groupingBy(
+        Venta::vendedor, Collectors.averagingDouble(Venta::importe))));
+// {Bruno=162.5, Ana=348.33333333333337, Carla=441.0}   la media
 
-jshell> ventas.stream().collect(Collectors.groupingBy(
-   ...>     Venta::vendedor, Collectors.averagingDouble(Venta::importe)))
-$13 ==> {Bruno=162.5, Ana=348.33333333333337, Carla=441.0}            // la media
-
-jshell> ventas.stream().collect(Collectors.groupingBy(
-   ...>     Venta::categoria,
-   ...>     Collectors.mapping(Venta::producto, Collectors.toSet())))
-$14 ==> {seguridad=[Casco, Luces, Candado], bicicletas=[...], repuestos=[Cámara]}
+System.out.println(ventas.stream().collect(Collectors.groupingBy(
+        Venta::categoria,
+        Collectors.mapping(Venta::producto, Collectors.toSet()))));
+// {seguridad=[Casco, Luces, Candado], bicicletas=[...], repuestos=[Cámara]}
 ```
 
 Ese último, `mapping`, **transforma dentro de cada grupo** antes de recogerlo. Es el que más cuesta ver y el que más se necesita.
@@ -130,9 +138,9 @@ Ese último, `mapping`, **transforma dentro de cada grupo** antes de recogerlo. 
     Si el informe tiene que salir ordenado, hay que pedirlo:
 
     ```java
-    jshell> ventas.stream().collect(Collectors.groupingBy(
-       ...>     Venta::vendedor, TreeMap::new, Collectors.counting()))
-    $15 ==> {Ana=3, Bruno=2, Carla=2}
+    System.out.println(ventas.stream().collect(Collectors.groupingBy(
+            Venta::vendedor, TreeMap::new, Collectors.counting())));
+    // {Ana=3, Bruno=2, Carla=2}
     ```
 
     Mucha gente cree que `HashMap` ordena porque con sus datos de prueba salió ordenado por casualidad. **Es la pregunta que más cae en el examen.**
@@ -140,13 +148,13 @@ Ese último, `mapping`, **transforma dentro de cada grupo** antes de recogerlo. 
 ### Agrupar en dos niveles
 
 ```java
-jshell> ventas.stream().collect(Collectors.groupingBy(
-   ...>     Venta::categoria, TreeMap::new,
-   ...>     Collectors.groupingBy(Venta::vendedor, TreeMap::new,
-   ...>                           Collectors.summingDouble(Venta::importe))))
-$16 ==> {bicicletas={Ana=900.0, Carla=780.0},
-         repuestos={Carla=102.0},
-         seguridad={Ana=70.0, Bruno=325.0}}
+System.out.println(ventas.stream().collect(Collectors.groupingBy(
+        Venta::categoria, TreeMap::new,
+        Collectors.groupingBy(Venta::vendedor, TreeMap::new,
+                              Collectors.summingDouble(Venta::importe)))));
+// {bicicletas={Ana=900.0, Carla=780.0},
+// repuestos={Carla=102.0},
+// seguridad={Ana=70.0, Bruno=325.0}}
 ```
 
 **El `TreeMap::new` hay que ponerlo en los dos niveles.** Poner solo el de fuera es el fallo clásico: las categorías salen ordenadas y los vendedores de dentro, no.
@@ -156,21 +164,21 @@ $16 ==> {bicicletas={Ana=900.0, Carla=780.0},
 ## 4. Ordenar con criterios
 
 ```java
-jshell> ventas.stream()
-   ...>       .sorted(Comparator.comparingDouble(Venta::importe).reversed())
-   ...>       .map(v -> v.producto() + " " + v.importe())
-   ...>       .toList()
-$17 ==> [Bici urbana 900.0, Bici montaña 780.0, Casco 175.0, ...]
+System.out.println(ventas.stream()
+      .sorted(Comparator.comparingDouble(Venta::importe).reversed())
+      .map(v -> v.producto() + " " + v.importe())
+      System.out.println(.toList());
+// [Bici urbana 900.0, Bici montaña 780.0, Casco 175.0, ...]
 ```
 
 Y con desempate:
 
 ```java
-jshell> ventas.stream()
-   ...>       .sorted(Comparator.comparing(Venta::categoria)
-   ...>                         .thenComparing(Venta::producto))
-   ...>       .map(Venta::producto).toList()
-$18 ==> [Bici montaña, Bici urbana, Cámara, Candado, Casco, Casco, Luces]
+System.out.println(ventas.stream()
+      .sorted(Comparator.comparing(Venta::categoria)
+                        .thenComparing(Venta::producto))
+      System.out.println(.map(Venta::producto).toList());
+// [Bici montaña, Bici urbana, Cámara, Candado, Casco, Casco, Luces]
 ```
 
 !!! warning "Dónde va el `.reversed()`"
@@ -189,14 +197,13 @@ $18 ==> [Bici montaña, Bici urbana, Cámara, Candado, Casco, Casco, Luces]
 Sacar el mapa de facturación ordenado **por importe** —no por nombre— requiere volver a hacer stream sobre las entradas. Es el paso que más cuesta:
 
 ```java
-jshell> var facturacion = ventas.stream().collect(Collectors.groupingBy(
-   ...>     Venta::vendedor, Collectors.summingDouble(Venta::importe)))
-
-jshell> facturacion.entrySet().stream()
-   ...>       .sorted(Map.Entry.<String, Double>comparingByValue().reversed())   // (1)
-   ...>       .map(e -> e.getKey() + ": " + e.getValue())
-   ...>       .toList()
-$21 ==> [Ana: 1045.0, Carla: 882.0, Bruno: 325.0]
+var facturacion = ventas.stream().collect(Collectors.groupingBy(
+    Venta::vendedor, Collectors.summingDouble(Venta::importe)));
+System.out.println(facturacion.entrySet().stream()
+      .sorted(Map.Entry.<String, Double>comparingByValue().reversed())   // (1)
+      .map(e -> e.getKey() + ": " + e.getValue())
+      System.out.println(.toList());
+// [Ana: 1045.0, Carla: 882.0, Bruno: 325.0]
 ```
 
 1. **El `<String, Double>` explícito es obligatorio.** Sin él, el compilador no infiere el tipo dentro de `sorted` y da un error que no señala el problema real.
@@ -206,14 +213,10 @@ $21 ==> [Ana: 1045.0, Carla: 882.0, Bruno: 325.0]
 ## 5. Estadísticas de una pasada
 
 ```java
-jshell> var est = ventas.stream().mapToDouble(Venta::importe).summaryStatistics()
-est ==> DoubleSummaryStatistics{count=7, sum=2252.000000, min=70.000000,
-        average=321.714286, max=900.000000}
-
-jshell> est.getMax()
-$23 ==> 900.0
-jshell> est.getAverage()
-$24 ==> 321.7142857142857
+var est = ventas.stream().mapToDouble(Venta::importe).summaryStatistics();
+// average=321.714286, max=900.000000}
+System.out.println(est.getMax());   // 900.0
+System.out.println(est.getAverage());   // 321.7142857142857
 ```
 
 Cinco datos recorriendo la lista **una vez**. Lo alternativo son cinco recorridos.
@@ -221,12 +224,11 @@ Cinco datos recorriendo la lista **una vez**. Lo alternativo son cinco recorrido
 Y el máximo, con su matiz:
 
 ```java
-jshell> ventas.stream().max(Comparator.comparingDouble(Venta::importe))
-$25 ==> Optional[Venta[vendedor=Ana, producto=Bici urbana, ...]]
-
-jshell> ventas.stream().max(Comparator.comparingDouble(Venta::importe))
-   ...>       .map(Venta::producto).orElse("—")
-$26 ==> "Bici urbana"
+System.out.println(ventas.stream().max(Comparator.comparingDouble(Venta::importe)));
+// Optional[Venta[vendedor=Ana, producto=Bici urbana, ...]]
+System.out.println(ventas.stream().max(Comparator.comparingDouble(Venta::importe))
+      System.out.println(.map(Venta::producto).orElse("—"));
+// Bici urbana
 ```
 
 `max` devuelve **`Optional`** porque la lista podría estar vacía. Siempre se termina con `.map(...).orElse(...)`.
@@ -340,7 +342,21 @@ Con el programa de arriba:
 4. Cambia el punto 3 para que los productos salgan **de más caro a más barato** en vez de alfabéticamente.
 5. Quita el `TreeMap::new` del punto 2 y ejecuta varias veces. ¿Sale siempre igual?
 
-??? success "Soluciones"
+??? success "Solución de las cinco"
+
+    **1.** Al añadir la venta, Ana sube y el ranking se recoloca:
+
+    ```java
+    new Venta("Ana", "Bici urbana", "bicicletas", 1, 450.0)
+    ```
+
+    ```
+    Ana        1495,00 €
+    Carla       882,00 €
+    Bruno       325,00 €
+    ```
+
+    No hay que tocar ni una línea del programa: el informe se recalcula porque **describe** lo que quiere, no cómo recorrer.
 
     ```java
     // 2 · el más vendido en unidades
@@ -367,15 +383,27 @@ Con el programa de arriba:
                         .map(Venta::producto).distinct().toList())));
     ```
 
-    El punto 5 es el importante: con pocos datos **suele** salir igual, y eso es precisamente lo que engaña. La garantía no existe.
+    En el **2** hay que volver a hacer *stream* sobre `entrySet()`: un `Map` no es un `Stream`. Es el paso que más cuesta ver.
 
+    En el **4**, `collectingAndThen` recoge el grupo y después lo transforma. Es la forma de ordenar **dentro** de cada montón.
+
+    **5.** Quitando el `TreeMap::new`, con estos siete datos **suele** salir siempre igual… y eso es precisamente lo que engaña:
+
+    ```
+    {bicicletas=3, repuestos=12, seguridad=20}    ← hoy
+    {seguridad=20, bicicletas=3, repuestos=12}    ← con otros datos
+    ```
+
+    `groupingBy` devuelve un `HashMap`, y **un `HashMap` no garantiza ningún orden**. Que con tus datos de prueba salga ordenado no es una garantía: es una casualidad que depende de cómo se repartan los *hash*. El día que cambien las categorías, cambia el orden y tu informe sale distinto sin que hayas tocado nada.
 ---
 
 ## Ejercicios (con solución)
 
-??? success "E1 · Elige la estructura"
+### E1 — Elige la estructura
 
-    (a) los códigos de barras ya escaneados · (b) las líneas de un albarán, en orden · (c) el stock por código de producto · (d) el ranking de productos, ordenado alfabéticamente y sin repetir · (e) las últimas diez operaciones para deshacer
+(a) los códigos de barras ya escaneados · (b) las líneas de un albarán, en orden · (c) el stock por código de producto · (d) el ranking de productos, ordenado alfabéticamente y sin repetir · (e) las últimas diez operaciones para deshacer
+
+??? success "Solución"
 
     | | Estructura | Por qué |
     |---|---|---|
@@ -387,13 +415,15 @@ Con el programa de arriba:
 
     La (c) es la que más se falla: mucha gente pone una `List<Producto>` y busca recorriéndola. Funciona con veinte productos y se arrastra con veinte mil.
 
-??? success "E2 · ¿Qué imprime?"
+### E2 — ¿Qué imprime?
 
-    ```java
-    var m = new HashMap<String, Integer>();
-    m.put("pera", 3); m.put("manzana", 5); m.put("kiwi", 1);
-    System.out.println(m.keySet());
-    ```
+```java
+var m = new HashMap<String, Integer>();
+m.put("pera", 3); m.put("manzana", 5); m.put("kiwi", 1);
+m.keySet();
+```
+
+??? success "Solución"
 
     **No se puede saber.** Un `HashMap` no garantiza ningún orden.
 
@@ -401,16 +431,18 @@ Con el programa de arriba:
 
     Si el orden importa: `TreeMap` (alfabético) o `LinkedHashMap` (de inserción).
 
-??? success "E3 · El `TreeMap` que falta"
+### E3 — El `TreeMap` que falta
 
-    ```java
-    var r = ventas.stream().collect(Collectors.groupingBy(
-            Venta::categoria, TreeMap::new,
-            Collectors.groupingBy(Venta::vendedor,
-                                  Collectors.summingDouble(Venta::importe))));
-    ```
+```java
+var r = ventas.stream().collect(Collectors.groupingBy(
+        Venta::categoria, TreeMap::new,
+        Collectors.groupingBy(Venta::vendedor,
+                              Collectors.summingDouble(Venta::importe))));
+```
 
-    ¿Qué sale ordenado y qué no?
+¿Qué sale ordenado y qué no?
+
+??? success "Solución"
 
     **Las categorías sí; los vendedores de dentro, no.** El `TreeMap::new` solo está en el nivel exterior; el `groupingBy` interior devuelve un `HashMap`.
 
@@ -423,7 +455,12 @@ Con el programa de arriba:
 
     Y se ve directamente en la salida, sin necesidad de saberlo de memoria.
 
-??? success "E4 · El `.reversed()` mal puesto"
+### E4 — El `.reversed()` mal puesto
+
+Quieres las ventas ordenadas por categoría **descendente** y, dentro de cada categoría, por producto **alfabético**. ¿Cuál de las dos formas lo hace?
+
+??? success "Solución"
+
 
     Quieres las ventas ordenadas por categoría descendente y, dentro, por producto alfabético.
 
@@ -437,23 +474,30 @@ Con el programa de arriba:
 
     El primero invierte **los dos** criterios: las categorías salen al revés y los productos también. `reversed()` actúa sobre todo lo encadenado hasta ese punto.
 
-??? success "E5 · El máximo de un mapa"
+### E5 — El máximo de un mapa
 
-    Dado `Map<String, Double> facturacion`, saca el nombre del que más factura.
+Dado `Map<String, Double> facturacion`, saca el nombre del que más factura.
 
-    ```java
-    facturacion.entrySet().stream()
-               .max(Map.Entry.comparingByValue())
-               .map(Map.Entry::getKey)
-               .orElse("—");
-    ```
+```java
+facturacion.entrySet().stream()
+           .max(Map.Entry.comparingByValue())
+           .map(Map.Entry::getKey)
+           .orElse("—");
+```
 
-    Las dos cosas que se preguntan:
+Las dos cosas que se preguntan:
+
+??? success "Solución"
 
     1. **Hay que volver a hacer stream sobre `entrySet()`.** Un `Map` no es un `Stream`.
     2. `max` devuelve `Optional`, así que termina en `.orElse(...)`.
 
-??? success "E6 · Una pasada o cinco"
+### E6 — Una pasada o cinco
+
+Necesitas el total, la media, el mínimo, el máximo y el número de ventas. ¿Cuántas veces hay que recorrer la lista?
+
+??? success "Solución"
+
 
     Necesitas el total, la media, el mínimo, el máximo y el número de ventas.
 

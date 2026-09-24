@@ -153,7 +153,7 @@ void main() {
 
 ## Ejercicios (con solución)
 
-### Ejercicio 1 — ¿Qué imprime?
+### E1 — ¿Qué imprime?
 ```java
 var x = 10;
 var y = 3;
@@ -167,7 +167,7 @@ IO.println(x > y && y > 5);
     <code>3</code> (división entera) · <code>3.3333333333333335</code> (el cast a double fuerza división decimal) · <code>false</code> (la primera es true pero <code>y > 5</code> es false, y <code>&&</code> exige ambas).
 
 
-### Ejercicio 2 — Reescribe con `switch` moderno
+### E2 — Reescribe con `switch` moderno
 Convierte esto en una expresión `switch` de una sola asignación:
 ```java
 String categoria;
@@ -192,7 +192,7 @@ else categoria = "Suspenso";
     (Con rangos abiertos seguiría siendo más natural el `if`; el `switch` brilla con valores discretos. Saber **cuándo** usar cada uno también es criterio.)
 
 
-### Ejercicio 3 — Validador de contraseña
+### E3 — Validador de contraseña
 Escribe un programa que, dada una variable `password`, imprima "Válida" si tiene 8 o más caracteres **y** contiene un dígito; si no, "No válida" indicando qué falla.
 
 ??? success "Solución"

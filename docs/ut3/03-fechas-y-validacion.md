@@ -2,11 +2,13 @@
 
 Dos cosas que parecen menores y que son la causa de la mitad de los fallos de una aplicación real: las fechas mal manejadas y los datos que entran sin comprobar.
 
-!!! tip "Con `jshell` abierto"
+!!! tip "Todo esto se copia y se pega en `jshell`"
+    Los bloques están escritos para pegarlos tal cual; el comentario de la derecha dice lo que tiene que salir. Pega primero los `import`:
+
     ```java
-    jshell> import java.time.*
-    jshell> import java.time.format.*
-    jshell> import java.time.temporal.ChronoUnit
+    import java.time.*;
+    import java.time.format.*;
+    import java.time.temporal.ChronoUnit;
     ```
 
 ---
@@ -33,20 +35,11 @@ flowchart LR
 | `Instant` | Un momento exacto en UTC | Cuándo se creó un registro |
 
 ```java
-jshell> LocalDate.now()
-$4 ==> 2026-09-25
-
-jshell> LocalDate.of(2026, 3, 14)
-$5 ==> 2026-03-14
-
-jshell> LocalTime.of(20, 30)
-$6 ==> 20:30
-
-jshell> LocalDateTime.of(2026, 3, 14, 20, 30)
-$7 ==> 2026-03-14T20:30
-
-jshell> Instant.now()
-$8 ==> 2026-09-25T09:14:22.318Z
+System.out.println(LocalDate.now());   // 2026-09-25
+System.out.println(LocalDate.of(2026, 3, 14));   // 2026-03-14
+System.out.println(LocalTime.of(20, 30));   // 20:30
+System.out.println(LocalDateTime.of(2026, 3, 14, 20, 30));   // 2026-03-14T20:30
+System.out.println(Instant.now());   // 2026-09-25T09:14:22.318Z
 ```
 
 !!! info "Cuál usar, en una frase"
@@ -60,20 +53,16 @@ $8 ==> 2026-09-25T09:14:22.318Z
 ## 2. La regla que hay que interiorizar: son inmutables
 
 ```java
-jshell> var f = LocalDate.of(2026, 3, 14)
-jshell> f.plusDays(7)
-$10 ==> 2026-03-21
-
-jshell> f
-$11 ==> 2026-03-14        // ← NO ha cambiado
+var f = LocalDate.of(2026, 3, 14);
+System.out.println(f.plusDays(7));   // 2026-03-21
+System.out.println(f);   // 2026-03-14  ← NO ha cambiado
 ```
 
 `plusDays` **devuelve una fecha nueva** y deja la original intacta. Si no guardas el resultado, se pierde:
 
 ```java
-jshell> f.plusDays(7);       // no hace nada
-jshell> var nueva = f.plusDays(7)   // así sí
-nueva ==> 2026-03-21
+f.plusDays(7);   // no hace nada
+var nueva = f.plusDays(7);   // así sí
 ```
 
 **El compilador no avisa**, porque la expresión es válida. Es exactamente el mismo error que `cadena.trim();` sin asignar, y es la pregunta de fechas que más cae.
@@ -81,16 +70,13 @@ nueva ==> 2026-03-21
 Todos los métodos siguen ese patrón:
 
 ```java
-jshell> f.plusMonths(2)
-$14 ==> 2026-05-14
-jshell> f.minusWeeks(1)
-$15 ==> 2026-03-07
-jshell> f.withDayOfMonth(1)
-$16 ==> 2026-03-01
-jshell> f.plusDays(20)                 // se ocupa solo del cambio de mes
-$17 ==> 2026-04-03
-jshell> LocalDate.of(2026,1,31).plusMonths(1)    // y de los meses cortos
-$18 ==> 2026-02-28
+System.out.println(f.plusMonths(2));   // 2026-05-14
+System.out.println(f.minusWeeks(1));   // 2026-03-07
+System.out.println(f.withDayOfMonth(1));   // 2026-03-01
+// se ocupa solo del cambio de mes
+System.out.println(f.plusDays(20));   // 2026-04-03
+// y de los meses cortos
+System.out.println(LocalDate.of(2026,1,31).plusMonths(1));   // 2026-02-28
 ```
 
 ---
@@ -98,18 +84,12 @@ $18 ==> 2026-02-28
 ## 3. Comparar y medir
 
 ```java
-jshell> var entrada = LocalDate.of(2026, 7, 1)
-jshell> var salida  = LocalDate.of(2026, 7, 3)
-
-jshell> entrada.isBefore(salida)
-$21 ==> true
-jshell> entrada.isAfter(salida)
-$22 ==> false
-jshell> entrada.isEqual(LocalDate.of(2026, 7, 1))
-$23 ==> true
-
-jshell> ChronoUnit.DAYS.between(entrada, salida)
-$24 ==> 2
+var entrada = LocalDate.of(2026, 7, 1);
+var salida  = LocalDate.of(2026, 7, 3);
+System.out.println(entrada.isBefore(salida));   // true
+System.out.println(entrada.isAfter(salida));   // false
+System.out.println(entrada.isEqual(LocalDate.of(2026, 7, 1)));   // true
+System.out.println(ChronoUnit.DAYS.between(entrada, salida));   // 2
 ```
 
 !!! danger "Dos noches, no tres días"
@@ -118,14 +98,9 @@ $24 ==> 2
     Ese `±1` es el fallo clásico de cualquier aplicación de reservas. **Antes de escribir la fórmula, decide qué estás contando.**
 
 ```java
-jshell> var p = Period.between(LocalDate.of(1990,5,20), LocalDate.now())
-p ==> P36Y4M5D
-
-jshell> p.getYears()
-$26 ==> 36
-
-jshell> ChronoUnit.YEARS.between(LocalDate.of(1990,5,20), LocalDate.now())
-$27 ==> 36
+var p = Period.between(LocalDate.of(1990,5,20), LocalDate.now());
+System.out.println(p.getYears());   // 36
+System.out.println(ChronoUnit.YEARS.between(LocalDate.of(1990,5,20), LocalDate.now()));   // 36
 ```
 
 `Period` da años, meses y días por separado; `ChronoUnit` da una sola unidad. Para calcular una edad, cualquiera de los dos vale.
@@ -135,22 +110,18 @@ $27 ==> 36
 ## 4. Texto ↔ fecha
 
 ```java
-jshell> LocalDate.parse("2026-03-14")            // formato ISO por defecto
-$28 ==> 2026-03-14
-
-jshell> LocalDate.parse("14/03/2026")
-|  Exception java.time.format.DateTimeParseException: Text '14/03/2026' could not be parsed
+// formato ISO por defecto
+System.out.println(LocalDate.parse("2026-03-14"));   // 2026-03-14
+LocalDate.parse("14/03/2026");
+// lanza java.time.format.DateTimeParseException: Text '14/03/2026' could not be parsed
 ```
 
 Con otro formato hay que decirlo:
 
 ```java
-jshell> var fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy")
-jshell> LocalDate.parse("14/03/2026", fmt)
-$31 ==> 2026-03-14
-
-jshell> LocalDate.of(2026,3,14).format(fmt)
-$32 ==> "14/03/2026"
+var fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+System.out.println(LocalDate.parse("14/03/2026", fmt));   // 2026-03-14
+System.out.println(LocalDate.of(2026,3,14).format(fmt));   // 14/03/2026
 ```
 
 Los patrones que se usan:
@@ -169,9 +140,8 @@ Los patrones que se usan:
 Y para mostrar a un usuario español:
 
 ```java
-jshell> var largo = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", new Locale("es","ES"))
-jshell> LocalDate.of(2026,3,14).format(largo)
-$34 ==> "sábado 14 de marzo"
+var largo = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", new Locale("es","ES"));
+System.out.println(LocalDate.of(2026,3,14).format(largo));   // sábado 14 de marzo
 ```
 
 !!! info "Regla de oro de los formatos"
@@ -218,15 +188,13 @@ record Reserva(String cliente, String correo,
 2. **`!isAfter` y no `isBefore`.** Con `isBefore`, una reserva de entrada y salida el mismo día **pasa la validación**: cero noches. Es la diferencia entre `<` y `<=`, y ahí viven los fallos de los rangos.
 
 ```java
-jshell> new Reserva("Ana", "ana@iesx.es",
-   ...>             LocalDate.now().plusDays(5), LocalDate.now().plusDays(8)).noches()
-$36 ==> 3
-
-jshell> new Reserva("Ana", "ana-arroba-iesx", LocalDate.now(), LocalDate.now().plusDays(1))
-|  Exception java.lang.IllegalArgumentException: Correo no válido: ana-arroba-iesx
-
-jshell> new Reserva("Ana", "ana@iesx.es", LocalDate.now(), LocalDate.now())
-|  Exception java.lang.IllegalArgumentException: La salida debe ser posterior a la entrada
+System.out.println(new Reserva("Ana", "ana@iesx.es",
+        LocalDate.now().plusDays(5), LocalDate.now().plusDays(8)).noches());
+// 3
+new Reserva("Ana", "ana-arroba-iesx", LocalDate.now(), LocalDate.now().plusDays(1));
+// lanza java.lang.IllegalArgumentException: Correo no válido: ana-arroba-iesx
+new Reserva("Ana", "ana@iesx.es", LocalDate.now(), LocalDate.now());
+// lanza java.lang.IllegalArgumentException: La salida debe ser posterior a la entrada
 ```
 
 !!! tip "Prueba siempre los tres casos de un rango"
@@ -237,17 +205,13 @@ jshell> new Reserva("Ana", "ana@iesx.es", LocalDate.now(), LocalDate.now())
 ## 6. Expresiones regulares, las cuatro útiles
 
 ```java
-jshell> "ana@iesx.es".matches("^[\\w.+-]+@[\\w-]+\\.[\\w.]{2,}$")
-$39 ==> true
-
-jshell> "12345678Z".matches("^\\d{8}[A-HJ-NP-TV-Z]$")            // DNI
-$40 ==> true
-
-jshell> "+34 600 12 34 56".replaceAll("[^0-9+]", "")             // limpiar
-$41 ==> "+34600123456"
-
-jshell> "MOV-01".matches("^[A-Z]{3}-\\d{2}$")                    // código interno
-$42 ==> true
+System.out.println("ana@iesx.es".matches("^[\\w.+-]+@[\\w-]+\\.[\\w.]{2,}$"));   // true
+// DNI
+System.out.println("12345678Z".matches("^\\d{8}[A-HJ-NP-TV-Z]$"));   // true
+// limpiar
+System.out.println("+34 600 12 34 56".replaceAll("[^0-9+]", ""));   // +34600123456
+// código interno
+System.out.println("MOV-01".matches("^[A-Z]{3}-\\d{2}$"));   // true
 ```
 
 | Trozo | Significa |
@@ -268,33 +232,25 @@ $42 ==> true
 ## 7. Dinero: nunca `double`
 
 ```java
-jshell> 0.1 + 0.2
-$43 ==> 0.30000000000000004
-
-jshell> 1.03 - 0.42
-$44 ==> 0.6100000000000001
+System.out.println(0.1 + 0.2);   // 0.30000000000000004
+System.out.println(1.03 - 0.42);   // 0.6100000000000001
 ```
 
 No es un fallo de Java: es que `double` guarda los números en binario y muchos decimales no tienen representación exacta. Con dinero, esos restos se acumulan y acaban en un descuadre.
 
 ```java
-jshell> import java.math.*
-
-jshell> new BigDecimal("0.1").add(new BigDecimal("0.2"))
-$46 ==> 0.3
-
-jshell> new BigDecimal("19.99").multiply(new BigDecimal("3"))
-   ...>                        .setScale(2, RoundingMode.HALF_UP)
-$47 ==> 59.97
+import java.math.*;
+System.out.println(new BigDecimal("0.1").add(new BigDecimal("0.2")));   // 0.3
+System.out.println(new BigDecimal("19.99").multiply(new BigDecimal("3"))
+                       System.out.println(.setScale(2, RoundingMode.HALF_UP));
+// 59.97
 ```
 
 !!! danger "Siempre desde `String`"
     ```java
-    jshell> new BigDecimal(0.1)
-    $48 ==> 0.1000000000000000055511151231257827021181583404541015625
-
-    jshell> new BigDecimal("0.1")
-    $49 ==> 0.1
+    new BigDecimal(0.1);
+    // 0.1000000000000000055511151231257827021181583404541015625
+    System.out.println(new BigDecimal("0.1"));   // 0.1
     ```
 
     El constructor que recibe `double` **hereda el error** del `double`. Siempre `new BigDecimal("0.1")` o `BigDecimal.valueOf(0.1)`.
@@ -302,11 +258,9 @@ $47 ==> 59.97
 Y para comparar:
 
 ```java
-jshell> new BigDecimal("1.0").equals(new BigDecimal("1.00"))
-$50 ==> false                              // ← distinta escala
-
-jshell> new BigDecimal("1.0").compareTo(new BigDecimal("1.00")) == 0
-$51 ==> true                               // ← así
+new BigDecimal("1.0").equals(new BigDecimal("1.00"));
+// false  ← distinta escala
+System.out.println(new BigDecimal("1.0").compareTo(new BigDecimal("1.00")) == 0);   // true  ← así
 ```
 
 **`equals` compara también la escala; `compareTo` solo el valor.** Para dinero, siempre `compareTo`.
@@ -419,7 +373,44 @@ void intentar(Runnable accion) {
 4. Añade una validación: la reserva no puede ser de más de 30 noches.
 5. Cambia `BigDecimal` por `double` en `total()` con precio `19.99` y 3 noches. Compara la salida.
 
-??? success "Lo que sale en el 5"
+??? success "Solución de las cinco"
+
+    **1.** Ana sale el 5 y Bruno entra el 5:
+
+    ```
+    Ana y Bruno: false
+    ```
+
+    **No se solapan, se tocan.** La fórmula `entrada < otraSalida && salida > otraEntrada` da `1 < 8` cierto y `5 > 5` falso. Si en lugar de `>` hubiera `>=`, estarías rechazando reservas perfectamente válidas.
+
+    **2.** Cambiando la validación:
+
+    ```java
+    if (salida.isBefore(entrada)) { … }
+    ```
+
+    Ahora **pasa una reserva de entrada y salida el mismo día**: cero noches, importe 0 €. `isBefore` es estrictamente menor, así que el caso «iguales» se cuela. `!isAfter` cubre «anterior **o igual**», que es lo que hace falta.
+
+    **3.** Los días que faltan:
+
+    ```java
+    var finDeCurso = LocalDate.of(2027, 6, 19);
+    System.out.println(ChronoUnit.DAYS.between(LocalDate.now(), finDeCurso) + " días");
+    ```
+
+    Si sale negativo, has puesto una fecha pasada: `between` respeta el signo.
+
+    **4.** La validación del máximo, en el constructor compacto como todas las demás:
+
+    ```java
+    if (ChronoUnit.DAYS.between(entrada, salida) > 30) {
+        throw new IllegalArgumentException("Máximo 30 noches por reserva");
+    }
+    ```
+
+    Va **después** de comprobar que la salida es posterior: si no, una reserva invertida daría un número negativo y pasaría el filtro.
+
+    **5.** Con `double` en vez de `BigDecimal`, a 19,99 € la noche y 3 noches:
 
     ```
     Con BigDecimal:  59.97
@@ -427,18 +418,19 @@ void intentar(Runnable accion) {
     ```
 
     Con una reserva no importa. Con diez mil facturas al mes, el descuadre llega a contabilidad y alguien tiene que explicarlo.
-
 ---
 
 ## Ejercicios (con solución)
 
-??? success "E1 · ¿Qué imprime?"
+### E1 — ¿Qué imprime?
 
-    ```java
-    var f = LocalDate.of(2026, 3, 14);
-    f.plusDays(7);
-    System.out.println(f);
-    ```
+```java
+var f = LocalDate.of(2026, 3, 14);
+f.plusDays(7);
+System.out.println(f);
+```
+
+??? success "Solución"
 
     **`2026-03-14`.** `java.time` es inmutable: `plusDays` devuelve una fecha nueva y aquí se tira.
 
@@ -446,19 +438,30 @@ void intentar(Runnable accion) {
     var nueva = f.plusDays(7);       // así sí
     ```
 
-??? success "E2 · Cuántas noches"
+### E2 — Cuántas noches
 
-    ```java
-    var entrada = LocalDate.of(2026, 7, 1);
-    var salida  = LocalDate.of(2026, 7, 3);
-    System.out.println(ChronoUnit.DAYS.between(entrada, salida));
-    ```
+```java
+var entrada = LocalDate.of(2026, 7, 1);
+var salida  = LocalDate.of(2026, 7, 3);
+ChronoUnit.DAYS.between(entrada, salida);
+```
+
+??? success "Solución"
 
     **`2`.** Dos noches. Si necesitas los **días de estancia** contando los dos extremos, son **3** y hay que sumar uno.
 
     Decide qué cuentas antes de escribir la fórmula.
 
-??? success "E3 · El `<` y el `<=`"
+### E3 — El `<` y el `<=`
+
+Alguien «simplifica» esta validación a `if (salida.isBefore(entrada))`. ¿Qué reserva se cuela?
+
+```java
+if (!salida.isAfter(entrada)) throw new IllegalArgumentException(...);
+```
+
+??? success "Solución"
+
 
     ```java
     if (salida.isBefore(entrada)) throw new IllegalArgumentException(...);
@@ -472,9 +475,11 @@ void intentar(Runnable accion) {
     if (!salida.isAfter(entrada)) throw new IllegalArgumentException(...);
     ```
 
-??? success "E4 · El solape"
+### E4 — El solape
 
-    Dos reservas para la misma habitación:
+Dos reservas para la misma habitación:
+
+??? success "Solución"
 
     | | Entrada | Salida |
     |---|---|---|
@@ -492,7 +497,16 @@ void intentar(Runnable accion) {
 
     Si en la fórmula pusieras `>=`, A y B saldrían solapadas y estarías rechazando reservas perfectamente válidas.
 
-??? success "E5 · El patrón mal escrito"
+### E5 — El patrón mal escrito
+
+¿Qué tiene de malo este patrón, y por qué el fallo pasa desapercibido?
+
+```java
+DateTimeFormatter.ofPattern("dd/mm/yyyy")
+```
+
+??? success "Solución"
+
 
     ```java
     DateTimeFormatter.ofPattern("dd/mm/yyyy")
@@ -502,13 +516,15 @@ void intentar(Runnable accion) {
 
     Lo correcto es `dd/MM/yyyy`.
 
-??? success "E6 · El céntimo que falta"
+### E6 — El céntimo que falta
 
-    ```java
-    double total = 0;
-    for (int i = 0; i < 10; i++) total += 0.1;
-    System.out.println(total == 1.0);
-    ```
+```java
+double total = 0;
+for (int i = 0; i < 10; i++) total += 0.1;
+System.out.println(total == 1.0);
+```
+
+??? success "Solución"
 
     **`false`.** El total es `0.9999999999999999`.
 
@@ -520,12 +536,14 @@ void intentar(Runnable accion) {
 
     Y ojo: `total.add(...)` **devuelve** el resultado; `BigDecimal` también es inmutable. Escribir `total.add(x);` sin asignar es el mismo error del E1.
 
-??? success "E7 · `equals` o `compareTo`"
+### E7 — `equals` o `compareTo`
 
-    ```java
-    new BigDecimal("1.0").equals(new BigDecimal("1.00"))       // ?
-    new BigDecimal("1.0").compareTo(new BigDecimal("1.00"))    // ?
-    ```
+```java
+new BigDecimal("1.0").equals(new BigDecimal("1.00"))       // ?
+new BigDecimal("1.0").compareTo(new BigDecimal("1.00"))    // ?
+```
+
+??? success "Solución"
 
     **`false`** y **`0`**.
 

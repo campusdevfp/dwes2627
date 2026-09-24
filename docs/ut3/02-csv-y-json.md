@@ -24,15 +24,12 @@ flowchart LR
 Antes de CSV, tres órdenes y una regla.
 
 ```java
-jshell> import java.nio.file.*
-jshell> import java.nio.charset.StandardCharsets
-
-jshell> var ruta = Path.of("datos", "productos.csv")     // (1)
-jshell> Files.exists(ruta)
-$3 ==> true
-
-jshell> Files.readString(ruta, StandardCharsets.UTF_8)   // (2)
-$4 ==> "codigo,nombre,categoria,precio,stock\nMOV-01,Patinete,..."
+import java.nio.file.*;
+import java.nio.charset.StandardCharsets;
+var ruta = Path.of("datos", "productos.csv");   // (1)
+System.out.println(Files.exists(ruta));   // true
+System.out.println(Files.readString(ruta, StandardCharsets.UTF_8));   // (2)
+// codigo,nombre,categoria,precio,stock\nMOV-01,Patinete,...
 ```
 
 1. **`Path.of` con partes separadas.** Nunca `"datos/productos.csv"` a pelo: en Windows el separador es `\` y se rompe.
@@ -58,8 +55,7 @@ Files.writeString(Path.of("salida.txt"), "hola\n", StandardCharsets.UTF_8);
     `Path.of("datos/x.csv")` es relativa **al directorio desde el que ejecutas**, no a donde está el `.java`. Si te da `NoSuchFileException`, comprueba dónde estás:
 
     ```java
-    jshell> Path.of("").toAbsolutePath()
-    $8 ==> /home/ana/catalogo
+    System.out.println(Path.of("").toAbsolutePath());   // /home/ana/catalogo
     ```
 
 ---
@@ -97,11 +93,8 @@ List<Producto> leer(Path ruta) throws IOException {
 3. **El `-1` conserva los campos vacíos del final.** Compruébalo:
 
 ```java
-jshell> "SEG-02,Candado,,,".split(",").length
-$9 ==> 2                                   // ← se comió los vacíos
-
-jshell> "SEG-02,Candado,,,".split(",", -1).length
-$10 ==> 5                                  // ← correcto
+System.out.println("SEG-02,Candado,,,".split(",").length);   // 2  ← se comió los vacíos
+System.out.println("SEG-02,Candado,,,".split(",", -1).length);   // 5  ← correcto
 ```
 
 **Esos tres detalles son tres preguntas del examen.**
@@ -184,8 +177,7 @@ Ese punto 3 es la razón principal para usar la librería: `c[3]` se rompe en si
     Y el número hay que convertirlo teniendo en cuenta el idioma:
 
     ```java
-    jshell> NumberFormat.getInstance(new Locale("es","ES")).parse("25,90")
-    $12 ==> 25.9
+    System.out.println(NumberFormat.getInstance(new Locale("es","ES")).parse("25,90"));   // 25.9
     ```
 
 ### Escribir
@@ -571,30 +563,71 @@ Releídos: 3
 4. Añade un campo `"promocion": true` al JSON y vuelve a leerlo. Quita el `FAIL_ON_UNKNOWN_PROPERTIES` y mira el error.
 5. Lee el JSON con `readTree` y saca solo los nombres, usando `path` en vez de `get`.
 
-??? success "Pistas"
+??? success "Solución de las cinco"
 
-    ```java
-    // 2 · en el CSV
-    LIB-01,"Cien años de soledad, edición especial",libros,24.90,3,2026-04-01
+    **1.** Con las dos dependencias en el `pom.xml` y el CSV en `datos/`, la salida es:
 
-    // 3 · sin el módulo
-    "alta" : [ 2026, 1, 15 ]
-
-    // 5
-    JsonNode raiz = MAPPER.readTree(Path.of("datos/disponibles.json").toFile());
-    for (var n : raiz) System.out.println(n.path("nombre").asText("?"));
+    ```
+    Cargados: 4
+      Descartada línea 5: For input string: "ocho"
+    Descartadas: 1
+    Escritos 3 en disponibles.json
+    Releídos: 3
     ```
 
+    Son 4 cargados y no 5 porque la fila `XXX-99` tiene `ocho` donde debería ir un número, y 3 escritos porque `SEG-02` tiene stock 0 y el filtro lo deja fuera.
+
+    **2.** La línea con una coma dentro del campo:
+
+    ```csv
+    LIB-01,"Cien años de soledad, edición especial",libros,24.90,3,2026-04-01
+    ```
+
+    Commons CSV la lee bien: el nombre entra entero. **Con `split(",")` se partiría en dos** y todas las columnas siguientes se desplazarían, así que el precio acabaría en la columna de la categoría.
+
+    **3.** Sin el módulo de `java.time`:
+
+    ```json
+    "alta" : [ 2026, 1, 15 ]
+    ```
+
+    Un array de números, inservible para cualquier cliente. Hacen falta **las dos** líneas: `registerModule(new JavaTimeModule())` para que sepa qué es un `LocalDate`, y `disable(WRITE_DATES_AS_TIMESTAMPS)` para que lo escriba como texto ISO.
+
+    **4.** Con el campo de más y sin la configuración:
+
+    ```
+    UnrecognizedPropertyException: Unrecognized field "promocion"
+     (class Producto), not marked as ignorable
+    ```
+
+    Con `FAIL_ON_UNKNOWN_PROPERTIES` desactivado, se ignora sin decir nada. **Al consumir APIs ajenas se desactiva siempre**: el día que el proveedor añada un campo —y lo hará sin avisarte— tu programa dejaría de funcionar sin que hayas tocado una línea.
+
+    **5.** Recorriendo el árbol, con `path`:
+
+    ```java
+    JsonNode raiz = MAPPER.readTree(Path.of("datos/disponibles.json").toFile());
+
+    for (var n : raiz) {
+        System.out.println(n.path("nombre").asText("?"));
+    }
+    // Cámara
+    // Casco
+    // Patinete
+    ```
+
+    Con `get` en lugar de `path`, el día que un elemento no traiga `nombre` obtienes `null` y `null.asText()` revienta. **Con JSON ajeno, `path` siempre.**
 ---
 
 ## Ejercicios (con solución)
 
-??? success "E1 · ¿Cuántos campos?"
+### E1 — ¿Cuántos campos?
 
-    ```java
-    System.out.println("4,Casco,,".split(",").length);
-    System.out.println("4,Casco,,".split(",", -1).length);
-    ```
+```java
+System.out.println("4,Casco,,".split(",").length);
+System.out.println("4,Casco,,".split(",", -1).length);
+```
+
+??? success "Solución"
 
     **`2` y `4`.** Por defecto `split` descarta los campos vacíos **del final**.
 
@@ -602,16 +635,18 @@ Releídos: 3
 
     Con Commons CSV el problema no existe: se accede por nombre de columna.
 
-??? success "E2 · Los tres fallos"
+### E2 — Los tres fallos
 
-    ```java
-    List<Producto> leer(Path ruta) throws IOException {
-        var lineas = Files.lines(ruta);
-        return lineas.map(l -> l.split(","))
-                     .map(c -> new Producto(c[0], c[1]))
-                     .toList();
-    }
-    ```
+```java
+List<Producto> leer(Path ruta) throws IOException {
+    var lineas = Files.lines(ruta);
+    return lineas.map(l -> l.split(","))
+                 .map(c -> new Producto(c[0], c[1]))
+                 .toList();
+}
+```
+
+??? success "Solución"
 
     1. **No se cierra el stream.** `Files.lines` mantiene el fichero abierto: hace falta *try-with-resources*.
     2. **Falta `skip(1)`.** La cabecera entra como si fuera un producto.
@@ -619,7 +654,12 @@ Releídos: 3
 
     Y un cuarto si el fichero acaba en línea en blanco: `filter(l -> !l.isBlank())`.
 
-??? success "E3 · La fecha que sale como array"
+### E3 — La fecha que sale como array
+
+Tu API devuelve `"fecha":[2026,3,14]` y el cliente se queja porque no puede leerla. ¿Qué falta en la configuración de Jackson?
+
+??? success "Solución"
+
 
     Tu API devuelve `"fecha":[2026,3,14]` y el cliente se queja. ¿Qué falta?
 
@@ -633,30 +673,41 @@ Releídos: 3
 
     En Spring Boot esto viene configurado de fábrica, así que a partir de la UT4 no habrá que acordarse. Pero hay que saberlo para el examen y para cualquier proyecto sin Spring.
 
-??? success "E4 · `get` o `path`"
+### E4 — `get` o `path`
 
-    ```java
-    var json = """{"items":[{"nombre":"A"},{"nombre":"B","stock":3}]}""";
-    JsonNode raiz = mapper.readTree(json);
+```java
+var json = """{"items":[{"nombre":"A"},{"nombre":"B","stock":3}]}""";
+JsonNode raiz = mapper.readTree(json);
 
-    for (var i : raiz.get("items")) {
-        System.out.println(i.get("nombre").asText() + ": " + i.get("stock").asInt());
-    }
-    ```
+for (var i : raiz.get("items")) {
+    System.out.println(i.get("nombre").asText() + ": " + i.get("stock").asInt());
+}
+```
 
-    Revienta en el primer elemento con `NullPointerException`: `A` no tiene `stock`, `get` devuelve `null` y `null.asInt()` falla.
+Revienta en el primer elemento con `NullPointerException`: `A` no tiene `stock`, `get` devuelve `null` y `null.asInt()` falla.
 
-    ```java
-    for (var i : raiz.path("items")) {
-        System.out.println(i.path("nombre").asText("?") + ": " + i.path("stock").asInt(0));
-    }
-    // A: 0
-    // B: 3
-    ```
+```java
+for (var i : raiz.path("items")) {
+    System.out.println(i.path("nombre").asText("?") + ": " + i.path("stock").asInt(0));
+}
+// A: 0
+// B: 3
+```
+
+??? success "Solución"
 
     **Con JSON ajeno, `path` siempre.** Los campos aparecen y desaparecen sin avisar.
 
-??? success "E5 · `TypeReference`"
+### E5 — `TypeReference`
+
+¿Qué pasa con esta línea, y cuándo se entera uno?
+
+```java
+List<Producto> ps = mapper.readValue(json, List.class);
+```
+
+??? success "Solución"
+
 
     ```java
     List<Producto> ps = mapper.readValue(json, List.class);
@@ -672,7 +723,16 @@ Releídos: 3
 
     Esa clase anónima existe solo para **conservar el tipo genérico** hasta la ejecución.
 
-??? success "E6 · El CSV que se corrompió"
+### E6 — El CSV que se corrompió
+
+Un compañero exporta un informe y en su máquina sale bien; en la tuya, cada fila tiene una columna de más. La línea que escribe el precio es esta:
+
+```java
+csv.printRecord(p.nombre(), String.format("%.2f", p.precio()));
+```
+
+??? success "Solución"
+
 
     Un compañero exporta un informe y en su máquina sale bien; en la tuya, cada fila tiene una columna de más.
 
