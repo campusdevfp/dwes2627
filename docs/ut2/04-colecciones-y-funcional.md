@@ -428,6 +428,307 @@ System.out.println(productos.stream().collect(
 !!! danger "`groupingBy` devuelve un `HashMap`"
     Sin el `TreeMap::new`, **el orden de las claves no está garantizado**. Si tu informe tiene que salir ordenado, hay que pedirlo.
 
+### Agrupar en dos niveles
+
+El segundo recolector puede ser **otro `groupingBy`**, y ahí es donde esto se vuelve potente:
+
+```java
+record Venta(String vendedor, String producto, String categoria,
+             int unidades, double precioUnidad) {
+    double importe() { return unidades * precioUnidad; }
+}
+
+var ventas = List.of(
+    new Venta("Ana",   "Bici urbana",  "bicicletas", 2, 450.0),
+    new Venta("Bruno", "Casco",        "seguridad",  5,  35.0),
+    new Venta("Ana",   "Candado",      "seguridad",  3,  25.0),
+    new Venta("Carla", "Bici montaña", "bicicletas", 1, 780.0),
+    new Venta("Bruno", "Luces",        "seguridad", 10,  15.0),
+    new Venta("Ana",   "Casco",        "seguridad",  2,  35.0),
+    new Venta("Carla", "Cámara",       "repuestos", 12,   8.5));
+
+System.out.println(ventas.stream().collect(Collectors.groupingBy(
+        Venta::categoria, TreeMap::new,
+        Collectors.groupingBy(Venta::vendedor, TreeMap::new,
+                              Collectors.summingDouble(Venta::importe)))));
+// {bicicletas={Ana=900.0, Carla=780.0},
+//  repuestos={Carla=102.0},
+//  seguridad={Ana=70.0, Bruno=325.0}}
+```
+
+!!! danger "El `TreeMap::new` hay que ponerlo en los DOS niveles"
+    Poner solo el de fuera es el fallo clásico: las categorías salen ordenadas y los vendedores de dentro, no. Y se ve en la salida sin necesidad de saberlo de memoria.
+
+### `mapping`: transformar dentro del grupo
+
+```java
+System.out.println(ventas.stream().collect(Collectors.groupingBy(
+        Venta::categoria,
+        Collectors.mapping(Venta::producto, Collectors.toSet()))));
+// {seguridad=[Casco, Luces, Candado], bicicletas=[Bici urbana, Bici montaña], repuestos=[Cámara]}
+```
+
+Sin `mapping` tendrías las ventas enteras; con él, solo el campo que te interesa. **Es el recolector que más cuesta ver y el que más se necesita.**
+
+### `partitioningBy`: partir en dos
+
+```java
+System.out.println(ventas.stream().collect(
+        Collectors.partitioningBy(v -> v.importe() > 100)));
+// {false=[…3 ventas…], true=[…4 ventas…]}
+
+System.out.println(ventas.stream().collect(
+        Collectors.partitioningBy(v -> v.importe() > 100, Collectors.counting())));
+// {false=3, true=4}
+```
+
+**Frente a `groupingBy`:** `partitioningBy` siempre devuelve **las dos claves**, aunque un grupo esté vacío. Con `groupingBy`, la clave del grupo vacío no existe y el `get` devuelve `null`.
+
+---
+
+## 9. Ordenar con criterios
+
+```java
+System.out.println(ventas.stream()
+        .sorted(Comparator.comparingDouble(Venta::importe).reversed())
+        .map(v -> v.producto() + " " + v.importe())
+        .toList());
+// [Bici urbana 900.0, Bici montaña 780.0, Casco 175.0, Luces 150.0, …]
+```
+
+Con desempate:
+
+```java
+System.out.println(ventas.stream()
+        .sorted(Comparator.comparing(Venta::categoria)
+                          .thenComparing(Venta::producto))
+        .map(Venta::producto).toList());
+// [Bici montaña, Bici urbana, Cámara, Candado, Casco, Casco, Luces]
+```
+
+!!! warning "Dónde va el `.reversed()`"
+    ```java
+    // MAL: invierte TODO, incluido el desempate por producto
+    Comparator.comparing(Venta::categoria).thenComparing(Venta::producto).reversed()
+
+    // BIEN: solo invierte la categoría
+    Comparator.comparing(Venta::categoria).reversed().thenComparing(Venta::producto)
+    ```
+
+    `reversed()` invierte **el comparador construido hasta ese punto**. Por eso va pegado a lo que quieres invertir. Es una de las preguntas que más se falla.
+
+### El ranking: ordenar un mapa por su valor
+
+Un `Map` no es un `Stream`, así que hay que **volver a hacer stream sobre sus entradas**. Es el paso que más cuesta:
+
+```java
+var facturacion = ventas.stream().collect(Collectors.groupingBy(
+        Venta::vendedor, Collectors.summingDouble(Venta::importe)));
+
+System.out.println(facturacion.entrySet().stream()
+        .sorted(Map.Entry.<String, Double>comparingByValue().reversed())   // (1)
+        .map(e -> e.getKey() + ": " + e.getValue())
+        .toList());
+// [Ana: 1045.0, Carla: 882.0, Bruno: 325.0]
+```
+
+1. **El `<String, Double>` explícito es obligatorio.** Sin él, el compilador no infiere el tipo dentro de `sorted` y da un error de inferencia que no señala el problema real.
+
+Y para quedarse solo con el primero:
+
+```java
+System.out.println(facturacion.entrySet().stream()
+        .max(Map.Entry.comparingByValue())
+        .map(Map.Entry::getKey)
+        .orElse("—"));
+// Ana
+```
+
+---
+
+## 10. Estadísticas de una pasada
+
+```java
+var est = ventas.stream().mapToDouble(Venta::importe).summaryStatistics();
+
+System.out.println(est.getCount());     // 7
+System.out.println(est.getSum());       // 2252.0
+System.out.println(est.getMin());       // 70.0
+System.out.println(est.getMax());       // 900.0
+System.out.println(est.getAverage());   // 321.7142857142857
+```
+
+Cinco datos **recorriendo la lista una sola vez**. La alternativa son cinco recorridos:
+
+```java
+double total = ventas.stream().mapToDouble(Venta::importe).sum();
+double media = ventas.stream().mapToDouble(Venta::importe).average().orElse(0);
+// … y tres más
+```
+
+Con siete ventas da igual. Con dos millones de filas leídas de un fichero —que es lo que viene en la UT3— la diferencia se mide en segundos.
+
+!!! info "`average()` devuelve `OptionalDouble`"
+    No `double` ni `Optional<Double>`. Los streams de primitivos —`IntStream`, `LongStream`, `DoubleStream`— tienen sus propios `Optional` sin genéricos, justo para no hacer autoboxing. De ahí el `.orElse(0)` de siempre.
+
+---
+
+## 11. Las demás operaciones que hay que conocer
+
+```java
+// quitar repetidos
+System.out.println(ventas.stream().map(Venta::vendedor).distinct().toList());
+// [Ana, Bruno, Carla]
+
+// los tres primeros, saltándose el primero
+System.out.println(ventas.stream().skip(1).limit(3).map(Venta::producto).toList());
+// [Casco, Candado, Bici montaña]
+
+// ¿hay alguna? ¿todas? ¿ninguna?
+System.out.println(ventas.stream().anyMatch(v -> v.importe() > 800));    // true
+System.out.println(ventas.stream().allMatch(v -> v.unidades() > 0));     // true
+System.out.println(ventas.stream().noneMatch(v -> v.importe() < 0));     // true
+
+// contar
+System.out.println(ventas.stream().filter(v -> v.unidades() > 4).count());   // 3
+
+// unir en una cadena
+System.out.println(ventas.stream().map(Venta::producto).distinct()
+        .collect(Collectors.joining(", ", "[", "]")));
+// [Bici urbana, Casco, Candado, Bici montaña, Luces, Cámara]
+
+// reducir a un valor
+System.out.println(ventas.stream()
+        .map(Venta::importe)
+        .reduce(0.0, Double::sum));        // 2252.0
+```
+
+!!! tip "`anyMatch` y `findFirst` son perezosos"
+    Paran en cuanto encuentran. Con un millón de elementos y la coincidencia en el segundo, se recorren **dos**, no un millón. Por eso `anyMatch(...)` es mejor que `filter(...).count() > 0`.
+
+### `flatMap`: aplanar listas de listas
+
+```java
+record Pedido(String cliente, List<String> productos) {}
+
+var pedidos = List.of(
+    new Pedido("Ana",   List.of("Casco", "Luces")),
+    new Pedido("Bruno", List.of("Bici", "Candado", "Casco")));
+
+// map: una lista de listas
+System.out.println(pedidos.stream().map(Pedido::productos).toList());
+// [[Casco, Luces], [Bici, Candado, Casco]]
+
+// flatMap: una sola lista
+System.out.println(pedidos.stream().flatMap(p -> p.productos().stream()).toList());
+// [Casco, Luces, Bici, Candado, Casco]
+
+// y ahora ya se puede contar
+System.out.println(pedidos.stream()
+        .flatMap(p -> p.productos().stream())
+        .collect(Collectors.groupingBy(p -> p, Collectors.counting())));
+// {Bici=1, Casco=2, Luces=1, Candado=1}
+```
+
+**La regla:** si la función que aplicas devuelve una **colección** y no quieres una lista de listas, es `flatMap`.
+
+---
+
+## 12. Todo junto: un informe de ventas
+
+Un programa entero, para ejecutar con `java Informe.java`:
+
+```java
+// Informe.java
+import java.util.*;
+import java.util.stream.*;
+
+record Venta(String vendedor, String producto, String categoria,
+             int unidades, double precioUnidad) {
+    double importe() { return unidades * precioUnidad; }
+}
+
+void main() {
+
+    var ventas = List.of(
+        new Venta("Ana",   "Bici urbana",  "bicicletas", 2, 450.0),
+        new Venta("Bruno", "Casco",        "seguridad",  5,  35.0),
+        new Venta("Ana",   "Candado",      "seguridad",  3,  25.0),
+        new Venta("Carla", "Bici montaña", "bicicletas", 1, 780.0),
+        new Venta("Bruno", "Luces",        "seguridad", 10,  15.0),
+        new Venta("Ana",   "Casco",        "seguridad",  2,  35.0),
+        new Venta("Carla", "Cámara",       "repuestos", 12,   8.5));
+
+    // 1 · ranking de vendedores
+    var facturacion = ventas.stream().collect(Collectors.groupingBy(
+            Venta::vendedor, Collectors.summingDouble(Venta::importe)));
+
+    IO.println("=== Ranking de vendedores ===");
+    facturacion.entrySet().stream()
+            .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+            .forEach(e -> IO.println("  %-8s %9.2f €".formatted(e.getKey(), e.getValue())));
+
+    // 2 · unidades por categoría, ordenado
+    IO.println("\n=== Unidades por categoría ===");
+    ventas.stream()
+            .collect(Collectors.groupingBy(Venta::categoria, TreeMap::new,
+                     Collectors.summingInt(Venta::unidades)))
+            .forEach((cat, uds) -> IO.println("  %-12s %3d".formatted(cat, uds)));
+
+    // 3 · catálogo distinto por categoría
+    IO.println("\n=== Catálogo vendido ===");
+    ventas.stream()
+            .collect(Collectors.groupingBy(Venta::categoria, TreeMap::new,
+                     Collectors.mapping(Venta::producto,
+                              Collectors.toCollection(TreeSet::new))))
+            .forEach((cat, prods) -> IO.println("  %-12s %s".formatted(cat, prods)));
+
+    // 4 · estadísticas de una pasada
+    var est = ventas.stream().mapToDouble(Venta::importe).summaryStatistics();
+    IO.println("\n=== Resumen ===");
+    IO.println("  Ventas:   %d".formatted(est.getCount()));
+    IO.println("  Total:    %.2f €".formatted(est.getSum()));
+    IO.println("  Media:    %.2f €".formatted(est.getAverage()));
+    IO.println("  Mayor:    %.2f €".formatted(est.getMax()));
+    IO.println("  Estrella: " + ventas.stream()
+            .max(Comparator.comparingDouble(Venta::importe))
+            .map(Venta::producto).orElse("—"));
+}
+```
+
+```
+=== Ranking de vendedores ===
+  Ana        1045,00 €
+  Carla       882,00 €
+  Bruno       325,00 €
+
+=== Unidades por categoría ===
+  bicicletas     3
+  repuestos     12
+  seguridad     20
+
+=== Catálogo vendido ===
+  bicicletas   [Bici montaña, Bici urbana]
+  repuestos    [Cámara]
+  seguridad    [Candado, Casco, Luces]
+
+=== Resumen ===
+  Ventas:   7
+  Total:    2252,00 €
+  Media:    321,71 €
+  Mayor:    900,00 €
+  Estrella: Bici urbana
+```
+
+!!! success "Las cinco cosas que hay que saber hacer al salir de aquí"
+    1. **Elegir** entre lista, conjunto y mapa con un argumento, no por costumbre.
+    2. **Agrupar** con `groupingBy` y cambiar lo que se hace con cada grupo.
+    3. Saber que `groupingBy` **no ordena**, y pedir `TreeMap::new` cuando haga falta.
+    4. **Ordenar un mapa por valor**, volviendo a hacer stream sobre `entrySet()`.
+    5. Terminar cualquier `max`/`min`/`average` con `.orElse(...)`.
+
+    En la UT3 no se vuelven a explicar: se **usan** para leer un CSV, montar un JSON y recorrer un `ResultSet`.
+
 ---
 
 ## Pruébalo ahora (12 min)
@@ -439,8 +740,11 @@ Con la lista `productos` de arriba en `jshell`:
 3. Un `Map<String, List<String>>` con los **nombres** agrupados por categoría (no los productos enteros).
 4. El producto más barato, devolviendo `"ninguno"` si la lista estuviera vacía.
 5. Cuenta cuántas veces aparece cada letra inicial usando `merge`.
+6. Con la lista `ventas` del punto 12: el **ranking de vendedores por facturación**, de mayor a menor.
+7. Con `ventas`: las **unidades por categoría**, con las categorías en orden alfabético.
+8. Con `ventas`: cuántas ventas superan los 100 € y cuántas no, en una sola instrucción.
 
-??? success "Solución de las cinco"
+??? success "Solución de las ocho"
 
     ```java
     // 1 · nombres de seguridad, en mayúsculas y ordenados
@@ -486,6 +790,35 @@ Con la lista `productos` de arriba en `jshell`:
     ```
 
     La de `merge` se lee mejor dentro de un bucle que ya existe; la de streams, cuando ya estás en una cadena.
+
+    ```java
+    // 6 · ranking de vendedores
+    ventas.stream()
+          .collect(Collectors.groupingBy(Venta::vendedor,
+                   Collectors.summingDouble(Venta::importe)))
+          .entrySet().stream()
+          .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+          .map(Map.Entry::getKey)
+          .toList();                          // [Ana, Carla, Bruno]
+
+    // 7 · unidades por categoría, ordenado
+    ventas.stream().collect(Collectors.groupingBy(
+            Venta::categoria, TreeMap::new,
+            Collectors.summingInt(Venta::unidades)));
+    // {bicicletas=3, repuestos=12, seguridad=20}
+
+    // 8 · por encima y por debajo de 100 €
+    ventas.stream().collect(
+            Collectors.partitioningBy(v -> v.importe() > 100, Collectors.counting()));
+    // {false=3, true=4}
+    ```
+
+    En el **6**, el `<String, Double>` explícito no es opcional: sin él el compilador no infiere el tipo dentro de `sorted`.
+
+    En el **7**, sin `TreeMap::new` el orden de las categorías **no está garantizado**. Pruébalo quitándolo.
+
+    En el **8**, `partitioningBy` devuelve **siempre las dos claves**, aunque un grupo esté vacío. `groupingBy` no crearía la clave del grupo vacío.
+
 ---
 
 ## Ejercicios (con solución)
@@ -632,3 +965,91 @@ Escribe la versión que **falla** y las dos que funcionan, para quitar de una li
     ```
 
     Y el aviso: las dos correctas necesitan una lista **mutable**. Sobre `List.of(...)` lanzan `UnsupportedOperationException`.
+
+### E7 — `map` o `flatMap`
+
+```java
+record Pedido(String cliente, List<String> productos) {}
+
+var pedidos = List.of(
+    new Pedido("Ana",   List.of("Casco", "Luces")),
+    new Pedido("Bruno", List.of("Bici", "Candado", "Casco")));
+
+System.out.println(pedidos.stream().map(Pedido::productos).toList());
+System.out.println(pedidos.stream().flatMap(p -> p.productos().stream()).toList());
+```
+
+¿Qué imprime cada una, y cuándo se usa cada operación?
+
+??? success "Solución"
+
+    ```
+    [[Casco, Luces], [Bici, Candado, Casco]]     ← map: una lista de listas
+    [Casco, Luces, Bici, Candado, Casco]         ← flatMap: una sola lista
+    ```
+
+    **La regla:** si la función que aplicas devuelve una **colección** y no quieres una lista de listas, es `flatMap`.
+
+    Y por qué importa: con la lista aplanada ya se puede contar.
+
+    ```java
+    pedidos.stream()
+           .flatMap(p -> p.productos().stream())
+           .collect(Collectors.groupingBy(p -> p, Collectors.counting()));
+    // {Bici=1, Casco=2, Luces=1, Candado=1}
+    ```
+
+    Con `map` eso es imposible sin un bucle anidado.
+
+### E8 — Cinco recorridos o uno
+
+Necesitas el total, la media, el mínimo, el máximo y el número de ventas. ¿Cuántas veces hay que recorrer la lista?
+
+??? success "Solución"
+
+    **Una.**
+
+    ```java
+    var est = ventas.stream().mapToDouble(Venta::importe).summaryStatistics();
+
+    est.getCount();     // 7
+    est.getSum();       // 2252.0
+    est.getMin();       // 70.0
+    est.getMax();       // 900.0
+    est.getAverage();   // 321.71…
+    ```
+
+    La alternativa recorre la lista cinco veces:
+
+    ```java
+    double total = ventas.stream().mapToDouble(Venta::importe).sum();
+    double media = ventas.stream().mapToDouble(Venta::importe).average().orElse(0);
+    // … y tres más
+    ```
+
+    Con siete ventas da igual. Con dos millones de filas leídas de un fichero —que es lo que viene en la UT3— la diferencia se mide en segundos.
+
+    Y el detalle que se pregunta: `average()` devuelve **`OptionalDouble`**, no `double`. Los streams de primitivos tienen sus propios `Optional` sin genéricos para no hacer autoboxing.
+
+### E9 — `anyMatch` frente a `filter().count()`
+
+```java
+boolean hayCara  = ventas.stream().anyMatch(v -> v.importe() > 800);
+boolean hayCara2 = ventas.stream().filter(v -> v.importe() > 800).count() > 0;
+```
+
+Las dos dan `true`. ¿Por qué se prefiere la primera?
+
+??? success "Solución"
+
+    Porque **`anyMatch` para en cuanto encuentra una**. Con un millón de elementos y la coincidencia en el segundo, se recorren dos; `count()` recorre el millón entero porque tiene que contarlos todos.
+
+    Se llama **evaluación perezosa**, y la comparten `anyMatch`, `allMatch`, `noneMatch`, `findFirst` y `findAny`.
+
+    ```java
+    ventas.stream().anyMatch(v -> v.importe() > 800);     // para al encontrar
+    ventas.stream().allMatch(v -> v.unidades() > 0);      // para al primer fallo
+    ventas.stream().noneMatch(v -> v.importe() < 0);      // para al primer acierto
+    ```
+
+    `count()` solo es la herramienta correcta cuando **el número** es lo que necesitas, no cuando quieres saber si hay alguno.

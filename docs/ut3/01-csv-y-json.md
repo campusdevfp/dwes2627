@@ -1,4 +1,4 @@
-# 2. CSV y JSON con herramientas modernas
+# 1. CSV y JSON con herramientas modernas
 
 Los datos casi nunca están dentro del programa: llegan en un fichero o por una API. Estos son los dos formatos con los que vas a trabajar el resto del curso.
 

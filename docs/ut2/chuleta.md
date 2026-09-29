@@ -82,16 +82,51 @@ public class Email implements Notificador {
 }
 ```
 
-## Colecciones
+## Colecciones: cuál elegir
+
+| Necesito | Uso |
+|---|---|
+| Orden + índices | `ArrayList` |
+| Únicos, rápido | `HashSet` |
+| Únicos ordenados | `TreeSet` |
+| Únicos en orden de inserción | `LinkedHashSet` |
+| Clave → valor | `HashMap` |
+| Clave → valor, claves ordenadas | `TreeMap` |
+| Pila (LIFO) / cola (FIFO) | `ArrayDeque` |
 
 ```java
 List<String> l = new ArrayList<>();   l.add("a"); l.get(0); l.size(); l.remove(0);
-Set<String> s = new HashSet<>();      s.add("a"); s.contains("a");
+Set<String>  s = new HashSet<>();     s.add("a"); s.contains("a");
 Map<String,Integer> m = new HashMap<>();
 m.put("k", 1); m.get("k"); m.getOrDefault("x", 0); m.containsKey("k");
 
-var fija = List.of("a", "b");   // inmutable
+var fija = List.of("a", "b");              // inmutable: add lanza excepción
 ```
+
+```java
+lista.removeIf(x -> cond);                 // borrar sin romper el recorrido
+m.getOrDefault(k, 0);                      // en vez de get + null
+m.computeIfAbsent(k, x -> new ArrayList<>()).add(v);
+m.merge(k, 1, Integer::sum);               // contar ocurrencias
+```
+
+:material-alert: `remove(int)` borra **la posición**; `remove(Object)` borra el valor. Con `List<Integer>` es la trampa clásica.
+
+## Comparator
+
+```java
+Comparator.comparing(Producto::precio)
+Comparator.comparingDouble(Producto::precio)          // sin autoboxing
+Comparator.comparing(Producto::precio).reversed()
+Comparator.comparing(Producto::categoria).reversed()
+          .thenComparing(Producto::nombre)            // reversed SOLO la categoría
+Comparator.comparing(Producto::nombre, String.CASE_INSENSITIVE_ORDER)
+
+lista.sort(cmp);                      // modifica la lista
+lista.stream().sorted(cmp).toList();  // devuelve una nueva
+```
+
+:material-alert: `.reversed()` invierte **todo lo encadenado hasta ese punto**.
 
 ## Streams
 
@@ -101,14 +136,42 @@ lista.stream()
      .map(Producto::nombre)
      .sorted()
      .toList();
-
-.count()  .distinct()  .limit(5)  .anyMatch(...)  .findFirst()
-.mapToDouble(Producto::precio).sum()
-.max(Comparator.comparing(Producto::precio))
-.collect(Collectors.groupingBy(Producto::categoria))
 ```
 
-:material-alert: Sin operación **terminal** (`toList`, `count`, `sum`, `forEach`) el stream **no ejecuta nada**.
+```java
+.count()   .distinct()   .limit(5)   .skip(2)
+.anyMatch(...)  .allMatch(...)  .noneMatch(...)  .findFirst()
+.flatMap(p -> p.productos().stream())          // lista de listas → una lista
+.mapToDouble(Producto::precio).sum()
+.mapToDouble(Producto::precio).summaryStatistics()   // count, sum, min, max, average
+.max(Comparator.comparingDouble(Producto::precio))   // devuelve Optional
+.reduce(0.0, Double::sum)
+```
+
+:material-alert: Sin operación **terminal** (`toList`, `count`, `sum`, `forEach`) el stream **no ejecuta nada**. Y un stream **se usa una vez**.
+
+## Recolectores
+
+```java
+.collect(Collectors.groupingBy(Producto::categoria))
+.collect(Collectors.groupingBy(Producto::categoria, Collectors.counting()))
+.collect(Collectors.groupingBy(Producto::categoria, Collectors.summingDouble(Producto::precio)))
+.collect(Collectors.groupingBy(Producto::categoria, TreeMap::new, Collectors.counting()))
+.collect(Collectors.groupingBy(Producto::categoria,
+         Collectors.mapping(Producto::nombre, Collectors.toList())))
+.collect(Collectors.partitioningBy(p -> p.precio() > 100))
+.collect(Collectors.joining(", ", "[", "]"))
+```
+
+:material-alert: `groupingBy` devuelve un **`HashMap`**: el orden de las claves **no** está garantizado. Para ordenarlo, `TreeMap::new` **en cada nivel**.
+
+```java
+// ranking: ordenar un mapa por su valor
+mapa.entrySet().stream()
+    .sorted(Map.Entry.<String, Double>comparingByValue().reversed())   // el tipo, obligatorio
+    .map(Map.Entry::getKey)
+    .toList();
+```
 
 ## Excepciones y Optional
 
@@ -159,19 +222,6 @@ mvn -o compile         # sin conexión
 | `target/` | Generado. **No se sube a Git** |
 
 Coordenadas de una librería: `groupId:artifactId:version`.
-
-## Maven
-
-```bash
-mvn compile    mvn test    mvn package    mvn clean
-```
-
-```
-src/main/java       ← código
-src/main/resources  ← configuración
-src/test/java       ← tests
-pom.xml             ← dependencias
-```
 
 ## Convenciones
 

@@ -1,6 +1,6 @@
 # Simulacro de test — UT2
 
-**81 preguntas con solución.** Mismo formato que el test de la unidad: opción múltiple, **una sola correcta**, sin penalización por fallo.
+**93 preguntas con solución.** Mismo formato que el test de la unidad: opción múltiple, **una sola correcta**, sin penalización por fallo.
 
 !!! info "De dónde sale todo lo que se pregunta"
     De **los temas 1 a 6** y de la **[batería de ejercicios](ejercicios.md)**. Nada más.
@@ -12,7 +12,7 @@
 | 1 | Primeros pasos | 7 |
 | 2 | Sintaxis y tipos | 9 |
 | 3 | POO | 10 |
-| 4 | Colecciones y streams | 10 |
+| 4 | Colecciones y streams | 22 |
 | 5 | Excepciones y `Optional` | 9 |
 | 6 | Un proyecto Maven | 10 |
 | **7** | **Directamente sobre los ejercicios** | **26** |
@@ -80,8 +80,20 @@
 8. Para sumar precios se usa… a) `.sum()` directamente · b) **`.mapToDouble(...).sum()`** · c) `.count()` · d) `.reduce()` obligatorio
 9. `Collectors.groupingBy` sirve para… a) ordenar · b) **agrupar en un Map por una clave** · c) filtrar · d) contar solo
 10. `String::length` es… a) un error · b) **una referencia a método** · c) una clase · d) un tipo
+11. `groupingBy` devuelve un mapa cuyas claves salen… a) alfabéticas · b) **sin orden garantizado** · c) en orden de inserción · d) invertidas
+12. Para que ese mapa salga ordenado se escribe… a) `.sorted()` antes · b) **`groupingBy(clave, TreeMap::new, downstream)`** · c) `groupingBy(clave).sort()` · d) no se puede
+13. Al agrupar en **dos niveles**, el `TreeMap::new` hay que ponerlo… a) solo fuera · b) solo dentro · c) **en los dos niveles** · d) en ninguno
+14. `Collectors.mapping(Venta::producto, Collectors.toSet())` sirve para… a) filtrar el grupo · b) **transformar dentro de cada grupo antes de recogerlo** · c) ordenar el grupo · d) contar
+15. `partitioningBy` frente a `groupingBy`: el primero… a) es más rápido · b) **devuelve siempre las dos claves, aunque un grupo esté vacío** · c) solo admite números · d) no admite downstream
+16. `comparing(A).thenComparing(B).reversed()` invierte… a) solo A · b) solo B · c) **los dos criterios** · d) ninguno
+17. Para ordenar un `Map` por su **valor** hay que… a) usar `TreeMap` · b) **volver a hacer stream sobre `entrySet()`** · c) llamar a `map.sort()` · d) no se puede
+18. `mapToDouble(...).summaryStatistics()` recorre la lista… a) cinco veces · b) **una** · c) dos · d) depende del tamaño
+19. `average()` sobre un `DoubleStream` devuelve… a) `double` · b) `Optional<Double>` · c) **`OptionalDouble`** · d) `Double`
+20. `anyMatch` es preferible a `filter(...).count() > 0` porque… a) es más corto · b) **para en cuanto encuentra uno** · c) no usa lambdas · d) devuelve `Optional`
+21. Si la función que aplicas devuelve una **colección** y no quieres una lista de listas, usas… a) `map` · b) **`flatMap`** · c) `collect` · d) `reduce`
+22. Un stream ya consumido, al reutilizarlo… a) vuelve a empezar · b) **lanza `IllegalStateException`** · c) devuelve vacío · d) se clona
 
-> **Soluciones:** 1b · 2c · 3b · 4c · 5b · 6b · 7b · 8b · 9b · 10b
+> **Soluciones:** 1b · 2c · 3b · 4c · 5b · 6b · 7b · 8b · 9b · 10b · 11b · 12b · 13c · 14b · 15b · 16c · 17b · 18b · 19c · 20b · 21b · 22b
 
 ---
 
@@ -223,14 +235,18 @@ a) Ordena y copia · b) **Copia y devuelve una lista inmutable** · c) Copia y p
 
 Con la unidad hecha, siéntate **55 minutos con un reloj** y contesta, sin mirar nada:
 
-- **Del tema 2:** las 9 preguntas.
-- **Del tema 3:** las 5 primeras.
-- **Del tema 4:** las 6 primeras.
-- **Del tema 5:** las 4 primeras.
-- **Del bloque 6:** las preguntas 1, 6 y 9.
-- **Del bloque 7:** las preguntas 1, 4, 20 y 23.
+| Bloque | Preguntas |
+|---|---|
+| **2** · Sintaxis y tipos | 1, 2, 4, 5, 6 |
+| **3** · POO | 1, 2, 3 |
+| **4** · Colecciones y streams | 1, 5, 9, 11, 13, 16, 17, 19, 21 |
+| **5** · Excepciones y `Optional` | 1, 2, 4 |
+| **6** · Proyecto Maven | 1, 6, 9 |
+| **7** · Sobre los ejercicios | 1, 4, 10, 16, 20, 23, 26 |
 
-Son **30 preguntas**, la misma proporción que el test real: la mayoría de código, y la mitad salidas de la batería.
+Son **30 preguntas**, con la misma proporción que el test real: la mayoría de código, y un tercio salidas directamente de la batería.
+
+El **bloque 4 es el que más pesa**, y es deliberado: las colecciones y los *streams* son la herramienta con la que se trabaja el resto del curso, y desde este curso **no se vuelven a explicar en la UT3**.
 
 | Aciertos | Lectura |
 |:-:|---|

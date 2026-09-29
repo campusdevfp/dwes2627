@@ -51,8 +51,8 @@ En Java el micro-reto casi siempre tiene la misma forma: **predice qué imprime,
 | **S1** | *«¿Cuánto es `7/2` y cuánto `7/2.0`? Apostadlo antes de ejecutar.»* | [E1](ut2/ejercicios.md) · [E13](ut2/ejercicios.md) | La división entera, de una vez |
 | **S2** | *«Este `Equipo` dice ser inmutable. Rompedlo.»* | [E23](ut2/ejercicios.md) · [E4](ut2/ejercicios.md) | `final` protege la referencia, no el contenido |
 | **S3** | *«Escribid un notificador nuevo sin tocar el servicio. Y después probadlo sin mandar un solo correo.»* | [E32](ut2/ejercicios.md) · [el ejemplo largo del tema 3](ut2/03-poo-en-java.md) | Para qué sirve de verdad una interfaz |
-| **S4** | *«Buscad 200.000 veces en una lista y en un conjunto. Traed los dos tiempos.»* | [E5](ut2/ejercicios.md) | Que elegir la colección **es** el rendimiento |
-| **S5** | *«Ordenad por puntos y desempatad por nombre. Aviso: el 80 % lo hará mal.»* | [E17](ut2/ejercicios.md) · [E19](ut2/ejercicios.md) | Dónde va el `.reversed()` |
+| **S4** | *«Buscad 200.000 veces en una lista y en un conjunto. Traed los dos tiempos.»* | [E3](ut2/ejercicios.md) · [E5](ut2/ejercicios.md) | Que elegir la colección **es** el rendimiento |
+| **S5** | *«Ordenad por puntos y desempatad por nombre. Aviso: el 80 % lo hará mal.»* | [E17](ut2/ejercicios.md) · [E19](ut2/ejercicios.md) | Dónde va el `.reversed()`, y el ranking de un mapa |
 | **S6** | *«Este `catch` está vacío. Provocad el fallo y contad qué veis.»* | [E22](ut2/ejercicios.md) | Por qué tragarse una excepción es lo peor |
 | **S7** | *«Quitad `<maven.compiler.release>` del `pom.xml` y compilad. Leed el error.»* | [E12](ut2/ejercicios.md) · [E35](ut2/ejercicios.md) | Que el `pom.xml` no es decoración |
 | **S8** | :material-form-select: Test de RA2 | — | — |
@@ -68,16 +68,16 @@ La UT3 se examina con un [test práctico](ut3/autoevaluacion.md) sobre fragmento
 
 | Sesión | El micro-reto | Se resuelve con | Lo que queda claro |
 |:-:|---|:-:|---|
-| **S1** | *«Buscad 200.000 veces en una lista y en un conjunto. Traed los dos tiempos.»* | [E2](ut3/ejercicios.md) | Que elegir la estructura **es** el trabajo |
-| **S2** | *«Agrupad por categoría y por vendedor, y que salga ordenado. Los dos niveles.»* | [E5](ut3/ejercicios.md) | Dónde va el `TreeMap::new` |
-| **S3** | *«Este CSV tiene cinco trampas. Encontradlas antes de programar nada.»* | [E9](ut3/ejercicios.md) · [E13](ut3/ejercicios.md) | Que los datos reales vienen sucios |
-| **S4** | *«Vuestro JSON escribe la fecha como `[2026,3,14]`. Arregladlo.»* | [E16](ut3/ejercicios.md) | El módulo de `java.time` en Jackson |
-| **S5** | *«Leed un JSON ajeno con tres campos que no esperáis, sin que reviente.»* | [E18](ut3/ejercicios.md) · [E20](ut3/ejercicios.md) | `path` frente a `get` |
-| **S6** | *«`fecha.plusDays(7)` no cambia nada. ¿Por qué?»* | [E21](ut3/ejercicios.md) | Inmutabilidad, otra vez y para siempre |
-| **S7** | *«¿Se solapan estas tres reservas? Escribid la fórmula antes de mirar.»* | [E24](ut3/ejercicios.md) | El `<` y el `<=` de los rangos |
-| **S8** | *«Escribid la búsqueda concatenando el código y pasadle `x' OR '1'='1`. Contad las filas.»* | [E28](ut3/ejercicios.md) · [E30](ut3/ejercicios.md) | La inyección SQL, vista con sus ojos |
-| **S9** | *«Levantad MySQL y haced que el mismo programa funcione. ¿Cuántas líneas tocáis?»* | [E31](ut3/ejercicios.md) · [E40](ut3/ejercicios.md) | Para qué sirve que JDBC sea un estándar |
-| **S10** | :material-form-select: Test práctico de RA3 | [E32](ut3/ejercicios.md) | Escribir tú las preguntas |
+| **S1** | *«Este CSV tiene cinco trampas. Encontradlas antes de programar nada.»* | [E2](ut3/ejercicios.md) | Que los datos reales vienen sucios |
+| **S2** | *«Aquí tenéis un CSV exportado de Excel en español. Leedlo.»* | [E6](ut3/ejercicios.md) · [E3](ut3/ejercicios.md) | El `;`, la coma decimal y por qué existe Commons CSV |
+| **S3** | *«Convertid vuestro CSV a JSON. Cinco minutos, y sin escribir conversión.»* | [E8](ut3/ejercicios.md) | Lo que Jackson hace por ti |
+| **S4** | *«Vuestro JSON escribe la fecha como `[2026,3,14]`. Arregladlo.»* | [E9](ut3/ejercicios.md) | El módulo de `java.time` en Jackson |
+| **S5** | *«Leed un JSON ajeno con tres campos que no esperáis, sin que reviente.»* | [E11](ut3/ejercicios.md) · [E13](ut3/ejercicios.md) | `path` frente a `get` |
+| **S6** | *«`fecha.plusDays(7)` no cambia nada. ¿Por qué?»* | [E14](ut3/ejercicios.md) | Inmutabilidad, otra vez y para siempre |
+| **S7** | *«¿Se solapan estas tres reservas? Escribid la fórmula antes de mirar.»* | [E17](ut3/ejercicios.md) | El `<` y el `<=` de los rangos |
+| **S8** | *«Escribid la búsqueda concatenando el código y pasadle `x' OR '1'='1`. Contad las filas.»* | [E21](ut3/ejercicios.md) · [E23](ut3/ejercicios.md) | La inyección SQL, vista con sus ojos |
+| **S9** | *«Levantad MySQL y haced que el mismo programa funcione. ¿Cuántas líneas tocáis?»* | [E24](ut3/ejercicios.md) · [E31](ut3/ejercicios.md) | Para qué sirve que JDBC sea un estándar |
+| **S10** | :material-form-select: Test práctico de RA3 | [E25](ut3/ejercicios.md) | Escribir tú las preguntas |
 
 !!! danger "El de la S8 no se puede sacrificar"
     Escribir la consulta concatenada, pasarle `x' OR '1'='1` y **ver el número de filas que devuelve** dura cuatro minutos y es la mejor clase de seguridad de todo el trimestre. Después se escribe con `?` y se repite: el contraste es el contenido.
@@ -106,9 +106,9 @@ Además de los micro-retos, cada unidad tiene **un reto de dos sesiones** que se
 
 === "UT3 · El taller de bicis"
 
-    > `datos/bicis.csv`, 300 filas sucias de verdad. **Cargadlo contando los descartes por motivo, sacad cuatro informes, exportadlo a JSON y volcadlo en una base de datos H2** con las cuatro operaciones funcionando.
+    > `datos/bicis.csv`, 300 filas sucias de verdad. **Cargadlo contando los descartes por motivo, exportadlo a JSON con las fechas en ISO y volcadlo en una base de datos H2** con las cuatro operaciones funcionando.
 
-    Es el [E40](ut3/ejercicios.md) con más datos y sin guion paso a paso. Y es, literalmente, la primera tarea que se le encarga a alguien que entra en un equipo de desarrollo.
+    Es el [E31](ut3/ejercicios.md) con más datos y sin guion paso a paso. Y es, literalmente, la primera tarea que se le encarga a alguien que entra en un equipo de desarrollo.
 
     **Se entrega:** el proyecto y **tres preguntas de test** escritas por vosotros sobre los errores que cometisteis.
 

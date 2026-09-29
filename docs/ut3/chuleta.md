@@ -1,46 +1,7 @@
 # Chuleta de la UT3
 
-## Colecciones: cuál elegir
-
-| Necesito | Uso |
-|---|---|
-| Orden + índices | `ArrayList` |
-| Únicos, rápido | `HashSet` |
-| Únicos ordenados | `TreeSet` |
-| Únicos en orden de inserción | `LinkedHashSet` |
-| Clave → valor | `HashMap` |
-| Clave → valor, claves ordenadas | `TreeMap` |
-| Pila (LIFO) / Cola (FIFO) | `ArrayDeque` |
-
-```java
-lista.removeIf(x -> cond);                 // borrar sin romper el recorrido
-map.getOrDefault(k, 0);
-map.computeIfAbsent(k, x -> new ArrayList<>()).add(v);
-map.merge(k, 1, Integer::sum);             // contar ocurrencias
-```
-
-## Comparator
-
-```
-Comparator.comparing(Producto::precio)
-Comparator.comparing(Producto::precio).reversed()
-Comparator.comparing(Producto::categoria).thenComparing(Producto::precio)
-Comparator.comparing(Producto::nombre, String.CASE_INSENSITIVE_ORDER)
-lista.sort(cmp);                     // modifica la lista
-lista.stream().sorted(cmp).toList(); // devuelve una nueva
-```
-
-## Streams para informes
-
-```
-.collect(Collectors.groupingBy(Producto::categoria))
-.collect(Collectors.groupingBy(Producto::categoria, Collectors.counting()))
-.collect(Collectors.groupingBy(Producto::categoria, Collectors.summingDouble(Producto::precio)))
-.collect(Collectors.partitioningBy(p -> p.precio() > 100))
-.collect(Collectors.joining(", ", "[", "]"))
-.mapToDouble(Producto::precio).summaryStatistics()   // min, max, media, suma, count
-.reduce(0.0, Double::sum)
-```
+!!! info "Las colecciones, los comparadores y los *streams* están en la chuleta de la UT2"
+    No se repiten aquí. Si el examen te pide leer un `groupingBy` dentro de un lector de CSV, la referencia es [esa](../ut2/chuleta.md).
 
 ## CSV
 

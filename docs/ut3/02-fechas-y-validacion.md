@@ -1,4 +1,4 @@
-# 3. Fechas y validación
+# 2. Fechas y validación
 
 Dos cosas que parecen menores y que son la causa de la mitad de los fallos de una aplicación real: las fechas mal manejadas y los datos que entran sin comprobar.
 

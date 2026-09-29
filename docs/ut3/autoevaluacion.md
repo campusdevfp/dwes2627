@@ -1,180 +1,28 @@
 # Batería de test — UT3
 
-**El mismo formato que el examen**: código delante, cuatro opciones, una correcta. Cada pregunta lleva su solución razonada en un desplegable.
+**37 preguntas con el mismo formato que el examen**: código delante, cuatro opciones, una correcta. Cada una lleva su solución razonada en un desplegable.
+
+| Tema | De dónde sale | Preguntas |
+|---|---|:-:|
+| **1** | CSV: ficheros, `split`, Commons CSV | 7 |
+| **2** | JSON con Jackson | 6 |
+| **3** | Fechas, validación y `BigDecimal` | 5 |
+| **4** | Base de datos con JDBC | 6 |
+| **5** | Directamente sobre la batería de ejercicios | 13 |
 
 !!! tip "Cómo usar esta página"
     Tápate la solución, contesta, y **solo entonces** despliega. Si aciertas por eliminación, léela igual: la explicación dice **por qué las otras tres están mal**, y esas tres son fallos que vas a cometer escribiendo código.
 
     Y lo que de verdad entrena: **cuando dudes, ejecútalo**. `jshell` arranca en dos segundos.
 
----
-
-## Tema 1 — Estructuras de datos, aplicadas
-
-### T1.1 · ¿Qué imprime?
-
-``` { .java .numerado }
-var m = new HashMap<String, Integer>();
-m.put("pera", 3);
-m.put("manzana", 5);
-m.put("kiwi", 1);
-IO.println(m.keySet());
-```
-
-**a)** `[pera, manzana, kiwi]` · **b)** `[kiwi, manzana, pera]` · **c)** `[manzana, kiwi, pera]` · **d)** No se puede saber
-
-??? success "Solución"
-
-    **d)** Un `HashMap` **no garantiza ningún orden**. Da la casualidad de que con estas tres claves suele salir siempre lo mismo, y por eso mucha gente cree que sí lo hay.
-
-    - Orden de **inserción** → `LinkedHashMap`.
-    - Orden **natural** de la clave → `TreeMap`.
-
-    Confiar en el orden de un `HashMap` es el fallo que aparece en cuanto añades una clave más y la salida cambia.
-
-### T1.2 · ¿Qué imprime?
-
-``` { .java .numerado }
-var nums = new ArrayList<>(List.of(1, 2, 3, 4, 5));
-nums.removeIf(n -> n % 2 == 0);
-IO.println(nums);
-```
-
-**a)** `[1, 2, 3, 4, 5]` · **b)** `[2, 4]` · **c)** `[1, 3, 5]` · **d)** `ConcurrentModificationException`
-
-??? success "Solución"
-
-    **c)** `removeIf` borra los que **cumplen** la condición: se van los pares.
-
-    La (b) es el error de leerlo al revés. La (d) no ocurre porque `removeIf` itera internamente y sabe lo que está haciendo; eso sí pasaría con:
-
-    ```java
-    for (var n : nums) { if (n % 2 == 0) nums.remove(n); }   // ← revienta
-    ```
-
-### T1.3 · ¿Por qué falla?
-
-``` { .java .numerado }
-var lista = List.of("pera", "kiwi", "manzana");
-lista.sort(Comparator.naturalOrder());
-```
-
-**a)** No compila · **b)** `UnsupportedOperationException` · **c)** `NullPointerException` · **d)** Funciona
-
-??? success "Solución"
-
-    **b)** `List.of(...)` devuelve una lista **inmutable**. Tiene el método `sort` porque lo hereda de `List`, así que compila, pero al llamarlo lanza `UnsupportedOperationException`.
-
-    Para ordenarla hay que copiarla primero:
-
-    ```java
-    var copia = new ArrayList<>(lista);
-    copia.sort(Comparator.naturalOrder());
-    ```
-
-    o quedarse con una nueva: `lista.stream().sorted().toList()`.
-
-### T1.4 · ¿Cuál es correcta?
-
-> Contar cuántos productos hay en cada categoría, **con las categorías ordenadas alfabéticamente**.
-
-**a)** `.collect(groupingBy(Producto::categoria, counting()))`
-**b)** `.collect(groupingBy(Producto::categoria, TreeMap::new, counting()))`
-**c)** `.collect(toMap(Producto::categoria, p -> 1))`
-**d)** `.sorted().collect(groupingBy(Producto::categoria, counting()))`
-
-??? success "Solución"
-
-    **b)** El `TreeMap::new` en medio es lo único que ordena las claves.
-
-    - **(a)** cuenta bien, pero en un `HashMap`: sin orden.
-    - **(c)** lanza `IllegalStateException` en cuanto haya dos productos de la misma categoría, porque `toMap` no sabe qué hacer con la clave repetida. Necesitaría un tercer argumento para resolver el choque.
-    - **(d)** es la trampa buena: **ordenar antes de agrupar no ordena el mapa**, porque el `HashMap` de destino no conserva nada. Además `sorted()` sin comparador exige que `Producto` sea `Comparable`.
-
-### T1.5 · ¿Qué tipo devuelve?
-
-``` { .java .numerado }
-conciertos.stream()
-          .collect(groupingBy(Concierto::escenario,
-                              mapping(Concierto::artista, toList())));
-```
-
-**a)** `Map<String, List<Concierto>>` · **b)** `Map<String, List<String>>` · **c)** `List<String>` · **d)** `Map<String, String>`
-
-??? success "Solución"
-
-    **b)** `Map<String, List<String>>`
-
-    Se lee de fuera adentro: `groupingBy` produce un `Map` cuya clave es lo que devuelve el clasificador —el escenario, un `String`—; el `mapping` de dentro convierte cada concierto del grupo en su artista y los recoge en una lista.
-
-    Sin el `mapping`, la respuesta sería la (a).
-
-### T1.6 · ¿Qué imprime?
-
-``` { .java .numerado }
-record P(String nombre, double precio) {}
-var ps = List.of(new P("A", 10), new P("B", 30), new P("C", 20));
-IO.println(ps.stream().max(Comparator.comparing(P::precio)));
-```
-
-**a)** `B` · **b)** `P[nombre=B, precio=30.0]` · **c)** `Optional[P[nombre=B, precio=30.0]]` · **d)** `30.0`
-
-??? success "Solución"
-
-    **c)** `max` devuelve un **`Optional`**, porque la lista podría estar vacía y entonces no habría máximo. Al imprimirlo se ve el envoltorio.
-
-    Es el error clásico de la unidad: intentar asignarlo directamente a `P`. Hay que decidir qué pasa si no hay nada:
-
-    ```java
-    ps.stream().max(comparing(P::precio))
-      .map(P::nombre)
-      .orElse("sin productos");
-    ```
-
-### T1.7 · ¿Por qué falla?
-
-``` { .java .numerado }
-Set<Punto> vistos = new HashSet<>();
-class Punto { int x, y; }       // sin equals ni hashCode
-vistos.add(new Punto(1, 1));
-vistos.add(new Punto(1, 1));
-IO.println(vistos.size());
-```
-
-**a)** Imprime 1 · **b)** Imprime 2 · **c)** No compila · **d)** `NullPointerException`
-
-??? success "Solución"
-
-    **b)** Imprime **2**. Sin `equals` ni `hashCode`, Java compara **por identidad**: son dos objetos distintos en memoria, así que el `Set` los admite los dos aunque tengan los mismos valores.
-
-    No es un error que salte: el programa funciona y los duplicados se cuelan. Por eso en esta unidad se usan `record`, que los generan solos y comparan por valor.
-
-### T1.8 · Completa el hueco
-
-> Acumular en un mapa los productos de cada categoría, **funcione o no la clave la primera vez**.
-
-``` { .java .numerado }
-Map<String, List<Producto>> porCat = new HashMap<>();
-for (var p : productos) {
-    porCat.____(p.categoria(), k -> new ArrayList<>()).add(p);
-}
-```
-
-**a)** `get` · **b)** `put` · **c)** `computeIfAbsent` · **d)** `getOrDefault`
-
-??? success "Solución"
-
-    **c)** `computeIfAbsent` crea la lista **solo si la clave no existía**, la mete en el mapa y la devuelve. Por eso se le puede encadenar el `.add(p)` directamente.
-
-    - **(a)** devolvería `null` la primera vez → `NullPointerException`.
-    - **(b)** no encaja: `put` recibe el valor, no una función.
-    - **(d)** devuelve la lista por defecto pero **no la guarda en el mapa**, así que cada vuelta añade a una lista que se tira.
+!!! info "Las colecciones y los *streams* se evalúan en la UT2"
+    Aquí aparecen **dentro** de un lector de CSV o de un informe, porque son la herramienta; pero no hay preguntas sobre `groupingBy` o comparadores por sí mismos. Esas están en el [simulacro de la UT2](../ut2/autoevaluacion.md).
 
 ---
 
-## Tema 2 — CSV
+## Tema 1 — CSV
 
-### T2.1 · ¿Por qué falla?
+### T1.1 · ¿Por qué falla?
 
 ``` { .java .numerado }
 var lineas = Files.readAllLines(Path.of("ventas.csv"));
@@ -200,7 +48,7 @@ for (var l : lineas) {
 
     La (c) solo pasaría si alguna fila tuviera menos de tres columnas, cosa que el fragmento no permite saber.
 
-### T2.2 · ¿Qué imprime?
+### T1.2 · ¿Qué imprime?
 
 ``` { .java .numerado }
 IO.println("a;b;;".split(";").length);
@@ -219,7 +67,7 @@ IO.println("a;b;;".split(";", -1).length);
 
     Aviso extra: `split` recibe una **expresión regular**. Si el separador es `|`, hay que escribir `"\\|"` o no separa nada.
 
-### T2.3 · ¿Cuál es correcta?
+### T1.3 · ¿Cuál es correcta?
 
 > Contar las líneas que contienen `ERROR` en un log de 2 GB, **sin cargarlo entero en memoria**.
 
@@ -235,7 +83,7 @@ IO.println("a;b;;".split(";", -1).length);
     - **(a)** y **(b)** cargan los 2 GB en memoria antes de filtrar.
     - **(d)** filtra bien pero **deja el fichero abierto**. Es la respuesta que casi todo el mundo marca, y por eso es la opción incorrecta más interesante del tema.
 
-### T2.4 · ¿Qué hace?
+### T1.4 · ¿Qué hace?
 
 ``` { .java .numerado }
 Files.writeString(Path.of("salida.txt"), "hola\n");
@@ -254,7 +102,7 @@ Files.writeString(Path.of("salida.txt"), "adiós\n");
     Files.writeString(p, "adiós\n", StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     ```
 
-### T2.5 · ¿Por qué falla?
+### T1.5 · ¿Por qué falla?
 
 ``` { .java .numerado }
 var precio = new BigDecimal(campo[6].trim());   // campo[6] vale "38,00"
@@ -272,7 +120,7 @@ var precio = new BigDecimal(campo[6].trim());   // campo[6] vale "38,00"
 
     Y ojo con el efecto dominó: si capturas esa excepción y cuentas la fila como descartada, acabas cargando **cero** conciertos y fallando todo lo que venga detrás.
 
-### T2.6 · Completa el hueco
+### T1.6 · Completa el hueco
 
 ``` { .java .numerado }
 try (var lineas = Files.lines(csv, ____)) {
@@ -290,7 +138,7 @@ try (var lineas = Files.lines(csv, ____)) {
 
     La (c) no compila: el parámetro es un `Charset`, no un `String`.
 
-### T2.7 · ¿Qué imprime?
+### T1.7 · ¿Qué imprime?
 
 ``` { .java .numerado }
 var p = Path.of("datos", "2026", "ventas.csv");
@@ -308,9 +156,9 @@ IO.println(p.getParent());
 
 ---
 
-## Tema 3 — JSON y Jackson
+## Tema 2 — JSON y Jackson
 
-### T3.1 · ¿Cuál escribe las fechas como `"2026-07-10"`?
+### T2.1 · ¿Cuál escribe las fechas como `"2026-07-10"`?
 
 **a)** `new ObjectMapper()`
 **b)** `new ObjectMapper().registerModule(new JavaTimeModule())`
@@ -327,7 +175,7 @@ IO.println(p.getParent());
 
     En una aplicación Spring Boot esto viene hecho: `spring-boot-starter-json` registra el módulo y desactiva los *timestamps*. En Java puro, hay que montarlo.
 
-### T3.2 · ¿Por qué falla?
+### T2.2 · ¿Por qué falla?
 
 ``` { .java .numerado }
 var raiz = mapper.readTree(json);
@@ -348,7 +196,7 @@ var ciudad = raiz.get("direccion").get("ciudad").asText();
 
     Con datos de terceros —la UT9 entera— esto no es un detalle: los campos faltan constantemente.
 
-### T3.3 · ¿Qué imprime?
+### T2.3 · ¿Qué imprime?
 
 ``` { .java .numerado }
 record Persona(String nombre, String apodo) {}
@@ -366,7 +214,7 @@ IO.println(m.writeValueAsString(new Persona("Ana", null)));
 
     Es lo que se pide cuando el enunciado dice «sin campos nulos». Sin esa configuración saldría la (a).
 
-### T3.4 · ¿Cuál es correcta?
+### T2.4 · ¿Cuál es correcta?
 
 > Leer un JSON con un campo que tu `record` no tiene, **sin que falle**.
 
@@ -383,7 +231,7 @@ IO.println(m.writeValueAsString(new Persona("Ana", null)));
 
     En Spring Boot esto viene desactivado por defecto, así que el fallo solo lo ves en Java puro. Otro motivo para entender ahora lo que luego el framework te hace.
 
-### T3.5 · ¿Qué tipo hay que pasarle?
+### T2.5 · ¿Qué tipo hay que pasarle?
 
 ``` { .java .numerado }
 List<Producto> ps = mapper.readValue(json, ____);
@@ -399,7 +247,7 @@ List<Producto> ps = mapper.readValue(json, ____);
     - **(b)** funciona de verdad, y es la alternativa aceptable.
     - **(d)** no compila: no existe el literal de clase de un tipo genérico.
 
-### T3.6 · ¿Qué imprime?
+### T2.6 · ¿Qué imprime?
 
 ``` { .java .numerado }
 var json = "{\"total\": 10.5}";
@@ -417,9 +265,9 @@ IO.println(raiz.get("total").asInt());
 
 ---
 
-## Tema 4 — Fechas y validación
+## Tema 3 — Fechas y validación
 
-### T4.1 · Completa el hueco
+### T3.1 · Completa el hueco
 
 > Filtrar por intervalo **incluyendo los extremos**.
 
@@ -440,7 +288,7 @@ IO.println(raiz.get("total").asInt());
 
     Es la pregunta que más se falla del tema, y en un examen práctico se traduce en que faltan dos filas del informe.
 
-### T4.2 · ¿Qué imprime?
+### T3.2 · ¿Qué imprime?
 
 ``` { .java .numerado }
 var d = LocalDate.of(2026, 1, 31).plusMonths(1);
@@ -455,7 +303,7 @@ IO.println(d);
 
     Tiene una consecuencia que sorprende: **la operación no es reversible**. `plusMonths(1).minusMonths(1)` sobre el 31 de enero devuelve el 28 de enero, no el 31.
 
-### T4.3 · ¿Cuánto vale?
+### T3.3 · ¿Cuánto vale?
 
 ``` { .java .numerado }
 var a = LocalTime.of(19, 30);
@@ -471,7 +319,7 @@ IO.println(Duration.between(a, b).toMinutes());
 
     La (b) sería `toHours()`, que trunca. Confundirlas es lo que hace que una comprobación de solapes de «menos de 90 minutos» no detecte nada.
 
-### T4.4 · ¿Qué imprime?
+### T3.4 · ¿Qué imprime?
 
 ``` { .java .numerado }
 IO.println(LocalDate.parse("2026-7-10"));
@@ -491,7 +339,7 @@ IO.println(LocalDate.parse("2026-7-10"));
 
     En una ingesta con datos ajenos, esta excepción es la que más filas descarta.
 
-### T4.5 · ¿Cuál es correcta?
+### T3.5 · ¿Cuál es correcta?
 
 > Validar que una cadena es un correo, de forma razonable para un ejercicio de clase.
 
@@ -510,9 +358,9 @@ IO.println(LocalDate.parse("2026-7-10"));
 
 ---
 
-## Tema 5 — Base de datos con JDBC
+## Tema 4 — Base de datos con JDBC
 
-### T5.1 · ¿Qué devuelve?
+### T4.1 · ¿Qué devuelve?
 
 ``` { .java .numerado }
 var ps = con.prepareStatement("UPDATE producto SET stock = ? WHERE codigo = ?");
@@ -535,7 +383,7 @@ int n = ps.executeUpdate();
 
     Y ojo: para un `SELECT` no se usa `executeUpdate` sino `executeQuery`, que devuelve un `ResultSet`.
 
-### T5.2 · ¿Por qué falla en producción?
+### T4.2 · ¿Por qué falla en producción?
 
 ``` { .java .numerado }
 public List<Producto> listar() throws SQLException {
@@ -564,7 +412,7 @@ public List<Producto> listar() throws SQLException {
 
     Se cierran las tres, **en orden inverso**, pase lo que pase.
 
-### T5.3 · ¿Qué devuelve esta consulta?
+### T4.3 · ¿Qué devuelve esta consulta?
 
 ``` { .java .numerado }
 var codigo = "x' OR '1'='1";
@@ -595,7 +443,7 @@ var rs = st.executeQuery(sql);
 
     **Ningún valor que venga de fuera se concatena en un SQL. Nunca.**
 
-### T5.4 · ¿Cuál es correcta?
+### T4.4 · ¿Cuál es correcta?
 
 Quieres que no haya dos productos con el mismo código.
 
@@ -626,7 +474,7 @@ Quieres que no haya dos productos con el mismo código.
 
     Además es **una consulta en vez de dos**. La **c** es peor todavía: la memoria de tu proceso no sabe lo que hacen los demás.
 
-### T5.5 · ¿Qué hay que cambiar?
+### T4.5 · ¿Qué hay que cambiar?
 
 Tienes el CRUD funcionando con H2 y te piden MySQL.
 
@@ -648,7 +496,7 @@ Tienes el CRUD funcionando con H2 y te piden MySQL.
 
     Lo que sí puede dar guerra son los tipos concretos, el juego de caracteres y la zona horaria. Por eso lo profesional es **desarrollar contra el mismo motor que se usará en producción** — y por eso existe Docker: levantar MySQL de verdad cuesta una orden.
 
-### T5.6 · ¿Dónde están los datos?
+### T4.6 · ¿Dónde están los datos?
 
 Un compañero levanta MySQL con Docker, inserta productos, hace `docker compose down` y al arrancar de nuevo la tabla está vacía. ¿Qué le falta?
 
@@ -672,61 +520,11 @@ Un compañero levanta MySQL con Docker, inserta productos, hace `docker compose 
 
 ---
 
-## Tema 6 — Sobre la batería de ejercicios
+## Tema 5 — Sobre la batería de ejercicios
 
 Estas dieciséis salen directamente de lo que resolviste en la [batería](ejercicios.md), sobre todo de los programas completos E31–E38.
 
-### T6.1 · ¿Qué estructura?
-
-Necesitas las **últimas diez búsquedas, la más reciente primero**.
-
-**a)** `ArrayList` · **b)** `HashSet` · **c)** `ArrayDeque` usado como pila · **d)** `TreeMap`
-
-??? success "Solución"
-
-    **c)** «La más reciente primero» es **LIFO**: último en entrar, primero en salir. Eso es una pila, y en Java moderno la pila es `ArrayDeque` con `push`/`pop`.
-
-    `ArrayList` obligaría a insertar siempre en la posición 0, que desplaza todos los elementos. `HashSet` no tiene orden y además quitaría los repetidos, que aquí sí interesan. `TreeMap` ordena por clave, no por antigüedad.
-
-    Y no: `Stack` no es la respuesta. Está obsoleta —es `synchronized` sin motivo— desde hace dos décadas.
-
-### T6.2 · ¿Por qué falla?
-
-``` { .java .numerado }
-var facturacion = ventas.stream().collect(Collectors.groupingBy(
-        Venta::vendedor, Collectors.summingDouble(v -> v.unidades() * v.precio())));
-
-var ranking = facturacion.entrySet().stream()
-        .sorted(Map.Entry.comparingByValue().reversed())
-        .map(Map.Entry::getKey)
-        .toList();
-```
-
-**a)** `groupingBy` no admite un segundo recolector · **b)** No compila: falta el tipo explícito en `comparingByValue` · **c)** `reversed()` no existe en `Comparator` · **d)** Compila y funciona
-
-??? success "Solución"
-
-    **b)** Hace falta `Map.Entry.<String, Double>comparingByValue().reversed()`.
-
-    Sin los tipos explícitos, el compilador no puede inferir qué `Comparator` es dentro de la cadena y da un error de inferencia que no dice nada útil — de los que te tienen veinte minutos mirando la línea equivocada.
-
-    Es una de esas cosas que no se deducen: se conocen o no. Y por eso está aquí.
-
-### T6.3 · ¿Qué devuelve?
-
-``` { .java .numerado }
-var media = ventas.stream().mapToInt(Venta::unidades).average();
-```
-
-**a)** `double` · **b)** `Optional<Double>` · **c)** `OptionalDouble` · **d)** `int`
-
-??? success "Solución"
-
-    **c)** `OptionalDouble`, no `Optional<Double>`. Los streams de primitivos (`IntStream`, `LongStream`, `DoubleStream`) tienen sus propios `Optional` sin genéricos, justo para no hacer autoboxing.
-
-    Es `Optional` porque **la lista puede estar vacía**, y la media de nada no existe. Por eso casi siempre se escribe `.average().orElse(0)`.
-
-### T6.4 · ¿Por qué falla?
+### T5.1 · ¿Por qué falla?
 
 ``` { .java .numerado }
 List<Producto> leer(Path ruta) throws IOException {
@@ -748,7 +546,7 @@ List<Producto> leer(Path ruta) throws IOException {
 
     Faltaría un tercero si el fichero acaba en línea en blanco: `filter(l -> !l.isBlank())`.
 
-### T6.5 · ¿Qué imprime?
+### T5.2 · ¿Qué imprime?
 
 ``` { .java .numerado }
 IO.println("4,Casco,,".split(",").length);
@@ -767,7 +565,7 @@ IO.println("4,Casco,,".split(",", -1).length);
 
     La regla: **para leer CSV, siempre `split(",", -1)`**.
 
-### T6.6 · ¿Cuál es correcta?
+### T5.3 · ¿Cuál es correcta?
 
 Quieres escribir `12.5` en un CSV que se va a leer en otro país.
 
@@ -783,7 +581,7 @@ Quieres escribir `12.5` en un CSV que se va a leer en otro país.
 
     Es la clase de fallo que no aparece en tu máquina y sí en la del cliente.
 
-### T6.7 · ¿Qué imprime?
+### T5.4 · ¿Qué imprime?
 
 ``` { .java .numerado }
 var f = LocalDate.of(2026, 3, 14);
@@ -803,7 +601,7 @@ IO.println(f);
 
     El compilador no avisa porque la expresión es válida; simplemente no hace nada. Exactamente el mismo error que `cadena.trim();` sin asignar.
 
-### T6.8 · ¿Cuántas noches?
+### T5.5 · ¿Cuántas noches?
 
 ``` { .java .numerado }
 var entrada = LocalDate.of(2026, 7, 1);
@@ -821,7 +619,7 @@ IO.println(ChronoUnit.DAYS.between(entrada, salida));
 
     Ese `±1` es el fallo clásico de cualquier aplicación de reservas, y por eso está en el test. Antes de escribir la fórmula, decide qué estás contando.
 
-### T6.9 · ¿Por qué falla?
+### T5.6 · ¿Por qué falla?
 
 ``` { .java .numerado }
 if (!salida.isAfter(entrada)) {
@@ -841,7 +639,7 @@ Alguien lo «simplifica» a `if (salida.isBefore(entrada))`. ¿Qué se rompe?
 
     Cuando escribas una validación de rango, prueba siempre **los tres casos**: antes, igual y después.
 
-### T6.10 · ¿Qué hace falta?
+### T5.7 · ¿Qué hace falta?
 
 ``` { .java .numerado }
 record ProductoApi(int id, String nombre, double precio) {}
@@ -873,7 +671,7 @@ El JSON trae además un campo `stock`. ¿Qué pasa?
 
     Y hay que hacerlo **siempre** que consumas una API ajena. Si no, el día que el proveedor añada un campo —y lo hará, sin avisarte— tu aplicación deja de funcionar sin que hayas tocado una línea.
 
-### T6.11 · ¿Por qué `TypeReference`?
+### T5.8 · ¿Por qué `TypeReference`?
 
 Si escribes `mapper.readValue(json, List.class)` en vez de usar `TypeReference`, obtienes…
 
@@ -885,7 +683,7 @@ Si escribes `mapper.readValue(json, List.class)` en vez de usar `TypeReference`,
 
     El motivo es el borrado de tipos: en tiempo de ejecución, `List<ProductoApi>` y `List` son lo mismo, así que Jackson no tiene forma de saber qué poner dentro. `TypeReference` es una clase anónima cuyo único propósito es **conservar el tipo genérico** para que Jackson lo pueda leer.
 
-### T6.12 · ¿Qué está mal?
+### T5.9 · ¿Qué está mal?
 
 ``` { .java .numerado }
 var sql = "SELECT * FROM producto WHERE nombre LIKE '%" + texto + "%'";
@@ -907,7 +705,7 @@ var rs = st.executeQuery(sql);
 
     La regla no tiene excepciones, y esta es la variante en la que más gente se cree a salvo.
 
-### T6.13 · ¿Qué tipo de columna?
+### T5.10 · ¿Qué tipo de columna?
 
 Para el precio de un producto:
 
@@ -921,7 +719,7 @@ Para el precio de un producto:
 
     Y en Java se lee y se escribe con `getBigDecimal` y `setBigDecimal`. Mezclar `DECIMAL` en la tabla con `double` en el código deshace la ventaja.
 
-### T6.14 · ¿Qué devuelve el DAO cuando no encuentra?
+### T5.11 · ¿Qué devuelve el DAO cuando no encuentra?
 
 ``` { .java .numerado }
 Optional<Producto> buscarPorCodigo(String codigo)
@@ -944,7 +742,7 @@ Optional<Producto> buscarPorCodigo(String codigo)
 
     Y frente a `null`, la ventaja es que **el compilador te obliga** a tratar el caso. Con `null` te obliga la `NullPointerException`, y en producción.
 
-### T6.15 · ¿Qué pasa la segunda vez?
+### T5.12 · ¿Qué pasa la segunda vez?
 
 Ejecutas el CRUD contra `jdbc:h2:./datos/tienda`, que inserta tres productos. Lo vuelves a ejecutar.
 
@@ -958,7 +756,7 @@ Ejecutas el CRUD contra `jdbc:h2:./datos/tienda`, que inserta tres productos. Lo
 
     Si la URL fuera `jdbc:h2:mem:tienda`, la base de datos viviría en memoria y la segunda ejecución insertaría otra vez los tres: útil para pruebas, inútil para guardar.
 
-### T6.16 · ¿Cuántas líneas hay que tocar?
+### T5.13 · ¿Cuántas líneas hay que tocar?
 
 Tienes el CRUD funcionando con H2 y te piden MySQL. El SQL es estándar. ¿Cuánto cambia del DAO?
 
@@ -979,9 +777,9 @@ Tienes el CRUD funcionando con H2 y te piden MySQL. El SQL es estándar. ¿Cuán
 
 ## Simulacro cronometrado
 
-Cuando hayas hecho las 48, siéntate **55 minutos con un reloj** y responde estas 30 seguidas, sin desplegar nada:
+Cuando hayas hecho las 37, siéntate **55 minutos con un reloj** y responde estas 30 seguidas, sin desplegar nada:
 
-> **T1.1 · T1.3 · T1.5 · T1.6 · T2.1 · T2.2 · T2.5 · T3.1 · T3.2 · T3.5 · T4.1 · T4.3 · T4.5 · T5.1 · T5.2 · T5.3 · T5.4 · T5.6 · T6.1 · T6.4 · T6.5 · T6.7 · T6.8 · T6.10 · T6.11 · T6.12 · T6.13 · T6.14 · T6.15 · T6.16**
+> **T1.1 · T1.2 · T1.3 · T1.5 · T1.7 · T2.1 · T2.2 · T2.3 · T2.5 · T3.1 · T3.2 · T3.4 · T3.5 · T4.1 · T4.2 · T4.3 · T4.4 · T4.5 · T4.6 · T5.1 · T5.2 · T5.4 · T5.5 · T5.6 · T5.7 · T5.8 · T5.10 · T5.11 · T5.12 · T5.13**
 
 **Menos de dos minutos por pregunta**, que es el ritmo real del examen.
 
@@ -989,7 +787,7 @@ Cuando hayas hecho las 48, siéntate **55 minutos con un reloj** y responde esta
 |:-:|---|
 | **24 o más** | Vas sobrado |
 | **18 a 23** | Aprobado holgado. Repasa el bloque que peor te fue |
-| **15 a 17** | Justo. Rehaz los programas E33–E40 |
+| **15 a 17** | Justo. Rehaz los programas E26–E31 |
 | **menos de 15** | Faltan los ejercicios. No es cuestión de releer |
 
 !!! tip "El formato del examen"

@@ -179,10 +179,9 @@ nav:
       - Simulacro de test: ut2/autoevaluacion.md
     - UT3 · RA3 · Datos, ficheros y JSON:
       - ut3/index.md
-      - 1. Estructuras de datos, aplicadas: ut3/01-estructuras-de-datos.md
-      - 2. CSV y JSON: ut3/02-csv-y-json.md
-      - 3. Fechas y validación: ut3/03-fechas-y-validacion.md
-      - 4. Un CRUD contra base de datos: ut3/04-base-de-datos.md
+      - 1. CSV y JSON: ut3/01-csv-y-json.md
+      - 2. Fechas y validación: ut3/02-fechas-y-validacion.md
+      - 3. Un CRUD contra base de datos: ut3/03-base-de-datos.md
       - Chuleta: ut3/chuleta.md
       - Batería de ejercicios: ut3/ejercicios.md
       - Batería de test: ut3/autoevaluacion.md

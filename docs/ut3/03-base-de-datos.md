@@ -1,4 +1,4 @@
-# 4. Un CRUD contra una base de datos
+# 3. Un CRUD contra una base de datos
 
 Último tema de la unidad y el puente hacia todo lo que viene. Aquí montas un proyecto Maven que se conecta a una base de datos real y hace las cuatro operaciones: crear, leer, modificar y borrar.
 
@@ -533,12 +533,125 @@ docker compose down -v         # parar Y borrar los datos
 
     Y de ahí la regla profesional: **desarrolla contra el mismo motor que usarás en producción**. Probar con H2 y desplegar en MySQL es la forma más segura de que el error aparezca el día del despliegue.
 
+## 9. Ayuda: ver la base de datos desde IntelliJ IDEA
+
+Depurar una base de datos a ciegas —solo con `System.out.println`— es perder el tiempo. IntelliJ trae una ventana para conectarse a la base de datos, ver las tablas y lanzar consultas **sin salir del proyecto**.
+
+!!! warning "Community no trae la herramienta de bases de datos"
+    La ventana *Database* es de **IntelliJ IDEA Ultimate**, y los estudiantes la tenéis gratis con la [licencia educativa de JetBrains](https://www.jetbrains.com/community/education/) usando el correo del centro.
+
+    Si trabajas con **Community**, todo lo de esta sección se hace igual de bien con:
+
+    | Herramienta | Para |
+    |---|---|
+    | **Consola web de H2** | H2, y viene con la propia librería |
+    | **[DBeaver](https://dbeaver.io)** | Todo: H2, MySQL, PostgreSQL. Gratis |
+    | `docker compose exec mysql mysql -u…` | MySQL, desde la terminal |
+
+    Lo importante no es la herramienta: es **mirar la tabla con tus ojos** en vez de suponer qué hay dentro.
+
+### a) Abrir la ventana
+
+`Ver → Ventanas de herramientas → Database`, o el icono de la base de datos en la barra derecha. Después, el botón **`+`** → **Data Source**.
+
+```mermaid
+flowchart LR
+    A["+ Data Source"] --> B{"¿Qué motor?"}
+    B -->|H2| C["Fichero .mv.db<br/><i>del propio proyecto</i>"]
+    B -->|MySQL| D["localhost:3306<br/><i>el contenedor</i>"]
+    C --> E["Download driver"]
+    D --> E
+    E --> F["Test Connection"]
+    F --> G["✅ Tablas visibles"]
+```
+
+### b) H2, el del proyecto
+
+**`+` → Data Source → H2.**
+
+| Campo | Qué se pone |
+|---|---|
+| **Connection type** | `Embedded` |
+| **Path** | El fichero, **sin la extensión**: `…/crud/datos/tienda` |
+| **User** | `sa` |
+| **Password** | *(vacío)* |
+
+La primera vez sale un aviso **`Download missing driver files`**: se pulsa y se baja solo. Después, **`Test Connection`** tiene que responder `Successful`.
+
+!!! danger "El error que sale seguro la primera vez"
+    ```
+    Database may be already in use: "… /datos/tienda.mv.db".
+    Possible solutions: close all other connection(s)
+    ```
+
+    **H2 embebido no deja que dos procesos abran el mismo fichero a la vez.** O está corriendo tu programa, o está conectado IntelliJ; las dos cosas no.
+
+    Para la aplicación antes de conectar, o arranca H2 en modo servidor —que sí admite varias conexiones— y usa la URL `jdbc:h2:tcp://localhost/./datos/tienda`:
+
+    ```bash
+    java -cp ~/.m2/repository/com/h2database/h2/2.3.232/h2-2.3.232.jar \
+         org.h2.tools.Server -tcp -web
+    ```
+
+### c) MySQL, el de Docker
+
+Con el contenedor levantado (`docker compose up -d` y `docker compose ps` en `(healthy)`):
+
+**`+` → Data Source → MySQL.**
+
+| Campo | Valor |
+|---|---|
+| **Host** | `localhost` |
+| **Port** | `3306` |
+| **User** | `alumno` |
+| **Password** | `alumno` |
+| **Database** | `tienda` |
+
+En la pestaña **Advanced**, conviene poner la zona horaria para evitar el desfase clásico:
+
+```
+serverTimezone = Europe/Madrid
+```
+
+`Test Connection` → `Successful`, y en el árbol de la izquierda aparecen `tienda → tables → producto`.
+
+!!! tip "Si `Test Connection` falla"
+    | Mensaje | Qué pasa |
+    |---|---|
+    | `Connection refused` | El contenedor no está arrancado, o aún no está `(healthy)` |
+    | `Access denied for user` | Usuario o contraseña distintos de los del `compose.yaml` |
+    | `Unknown database 'tienda'` | Falta `MYSQL_DATABASE: tienda`, o se creó el volumen antes de añadirlo |
+    | `Public Key Retrieval is not allowed` | En **Advanced**, `allowPublicKeyRetrieval = true` |
+
+    El tercero tiene trampa: `MYSQL_DATABASE` **solo se aplica cuando el volumen está vacío**. Si lo añadiste después, hay que borrar el volumen con `docker compose down -v` y volver a levantar.
+
+### d) Qué se hace una vez conectado
+
+Lo que de verdad ahorra tiempo:
+
+- **Doble clic en `producto`** → se abren los datos en una tabla editable. Se ve al instante si tu `INSERT` guardó lo que creías.
+- **Botón derecho → New → Query Console** → una consola SQL con autocompletado de tablas y columnas:
+
+  ```sql
+  SELECT * FROM producto ORDER BY precio DESC;
+  SELECT COUNT(*) FROM producto WHERE stock = 0;
+  DELETE FROM producto WHERE codigo = 'SEG-01';
+  ```
+
+- **Ctrl+Intro** ejecuta la consulta donde está el cursor.
+- Con la conexión configurada, IntelliJ **autocompleta los nombres de tabla y columna dentro de tus cadenas de Java** y avisa si escribes `SELECT * FROM prodcuto`. Eso solo ya justifica configurarla.
+
+!!! success "La costumbre que hay que coger"
+    Cuando algo no cuadre, **mira la tabla antes de tocar el código**. La mitad de los «no me guarda» son en realidad «sí guarda, pero en otra base de datos»: `jdbc:h2:mem:` en vez de `jdbc:h2:./datos/`, o el contenedor de MySQL levantado dos veces en puertos distintos.
+
+    La consulta `SELECT * FROM producto` contestada con tus ojos vale más que media hora de `println`.
+
 ---
 
 ## Pruébalo ahora (25 min)
 
 1. Monta el proyecto con H2 y ejecútalo. Vuelve a ejecutarlo y comprueba que los datos siguen.
-2. Abre la consola web de H2 y mira la tabla.
+2. Conecta la base de datos **desde IntelliJ** (sección 9) o con la consola web de H2, y mira la tabla.
 3. Añade `buscarPorPrecioMenorQue(BigDecimal)` que devuelva una lista.
 4. Levanta MySQL con Docker, cambia la URL y ejecuta lo mismo.
 5. **Escribe la versión insegura** de `buscarPorCodigo` concatenando, y pásale `x' OR '1'='1`. Mira cuántas filas devuelve. Después bórrala.
@@ -549,15 +662,17 @@ docker compose down -v         # parar Y borrar los datos
 
     Si te pasara lo contrario —que la segunda vez vuelva a insertar— mira la URL: con `jdbc:h2:mem:tienda` la base de datos vive en memoria y desaparece al terminar el programa.
 
-    **2.** La consola web:
+    **2.** Con IntelliJ: `Database` → `+` → `H2`, tipo `Embedded`, ruta `…/crud/datos/tienda` **sin extensión**, usuario `sa` y sin contraseña. Doble clic en `producto` y ahí están las filas.
+
+    Con la consola web, si usas Community:
 
     ```bash
     java -cp ~/.m2/repository/com/h2database/h2/2.3.232/h2-2.3.232.jar org.h2.tools.Server -web
     ```
 
-    En `http://localhost:8082`, con la URL `jdbc:h2:./datos/tienda`, usuario `sa` y sin contraseña. Ahí se ve la tabla y se pueden lanzar consultas a mano.
+    En `http://localhost:8082`, con la URL `jdbc:h2:./datos/tienda`.
 
-    **Ojo:** H2 no deja que dos procesos abran el mismo fichero a la vez. Si te da `Database may be already in use`, para el programa antes de abrir la consola.
+    **Ojo en los dos casos:** H2 embebido no deja que dos procesos abran el mismo fichero a la vez. Si sale `Database may be already in use`, para el programa antes de conectar. Todo el detalle está en la [sección 9](#9-ayuda-ver-la-base-de-datos-desde-intellij-idea).
 
     **3.** El filtro por precio:
 

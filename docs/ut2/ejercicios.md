@@ -1213,12 +1213,17 @@ Junta toda la unidad en un solo proyecto: `record` con validación, `enum` con d
 
 El examen de esta unidad son **30 preguntas**, y la mayoría son **preguntas de código**: se da un fragmento y hay que decir qué imprime, si compila o dónde está el fallo ([simulacro aquí](autoevaluacion.md)).
 
+!!! warning "Las colecciones y los *streams* pesan más que antes"
+    Desde este curso **no se vuelven a explicar en la UT3**: se dan enteros aquí, en el [tema 4](04-colecciones-y-funcional.md), que incluye ahora el `groupingBy` en dos niveles, los comparadores encadenados, `summaryStatistics` y `flatMap`.
+
+    Consecuencia práctica: **un tercio del test sale de ese tema**. Si vas justo de tiempo, es el que hay que asegurar.
+
 | Ejercicios | Preguntas | Qué se pregunta |
 |---|:-:|---|
 | **E1–E2 · E13–E14** · Sintaxis y tipos | 5 | La división entera; `var` y qué tipo infiere; bloques de texto y la sangría |
 | **E3–E4 · E23–E24** · POO y `record` | 6 | Qué genera un `record`; `equals` sin `hashCode`; la lista que se cuela por el getter; `enum` con campos |
 | **E15–E16** · Patrones | 4 | `instanceof` con patrón y su ámbito; por qué un `switch` sobre `sealed` no lleva `default` |
-| **E5–E8 · E17–E19 · E26** · Colecciones y streams | 9 | Qué imprime un `HashMap` frente a un `TreeMap`; `map` o `flatMap`; dónde va el `.reversed()`; `ConcurrentModificationException` |
+| **E5–E8 · E17–E19 · E26 · E33** · Colecciones y streams | **10** | Qué imprime un `HashMap` frente a un `TreeMap`; `groupingBy` sin `TreeMap::new`; dónde va el `.reversed()`; `map` o `flatMap`; `ConcurrentModificationException`; el ranking de un mapa |
 | **E9–E10 · E20–E22** · Excepciones y `Optional` | 6 | Qué se imprime al tragarse una excepción; orden de cierre en el *try*; `orElse` frente a `orElseThrow` |
 
 !!! reto "Las tres costumbres que transfieren"
