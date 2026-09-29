@@ -140,12 +140,9 @@ lista.stream()
 
 ```java
 .count()   .distinct()   .limit(5)   .skip(2)
-.anyMatch(...)  .allMatch(...)  .noneMatch(...)  .findFirst()
-.flatMap(p -> p.productos().stream())          // lista de listas → una lista
-.mapToDouble(Producto::precio).sum()
-.mapToDouble(Producto::precio).summaryStatistics()   // count, sum, min, max, average
+.anyMatch(...)  .allMatch(...)  .noneMatch(...)  .findFirst()   // Optional
+.mapToDouble(Producto::precio).sum()       // .average()  también Optional
 .max(Comparator.comparingDouble(Producto::precio))   // devuelve Optional
-.reduce(0.0, Double::sum)
 ```
 
 :material-alert: Sin operación **terminal** (`toList`, `count`, `sum`, `forEach`) el stream **no ejecuta nada**. Y un stream **se usa una vez**.
@@ -159,7 +156,6 @@ lista.stream()
 .collect(Collectors.groupingBy(Producto::categoria, TreeMap::new, Collectors.counting()))
 .collect(Collectors.groupingBy(Producto::categoria,
          Collectors.mapping(Producto::nombre, Collectors.toList())))
-.collect(Collectors.partitioningBy(p -> p.precio() > 100))
 .collect(Collectors.joining(", ", "[", "]"))
 ```
 

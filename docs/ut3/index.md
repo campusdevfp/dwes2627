@@ -38,7 +38,7 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 | **S7** | Validar en el constructor · expresiones regulares · **`BigDecimal`** | [2. Fechas y validación](02-fechas-y-validacion.md) §5–8 |
 | **S8** | **JDBC y un CRUD con H2**, con la inyección SQL provocada en clase | [3. CRUD contra base de datos](03-base-de-datos.md) §1–7 |
 | **S9** | **MySQL en Docker** y las fuentes de datos en IntelliJ | [3. CRUD contra base de datos](03-base-de-datos.md) §8–9 |
-| **S10** | :material-form-select: **Test práctico de RA3 (100 %)** | [Batería de test](autoevaluacion.md) |
+| **S10** | :material-form-select: **Test práctico de RA3 (100 %)** | [Simulacro de test](autoevaluacion.md) |
 
 ## Cómo se evalúa
 
@@ -66,7 +66,7 @@ Las colecciones y los *streams* **entran solo como herramienta**: aparecen dentr
 
 | | |
 |---|---|
-| [**Batería de ejercicios**](ejercicios.md) | 31 con solución: 25 fragmentos y **6 programas completos** (E26–E31), que son la práctica integradora |
-| [**Batería de test**](autoevaluacion.md) | 37 preguntas del mismo tipo que las del examen, con solución razonada, y un simulacro cronometrado de 30 |
+| [**Batería de ejercicios**](ejercicios.md) | 28 con solución, **graduales y en el orden de los temas**: 25 fragmentos y 3 programas integradores (E26–E28) |
+| [**Simulacro de test**](autoevaluacion.md) | Las 30 preguntas del examen, con solución razonada y el ejercicio del que sale cada una |
 | [Chuleta de la UT3](chuleta.md) | Colecciones, ficheros, JSON y fechas en una página |
 | [Comprobar tu trabajo](../comprobar-tu-trabajo.md) | Pega tu código y recibe comentarios |

@@ -43,12 +43,12 @@ Files.move(tmp, destino, REPLACE_EXISTING, ATOMIC_MOVE);   // escritura atómica
 ## Streams
 
 ```java
-.filter(p -> p.precio() > 10)      .map(Producto::nombre)      .flatMap(List::stream)
-.sorted(comparing(P::nombre))      .sorted(comparingInt(P::stock).reversed())
+.filter(p -> p.precio() > 10)      .map(Producto::nombre)
+.sorted(comparing(P::nombre))      .sorted(comparingDouble(P::precio).reversed())
+.sorted(comparing(P::categoria).reversed().thenComparing(P::nombre))  // reversed va pegado
 .distinct()  .limit(10)  .skip(5)  .count()  .toList()
-.anyMatch(...)  .allMatch(...)  .noneMatch(...)  .findFirst()
-.reduce(BigDecimal.ZERO, BigDecimal::add)
-.mapToInt(P::stock).summaryStatistics()    // getCount getSum getMin getMax getAverage
+.anyMatch(...)  .allMatch(...)  .noneMatch(...)  .findFirst()   // Optional
+.mapToDouble(P::precio).sum()      .max(comparingDouble(P::precio))   // Optional
 ```
 
 ## Collectors
@@ -58,8 +58,7 @@ groupingBy(P::categoria)
 groupingBy(P::categoria, counting())
 groupingBy(P::categoria, TreeMap::new, counting())              // claves ordenadas
 groupingBy(P::categoria, mapping(P::nombre, toList()))
-partitioningBy(p -> p.stock() > 0)
-toMap(P::id, p -> p)          toMap(P::id, p -> p, (a,b) -> a)  // (a,b) evita el choque
+groupingBy(P::categoria, TreeMap::new, summingDouble(P::precio))
 joining(", ")   joining(", ", "[", "]")
 averagingDouble(P::precio)    summingInt(P::stock)
 ```

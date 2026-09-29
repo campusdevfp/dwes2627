@@ -1,412 +1,635 @@
 # Batería de ejercicios — UT3
 
-**Dominio: una tienda de bicicletas.** Distinto del de los temas a propósito, para que no valga copiar.
+**28 ejercicios con solución**, en el **mismo orden que los temas** y de menos a más dentro de cada bloque. Cada uno se apoya en el anterior: si los haces seguidos, el último sale solo.
 
-**31 ejercicios agrupados por bloque**, con solución: 25 fragmentos y **6 programas completos** (E26–E31), que son la práctica integradora de la unidad. Todos se ejecutan con `java Fichero.java` salvo los de Jackson y JDBC, que necesitan Maven.
+| | |
+|:-:|---|
+| ● | Cinco minutos, con el tema delante |
+| ●● | Hay que juntar dos ideas del tema |
+| ●●● | Programa completo |
 
-| Bloque | Ejercicios | Sesiones |
-|---|---|:-:|
-| 1 · CSV: leer y escribir | E1–E7 | S1–S2 |
-| 2 · JSON con Jackson | E8–E13 | S3–S5 |
-| 3 · Fechas y validación | E14–E18 | S6–S7 |
-| **4 · Base de datos con JDBC** | **E19–E24** | **S8–S9** |
-| Cierre · escribe tú las preguntas | E25 | S10 |
-| 5 · Taller largo: programas completos | E26–E31 | S1–S9 |
+!!! tip "Los datos de partida"
+    Todo el bloque de CSV y JSON trabaja sobre el mismo fichero. Créalo una vez y no lo toques:
 
-!!! info "Las colecciones y los *streams* no están aquí"
-    Se explican y se practican en el [tema 4 de la UT2](../ut2/04-colecciones-y-funcional.md), que tiene su propia batería. En esta unidad **se usan** —dentro de un lector de CSV, de un informe o de un `ResultSet`— pero no son materia propia ni se preguntan por separado en el test.
+    ```csv title="datos/productos.csv"
+    codigo;nombre;categoria;precio;alta
+    A1;Casco;seguridad;35,00;2026-01-15
+    A2;Bici de paseo;movilidad;450,00;2026-02-03
+    A3;Candado;seguridad;25,50;2026-02-20
+    A4;Luces LED;seguridad;15,00;2026-03-01
+    A5;Patinete;movilidad;120,00;2026-03-14
+    ```
+
+    Separador `;`, coma decimal, fechas ISO. **Es un CSV exportado de Excel en español**, que es lo que te vas a encontrar.
 
 ---
 
-# Tema 1 · CSV: leer y escribir
+# Bloque 1 · CSV
 
-### E1 ● — Leer y contar
+> Tema [1. CSV y JSON](01-csv-y-json.md) §1–3
 
-Lee un fichero de texto y cuenta líneas, palabras y caracteres.
+## E1 ● — Leer y contar
 
-??? success "Solución"
-
-    ```java
-    try (var lineas = Files.lines(ruta, StandardCharsets.UTF_8)) {
-        var lista = lineas.toList();
-        IO.println("Líneas: " + lista.size());
-        IO.println("Palabras: " + lista.stream().mapToLong(l -> l.split("\\s+").length).sum());
-        IO.println("Caracteres: " + lista.stream().mapToInt(String::length).sum());
-    }
-    ```
-    El `try-with-resources` no es opcional: `Files.lines` mantiene el fichero abierto hasta que se cierra el flujo. Sin él, en Windows no podrás ni borrar el fichero después.
-
-
-### E2 ●● — CSV con sus trampas
-
-Lee un CSV con separador `;`, decimales con coma y líneas en blanco.
+Lee `productos.csv` con `Files.lines` y cuenta cuántas líneas de datos hay (sin la cabecera).
 
 ??? success "Solución"
 
     ```java
-    try (var lineas = Files.lines(ruta, StandardCharsets.UTF_8)) {
-        return lineas.skip(1)
-            .filter(l -> !l.isBlank())
-            .map(l -> l.split(";", -1))
-            .filter(c -> c.length >= 5)
-            .map(c -> new Bici(c[0].trim(), c[1].trim(),
-                               new BigDecimal(c[3].trim().replace(',', '.'))))
-            .toList();
-    }
-    ```
-    Las tres trampas: el separador, el `-1` del `split` —que conserva los campos vacíos del final— y la coma decimal.
+    import java.nio.file.*;
 
-
-### E3 ●● — Contar los descartes
-
-Cuenta cuántas filas se descartan y por qué motivo.
-
-??? success "Solución"
-
-    ```java
-    record Resultado(List<Bici> validas, Map<String, Integer> motivos) {}
-
-    var motivos = new TreeMap<String, Integer>();
-    // … dentro del bucle:
-    if (c.length < 5)        { motivos.merge("columnas insuficientes", 1, Integer::sum); continue; }
-    if (c[1].isBlank())      { motivos.merge("sin marca", 1, Integer::sum); continue; }
-    if (precio.signum() <= 0){ motivos.merge("precio no válido", 1, Integer::sum); continue; }
-    ```
-    Una carga que descarta en silencio es una caja negra. Cuando falten registros, sin este mapa no hay forma de explicar por qué.
-
-
-### E4 ●● — Filtrar y escribir
-
-Lee el catálogo, filtra las bicis de menos de 500 € y escribe el resultado en otro CSV.
-
-??? success "Solución"
-
-    ```java
-    var baratas = catalogo.stream()
-        .filter(b -> b.precio().compareTo(new BigDecimal("500")) < 0)
-        .map(b -> String.join(";", b.bastidor(), b.marca(), b.precio().toString()))
-        .toList();
-
-    Files.write(destino,
-        Stream.concat(Stream.of("bastidor;marca;precio"), baratas.stream()).toList(),
-        StandardCharsets.UTF_8, CREATE, TRUNCATE_EXISTING);
-    ```
-    El `TRUNCATE_EXISTING` es importante: sin él, si el fichero existía y era más largo, quedan restos del anterior al final.
-
-
-### E5 ●●● — Escritura atómica
-
-Que un fallo a mitad de la escritura no deje el fichero corrupto.
-
-??? success "Solución"
-
-    ```java
-    var tmp = Files.createTempFile(destino.getParent(), "tmp", ".csv");
-    Files.write(tmp, lineas, StandardCharsets.UTF_8);
-    Files.move(tmp, destino, REPLACE_EXISTING, ATOMIC_MOVE);
-    ```
-    Se escribe en un temporal **en la misma carpeta** —el movimiento atómico solo funciona dentro del mismo sistema de ficheros— y se sustituye de golpe.
-
-    Si el proceso muere a mitad, el fichero original sigue intacto. Es lo que hace cualquier editor de texto al guardar.
-
-
-### E6 ●● — El CSV del ERP
-
-Te pasan un fichero exportado de un programa español: separador `;`, decimales con coma y algún campo entrecomillado con comas dentro. Léelo.
-
-??? success "Solución"
-
-    ```java
-    var formato = CSVFormat.DEFAULT.builder()
-            .setDelimiter(';')                    // (1)
-            .setHeader().setSkipHeaderRecord(true)
-            .setIgnoreEmptyLines(true).setTrim(true)
-            .get();
-
-    var numeros = NumberFormat.getInstance(new Locale("es", "ES"));   // (2)
-
-    try (var lector = Files.newBufferedReader(ruta, StandardCharsets.UTF_8);
-         var csv = formato.parse(lector)) {
-
-        for (var fila : csv) {
-            var precio = numeros.parse(fila.get("precio")).doubleValue();
-            …
-        }
+    try (var lineas = Files.lines(Path.of("datos/productos.csv"))) {
+        long n = lineas.skip(1).count();
+        System.out.println("Filas de datos: " + n);      // Filas de datos: 5
     }
     ```
 
-    1.  Excel en español exporta con **punto y coma**, porque la coma ya la usa para los decimales.
-    2.  `Double.parseDouble("25,90")` lanza `NumberFormatException`. Hay que convertir teniendo en cuenta el idioma.
+    Dos cosas que ya no se negocian:
 
-    Y el campo entrecomillado con comas dentro —`"Cien años de soledad, edición especial"`— lo resuelve la librería sola. A mano, con `split`, ese campo se parte en dos y todo lo que viene detrás se desplaza.
+    - **`try-with-resources`**: `Files.lines` abre el fichero y hay que cerrarlo. Fuera del `try`, el descriptor se queda abierto.
+    - **`skip(1)`** para la cabecera. El fallo clásico es contar 6.
 
-    **Es el motivo por el que se usa Commons CSV y no `split`.**
+## E2 ● — Partir por el separador
 
-
-### E7 ●●● — Errores de E/S bien tratados
-
-Trata por separado: fichero que no existe, sin permisos, y contenido mal formado.
+Imprime el nombre de cada producto partiendo cada línea por `;`.
 
 ??? success "Solución"
 
     ```java
-    public List<Bici> cargar(Path ruta) {
-        if (!Files.exists(ruta))    throw new CatalogoNoEncontradoException(ruta);
-        if (!Files.isReadable(ruta)) throw new CatalogoNoLegibleException(ruta);
-        try (var lineas = Files.lines(ruta, StandardCharsets.UTF_8)) {
-            return procesar(lineas);
-        } catch (MalformedInputException e) {
-            throw new CatalogoCorruptoException("Codificación incorrecta: ¿es UTF-8?", e);
-        } catch (IOException e) {
-            throw new CatalogoException("Error leyendo " + ruta, e);
-        }
+    try (var lineas = Files.lines(Path.of("datos/productos.csv"))) {
+        lineas.skip(1)
+              .map(l -> l.split(";"))
+              .forEach(c -> System.out.println(c[1]));
     }
+    // Casco
+    // Bici de paseo
+    // Candado
+    // Luces LED
+    // Patinete
     ```
-    El `MalformedInputException` es el que aparece con un fichero en ISO-8859-1 leído como UTF-8. Distinguirlo permite dar un mensaje útil en vez de un genérico.
 
+    Funciona **con este fichero**. En el E4 verás por qué no se puede dejar así.
 
----
+## E3 ● — La coma decimal
 
-# Tema 2 · JSON con Jackson
-
-### E8 ● — De objeto a JSON
-
-Serializa una lista de bicis a un fichero, con formato legible.
+`Double.parseDouble("35,00")` falla. Arréglalo.
 
 ??? success "Solución"
 
     ```java
-    var mapper = JsonMapper.builder().addModule(new JavaTimeModule()).build();
-    mapper.writerWithDefaultPrettyPrinter().writeValue(new File("bicis.json"), bicis);
+    Double.parseDouble("35,00");
+    // lanza java.lang.NumberFormatException: For input string: "35,00"
+
+    System.out.println(Double.parseDouble("35,00".replace(',', '.')));   // 35.0
     ```
 
-
-### E9 ●● — Fechas ISO y sin nulos
-
-Configura el mapeador para que las fechas salgan legibles y no aparezcan campos nulos.
-
-??? success "Solución"
+    Java siempre espera **punto** decimal, da igual el idioma del sistema. Y si el fichero además trae separador de miles (`1.250,00`), hay que quitarlo antes:
 
     ```java
-    var mapper = JsonMapper.builder()
-        .addModule(new JavaTimeModule())
-        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-        .serializationInclusion(JsonInclude.Include.NON_NULL)
-        .build();
+    System.out.println(Double.parseDouble("1.250,00".replace(".", "").replace(',', '.')));
+    // 1250.0
     ```
-    Sin la segunda línea, un `LocalDate` sale como `[2026,7,10]` o como un número enorme. Es el fallo que más se ve en las entregas.
 
+    Para dinero de verdad, `BigDecimal`. Lo ves en el bloque 3.
 
-### E10 ●● — De JSON a objeto
+## E4 ●● — Las tres trampas del `split`
 
-Lee un JSON de una lista y conviértelo en `List<Bici>`.
+Este CSV rompe la solución del E2. Di qué falla en cada línea.
 
-??? success "Solución"
-
-    ```java
-    List<Bici> bicis = mapper.readValue(fichero, new TypeReference<List<Bici>>() {});
-    ```
-    El `TypeReference` es obligatorio por el borrado de tipos: `readValue(f, List.class)` devuelve una lista de `LinkedHashMap`, no de bicis, y el error aparece más tarde y en otro sitio.
-
-
-### E11 ●●● — JSON ajeno con campos que sobran
-
-Consume un JSON que trae campos que no te interesan y que puede cambiar.
-
-??? success "Solución"
-
-    ```java
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    record RespuestaExterna(String id, String nombre, @JsonProperty("precio_eur") BigDecimal precio) {}
-    ```
-    Sin `ignoreUnknown`, el día que el proveedor añada un campo tu aplicación empieza a fallar sin que hayas tocado nada. Y `@JsonProperty` mapea nombres que no siguen tu convención.
-
-
-### E12 ●●● — De CSV a JSON agrupado
-
-Lee el CSV y escribe un JSON con las bicis agrupadas por tipo.
-
-??? success "Solución"
-
-    ```java
-    Map<String, List<Bici>> agrupadas = catalogo.stream()
-        .collect(groupingBy(b -> b.tipo().name(), TreeMap::new, toList()));
-    mapper.writerWithDefaultPrettyPrinter().writeValue(new File("catalogo.json"), agrupadas);
-    ```
-    Un `Map` se serializa como objeto JSON con las claves como propiedades. Con `TreeMap`, además, salen ordenadas — y un JSON con orden estable se puede comparar con `diff` entre ejecuciones.
-
-
-### E13 ●● — Recorrer un JSON sin clase
-
-Extrae un dato de un JSON del que no quieres crear la clase entera.
-
-??? success "Solución"
-
-    ```java
-    JsonNode raiz = mapper.readTree(json);
-    String titulo = raiz.path("datos").path(0).path("titulo").asText("desconocido");
-    int total = raiz.path("meta").path("total").asInt(0);
-    ```
-    `path()` frente a `get()`: `path` devuelve un nodo vacío si no existe, así que se puede encadenar sin comprobar nulos. `get()` devuelve `null` y encadenarlo revienta.
-
-
----
-
-# Tema 3 · Fechas y validación
-
-### E14 ● — La fecha que no cambia
-
-Explica qué imprime y por qué.
-
-```java
-var fecha = LocalDate.of(2026, 7, 10);
-fecha.plusDays(10);
-IO.println(fecha);
+```csv
+codigo;nombre;precio
+B1;"Casco rojo; talla M";35,00
+B2;Bici;
+B3;Luces;15,00;sobra
 ```
 
 ??? success "Solución"
 
-    Imprime **2026-07-10**. `java.time` es **inmutable**: `plusDays` devuelve una fecha nueva y no toca la original.
+    | Línea | El problema |
+    |---|---|
+    | `B1` | El nombre **lleva el separador dentro**, entre comillas. `split(";")` devuelve 4 trozos y el nombre sale partido |
+    | `B2` | El precio está **vacío**. `c[2]` existe pero es `""`, y `parseDouble("")` lanza `NumberFormatException` |
+    | `B3` | Hay **una columna de más**. `c[2]` es `"15,00"`, pero si hubiera faltado una columna sería `ArrayIndexOutOfBoundsException` |
 
-    ```java
-    fecha = fecha.plusDays(10);      // 
-    ```
-    Casi toda la clase falla esta pregunta la primera vez.
+    Y hay una cuarta, invisible: `split(";")` **descarta los campos vacíos del final**, así que una línea que acabe en `;;` devuelve menos trozos de los que crees.
 
+    Ninguna se arregla con un `if`. Por eso existe una librería.
 
-### E15 ●● — Cálculos con fechas
+## E5 ●● — Apache Commons CSV
 
-Días entre dos fechas, si una revisión está vencida, y la próxima revisión a seis meses.
-
-??? success "Solución"
-
-    ```java
-    long dias = ChronoUnit.DAYS.between(compra, hoy);
-    boolean vencida = ultimaRevision.plusMonths(12).isBefore(LocalDate.now());
-    LocalDate proxima = ultimaRevision.plusMonths(6);
-    ```
-    `Period.between` da años, meses y días por separado; `ChronoUnit.DAYS.between` da el total. Confundirlos es el error del tema.
-
-
-### E16 ●● — Formatear y analizar
-
-Muestra la fecha como `10/07/2026` y lee una escrita así.
+Reescribe el E2 con Commons CSV: separador `;`, cabecera, sin líneas vacías y con `trim`.
 
 ??? success "Solución"
 
     ```java
-    var f = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    String texto = fecha.format(f);
-    LocalDate leida = LocalDate.parse("10/07/2026", f);
-    ```
-    Ojo con `MM` (mes) y `mm` (minutos): `dd/mm/yyyy` da un mes disparatado y ningún error.
+    import org.apache.commons.csv.*;
 
+    var formato = CSVFormat.DEFAULT.builder()
+            .setDelimiter(';')
+            .setHeader()
+            .setSkipHeaderRecord(true)
+            .setIgnoreEmptyLines(true)
+            .setTrim(true)
+            .build();
 
-### E17 ●● — Validar en el constructor
-
-`Bici` que se valide sola: bastidor de 17 caracteres, marca obligatoria, precio positivo.
-
-??? success "Solución"
-
-    ```java
-    record Bici(String bastidor, String marca, BigDecimal precio) {
-        Bici {
-            if (bastidor == null || bastidor.length() != 17)
-                throw new IllegalArgumentException("El bastidor son 17 caracteres");
-            if (marca == null || marca.isBlank())
-                throw new IllegalArgumentException("La marca es obligatoria");
-            if (precio == null || precio.signum() <= 0)
-                throw new IllegalArgumentException("El precio debe ser positivo");
+    try (var parser = CSVParser.parse(Path.of("datos/productos.csv"),
+                                      java.nio.charset.StandardCharsets.UTF_8, formato)) {
+        for (var fila : parser) {
+            System.out.println(fila.get("nombre") + " → " + fila.get("precio"));
         }
     }
+    // Casco → 35,00
+    // Bici de paseo → 450,00
+    // ...
     ```
-    El constructor compacto valida **antes** de asignar. Un objeto que existe es un objeto válido, y eso elimina comprobaciones repartidas por todo el código.
 
+    Lo que has ganado: **las comillas se respetan**, los campos se piden **por nombre** (`fila.get("nombre")`, no `c[1]`) y las tres trampas del E4 desaparecen.
 
-### E18 ●●● — Expresiones regulares útiles
+    Y el `StandardCharsets.UTF_8` explícito: sin él, las tildes dependen del sistema operativo de quien ejecute.
 
-Valida matrícula, correo y código postal, y explica por qué el correo es un caso especial.
+## E6 ●● — Contar los descartes
+
+Lee el CSV convirtiendo cada fila a un `record Producto`, **saltando** las filas malas y contando **por qué** se descartó cada una.
 
 ??? success "Solución"
 
     ```java
-    static final Pattern MATRICULA = Pattern.compile("^\\d{4}[BCDFGHJKLMNPRSTVWXYZ]{3}$");
-    static final Pattern CP        = Pattern.compile("^(0[1-9]|[1-4]\\d|5[0-2])\\d{3}$");
-    static final Pattern CORREO    = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+    record Producto(String codigo, String nombre, String categoria, double precio) {}
+
+    var buenos = new ArrayList<Producto>();
+    var descartes = new TreeMap<String, Integer>();
+
+    try (var parser = CSVParser.parse(Path.of("datos/productos.csv"),
+                                      java.nio.charset.StandardCharsets.UTF_8, formato)) {
+        for (var fila : parser) {
+            try {
+                var precio = Double.parseDouble(fila.get("precio").replace(',', '.'));
+                if (precio < 0) { descartes.merge("precio negativo", 1, Integer::sum); continue; }
+                buenos.add(new Producto(fila.get("codigo"), fila.get("nombre"),
+                                        fila.get("categoria"), precio));
+            } catch (NumberFormatException e) {
+                descartes.merge("precio no numérico", 1, Integer::sum);
+            } catch (IllegalArgumentException e) {
+                descartes.merge("falta una columna", 1, Integer::sum);
+            }
+        }
+    }
+    System.out.println("Cargados: " + buenos.size());   // Cargados: 5
+    System.out.println("Descartes: " + descartes);      // Descartes: {}
     ```
-    El correo **no se valida bien con una expresión regular**: la especificación admite cosas que ninguna regex razonable cubre. La comprobación de verdad es **enviar un mensaje** y que el usuario confirme. Una regex sencilla evita erratas obvias y ya está.
 
-    Compilar el patrón una vez como constante importa: dentro de un bucle, `Pattern.compile` en cada iteración es coste puro.
+    **Esto es lo que se pide en un trabajo de verdad.** Un lector que revienta con la primera fila mala es inútil: hay que terminar y **decir cuántas se cayeron y por qué**.
 
+    Prueba a meter a mano una fila con `precio` = `abc` y verás el contador subir.
 
 ---
 
-# Tema 4 · Base de datos con JDBC
+# Bloque 2 · JSON con Jackson
 
-### E19 ● — Las cuatro piezas
+> Tema [1. CSV y JSON](01-csv-y-json.md) §4–8
 
-Empareja cada clase de JDBC con lo que hace, y di cuáles hay que cerrar.
+## E7 ● — De objeto a JSON
 
-`Connection` · `PreparedStatement` · `ResultSet` · `DriverManager`
+Convierte un `Producto` a JSON.
 
 ??? success "Solución"
-
-    | Pieza | Qué hace | ¿Cerrar? |
-    |---|---|:-:|
-    | `DriverManager` | Fabrica conexiones a partir de la URL | No |
-    | `Connection` | La conexión abierta con la base de datos | **Sí** |
-    | `PreparedStatement` | La consulta con huecos `?` | **Sí** |
-    | `ResultSet` | El resultado, fila a fila | **Sí** |
-
-    Las tres se cierran, y por eso van siempre en un `try-with-resources`:
 
     ```java
-    try (var con = DriverManager.getConnection(url, usuario, clave);
-         var ps  = con.prepareStatement(sql);
-         var rs  = ps.executeQuery()) { … }
+    import com.fasterxml.jackson.databind.*;
+
+    var mapper = new ObjectMapper();
+    var p = new Producto("A1", "Casco", "seguridad", 35.0);
+
+    System.out.println(mapper.writeValueAsString(p));
+    // {"codigo":"A1","nombre":"Casco","categoria":"seguridad","precio":35.0}
+
+    System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(p));
+    // {
+    //   "codigo" : "A1",
+    //   ...
+    // }
     ```
 
-    Se cierran **en orden inverso** —`rs`, `ps`, `con`— y **todas**, aunque una falle al cerrarse.
+    Jackson lee los captadores del `record` sin que le digas nada. Cero anotaciones.
 
-### E20 ●● — `executeQuery` o `executeUpdate`
+## E8 ● — De JSON a objeto
 
-Di cuál se usa en cada caso y qué devuelve.
-
-(a) `SELECT * FROM producto` · (b) `INSERT INTO producto …` · (c) `UPDATE producto SET stock = ?` · (d) `DELETE FROM producto WHERE id = ?` · (e) `CREATE TABLE …`
+El camino de vuelta.
 
 ??? success "Solución"
 
-    | | Método | Devuelve |
+    ```java
+    var json = """
+        {"codigo":"A9","nombre":"Timbre","categoria":"seguridad","precio":8.5}""";
+
+    var p = mapper.readValue(json, Producto.class);
+    System.out.println(p.nombre());    // Timbre
+    ```
+
+    Y para una lista hace falta `TypeReference`, porque en tiempo de ejecución Java no sabe qué hay dentro de un `List`:
+
+    ```java
+    import com.fasterxml.jackson.core.type.TypeReference;
+
+    var lista = mapper.readValue("""
+        [{"codigo":"A1","nombre":"Casco","categoria":"seguridad","precio":35.0}]""",
+        new TypeReference<List<Producto>>() {});
+    System.out.println(lista.size());   // 1
+    ```
+
+## E9 ●● — La fecha que sale como `[2026,3,14]`
+
+Añade un `LocalDate` al record y arregla la salida.
+
+??? success "Solución"
+
+    ```java
+    import java.time.LocalDate;
+    record ProductoFecha(String codigo, String nombre, LocalDate alta) {}
+
+    var sinConfigurar = new ObjectMapper();
+    System.out.println(sinConfigurar.writeValueAsString(
+            new ProductoFecha("A5", "Patinete", LocalDate.of(2026, 3, 14))));
+    // {"codigo":"A5","nombre":"Patinete","alta":[2026,3,14]}
+    ```
+
+    Un array de números. Ninguna API lo entiende. Se arregla con **el módulo de `java.time`**:
+
+    ```java
+    import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+    import com.fasterxml.jackson.databind.SerializationFeature;
+
+    var mapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+    System.out.println(mapper.writeValueAsString(
+            new ProductoFecha("A5", "Patinete", LocalDate.of(2026, 3, 14))));
+    // {"codigo":"A5","nombre":"Patinete","alta":"2026-03-14"}
+    ```
+
+    Hacen falta **las dos líneas**: el módulo enseña a Jackson qué es un `LocalDate`, y el `disable` le dice que lo escriba como texto ISO y no como número.
+
+    Y la dependencia `jackson-datatype-jsr310` en el `pom.xml`.
+
+## E10 ●● — JSON ajeno con campos que sobran
+
+Este JSON viene de una API que ha añadido campos. Haz que no reviente.
+
+```json
+{"codigo":"A1","nombre":"Casco","precio":35.0,"promocion":true,"stock":12}
+```
+
+??? success "Solución"
+
+    ```java
+    mapper.readValue(json, Producto.class);
+    // lanza UnrecognizedPropertyException: Unrecognized field "promocion"
+    ```
+
+    ```java
+    import com.fasterxml.jackson.databind.DeserializationFeature;
+
+    var tolerante = new ObjectMapper()
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+
+    System.out.println(tolerante.readValue(json, Producto.class).nombre());   // Casco
+    ```
+
+    **Esta línea es obligatoria cuando consumes una API que no es tuya.** El día que añadan un campo, tu programa seguirá funcionando en vez de caerse a las tres de la mañana.
+
+    Y para no escribir `null` al serializar:
+
+    ```java
+    mapper.setSerializationInclusion(
+            com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
+    ```
+
+## E11 ●● — Recorrer un JSON sin clase
+
+Saca el nombre y el precio de este JSON **sin crear ningún record**, y que no falle si falta un campo.
+
+```json
+{"resultado":{"items":[{"nombre":"Casco","precio":35.0},{"nombre":"Bici"}]}}
+```
+
+??? success "Solución"
+
+    ```java
+    var raiz = mapper.readTree(json);
+
+    for (var item : raiz.path("resultado").path("items")) {
+        System.out.println(item.path("nombre").asText()
+                + " → " + item.path("precio").asDouble(0.0));
+    }
+    // Casco → 35.0
+    // Bici → 0.0
+    ```
+
+    **`path` frente a `get`, que es la pregunta del examen:**
+
+    | | Si el campo no existe |
+    |---|---|
+    | `get("x")` | Devuelve `null` → `NullPointerException` en el `.asText()` |
+    | `path("x")` | Devuelve un nodo vacío → se puede encadenar sin miedo |
+
+    Con `path` puedes bajar cinco niveles sin un solo `if`.
+
+## E12 ●●● — De CSV a JSON agrupado
+
+Lee `productos.csv` y escribe un JSON con **los productos agrupados por categoría**, fechas ISO y sin nulos.
+
+??? success "Solución"
+
+    ```java
+    // CsvAJson.java
+    import java.nio.file.*;
+    import java.nio.charset.StandardCharsets;
+    import java.util.*;
+    import java.util.stream.*;
+    import org.apache.commons.csv.*;
+    import com.fasterxml.jackson.databind.*;
+    import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
+    record Producto(String codigo, String nombre, String categoria, double precio) {}
+
+    void main() throws Exception {
+        var formato = CSVFormat.DEFAULT.builder()
+                .setDelimiter(';').setHeader().setSkipHeaderRecord(true)
+                .setIgnoreEmptyLines(true).setTrim(true).build();
+
+        var productos = new ArrayList<Producto>();
+        try (var parser = CSVParser.parse(Path.of("datos/productos.csv"),
+                                          StandardCharsets.UTF_8, formato)) {
+            for (var f : parser) {
+                productos.add(new Producto(f.get("codigo"), f.get("nombre"),
+                        f.get("categoria"),
+                        Double.parseDouble(f.get("precio").replace(',', '.'))));
+            }
+        }
+
+        var porCategoria = productos.stream().collect(
+                Collectors.groupingBy(Producto::categoria, TreeMap::new,
+                                      Collectors.toList()));
+
+        var mapper = new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        mapper.setSerializationInclusion(
+                com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
+
+        mapper.writerWithDefaultPrettyPrinter()
+              .writeValue(Path.of("salida/productos.json").toFile(), porCategoria);
+
+        IO.println("Escritos " + productos.size() + " productos en "
+                + porCategoria.size() + " categorías");
+    }
+    ```
+
+    ```json
+    {
+      "movilidad" : [ { "codigo" : "A2", "nombre" : "Bici de paseo", ... } ],
+      "seguridad" : [ { "codigo" : "A1", ... } ]
+    }
+    ```
+
+    Fíjate en el `TreeMap::new`: **`groupingBy` no ordena**, y un JSON cuyas claves cambian de orden en cada ejecución es imposible de comparar entre dos versiones.
+
+---
+
+# Bloque 3 · Fechas y validación
+
+> Tema [2. Fechas y validación](02-fechas-y-validacion.md)
+
+## E13 ● — La fecha que no cambia
+
+```java
+import java.time.*;
+var f = LocalDate.of(2026, 3, 14);
+f.plusDays(7);
+System.out.println(f);
+```
+
+??? success "Solución"
+
+    **`2026-03-14`.** No ha cambiado.
+
+    `java.time` es **inmutable**: `plusDays` no modifica la fecha, **devuelve una nueva**. Hay que recogerla:
+
+    ```java
+    var siguiente = f.plusDays(7);
+    System.out.println(siguiente);    // 2026-03-21
+    ```
+
+    Es el mismo error que con `String`: `texto.trim();` sin asignar tampoco hace nada.
+
+## E14 ● — Las cuatro clases
+
+¿Cuál usarías para: (a) una fecha de nacimiento · (b) el instante en que se creó un pedido · (c) la hora de apertura de una tienda · (d) la fecha y hora de una cita?
+
+??? success "Solución"
+
+    | | Clase | Por qué |
     |---|---|---|
-    | (a) `SELECT` | `executeQuery()` | Un `ResultSet` |
-    | (b) `INSERT` | `executeUpdate()` | Filas insertadas (1) |
-    | (c) `UPDATE` | `executeUpdate()` | **Filas modificadas** |
-    | (d) `DELETE` | `executeUpdate()` | **Filas borradas** |
-    | (e) `CREATE TABLE` | `execute()` | `boolean` (aquí, `false`) |
+    | (a) Nacimiento | `LocalDate` | No tiene hora |
+    | (b) Pedido | `Instant` | Momento absoluto, sin zona; es lo que se guarda en BD |
+    | (c) Apertura | `LocalTime` | No tiene fecha |
+    | (d) Cita | `LocalDateTime` | Fecha y hora, en la zona de quien la lee |
 
-    Y lo útil de verdad: **el número que devuelve `executeUpdate` dice si existía**, sin hacer antes un `SELECT`.
+    La **(b)** es la que se falla. Un pedido creado en Madrid y leído en México es **el mismo instante**: si lo guardas como `LocalDateTime`, se descuadra en cuanto haya dos zonas o cambie el horario de verano.
 
-    ```java
-    public boolean actualizarStock(String codigo, int stock) {
-        …
-        return ps.executeUpdate() == 1;      // false si ese código no está
-    }
-    ```
+## E15 ●● — Cálculos con fechas
 
-### E21 ●●● — La inyección SQL, provocada
-
-Escribe la versión insegura de una búsqueda por código, pásale `x' OR '1'='1` y cuenta las filas. Después arréglala.
+Días entre dos fechas, edad en años, y el último día del mes.
 
 ??? success "Solución"
 
     ```java
-    // INSEGURA · solo para verlo
-    var sql = "SELECT * FROM producto WHERE codigo = '" + codigo + "'";
-    try (var con = conectar(); var st = con.createStatement();
-         var rs = st.executeQuery(sql)) {
-        int n = 0; while (rs.next()) n++;
-        System.out.println("Filas: " + n);      // ← la tabla ENTERA
+    import java.time.temporal.ChronoUnit;
+
+    var a = LocalDate.of(2026, 1, 15);
+    var b = LocalDate.of(2026, 3, 14);
+
+    System.out.println(ChronoUnit.DAYS.between(a, b));                   // 58
+    System.out.println(Period.between(LocalDate.of(1998, 5, 20),
+                                      LocalDate.of(2026, 3, 14)).getYears());   // 27
+    System.out.println(b.withDayOfMonth(b.lengthOfMonth()));             // 2026-03-31
+    System.out.println(b.getDayOfWeek());                                // SATURDAY
+    ```
+
+    **`ChronoUnit` para una unidad** (días, meses, horas). **`Period` cuando quieres "2 años, 3 meses y 5 días"**. Restar dos fechas con `getDayOfYear()` es el camino a los bugs de fin de año.
+
+## E16 ●● — Formatear y analizar
+
+Convierte `"14/03/2026"` a `LocalDate` y al revés, y explica por qué falla `"14-03-2026"`.
+
+??? success "Solución"
+
+    ```java
+    import java.time.format.*;
+
+    var fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    var f = LocalDate.parse("14/03/2026", fmt);
+    System.out.println(f);                  // 2026-03-14
+    System.out.println(f.format(fmt));      // 14/03/2026
+
+    LocalDate.parse("14-03-2026", fmt);
+    // lanza java.time.format.DateTimeParseException: Text '14-03-2026' could not be parsed
+    ```
+
+    El patrón describe **exactamente** el texto, guiones incluidos. Y ojo con las letras:
+
+    | | |
+    |---|---|
+    | `MM` | Mes · `mm` es **minutos** |
+    | `dd` | Día del mes · `DD` es día del año |
+    | `yyyy` | Año · `YYYY` es el año de la semana ISO, y en diciembre no coinciden |
+
+    `LocalDate.parse("2026-03-14")` sin formateador funciona: **ISO es el formato por defecto**. Por eso los datos se guardan en ISO y solo se formatea al presentarlos.
+
+## E17 ●● — Validar en el constructor
+
+Haz que una `Reserva` no pueda existir con la fecha de salida antes de la de entrada.
+
+??? success "Solución"
+
+    ```java
+    record Reserva(String cliente, LocalDate entrada, LocalDate salida) {
+        Reserva {
+            if (cliente == null || cliente.isBlank())
+                throw new IllegalArgumentException("Cliente vacío");
+            if (entrada == null || salida == null)
+                throw new IllegalArgumentException("Las fechas son obligatorias");
+            if (!salida.isAfter(entrada))
+                throw new IllegalArgumentException(
+                        "La salida (%s) debe ser posterior a la entrada (%s)"
+                                .formatted(salida, entrada));
+            cliente = cliente.trim();
+        }
+        long noches() { return ChronoUnit.DAYS.between(entrada, salida); }
     }
+
+    System.out.println(new Reserva("Ana", LocalDate.of(2026,3,1),
+                                          LocalDate.of(2026,3,5)).noches());   // 4
+
+    new Reserva("Ana", LocalDate.of(2026,3,5), LocalDate.of(2026,3,1));
+    // lanza IllegalArgumentException: La salida (2026-03-01) debe ser posterior...
+    ```
+
+    **Un objeto que valida al nacer no existe nunca en estado inválido.** Si validas «más tarde», siempre hay un camino por el que se cuela.
+
+## E18 ●● — Rangos que se solapan
+
+¿Se solapan `[1 marzo, 5 marzo)` y `[5 marzo, 8 marzo)`? Escribe la condición.
+
+??? success "Solución"
+
+    **No se solapan.** La primera termina el 5 y la segunda empieza el 5: el huésped sale por la mañana y entra otro por la tarde.
+
+    ```java
+    boolean solapan(Reserva a, Reserva b) {
+        return a.entrada().isBefore(b.salida()) && b.entrada().isBefore(a.salida());
+    }
+
+    var r1 = new Reserva("Ana",   LocalDate.of(2026,3,1), LocalDate.of(2026,3,5));
+    var r2 = new Reserva("Bruno", LocalDate.of(2026,3,5), LocalDate.of(2026,3,8));
+    var r3 = new Reserva("Clara", LocalDate.of(2026,3,4), LocalDate.of(2026,3,7));
+
+    System.out.println(solapan(r1, r2));    // false
+    System.out.println(solapan(r1, r3));    // true
+    ```
+
+    **Todo está en `isBefore` y no `isBefore || isEqual`.** Con el segundo, dos reservas consecutivas se declaran en conflicto y pierdes la mitad de las noches del hotel. Es un bug real, y muy caro.
+
+---
+
+# Bloque 4 · Base de datos con JDBC
+
+> Tema [3. CRUD contra base de datos](03-base-de-datos.md)
+
+## E19 ● — Conectar y crear la tabla
+
+Conéctate a H2 en memoria y crea la tabla `producto`.
+
+??? success "Solución"
+
+    ```java
+    import java.sql.*;
+
+    var URL = "jdbc:h2:mem:tienda;DB_CLOSE_DELAY=-1";
+
+    try (var con = DriverManager.getConnection(URL, "sa", "");
+         var st  = con.createStatement()) {
+        st.execute("""
+            CREATE TABLE IF NOT EXISTS producto (
+              id     INT AUTO_INCREMENT PRIMARY KEY,
+              codigo VARCHAR(10) NOT NULL UNIQUE,
+              nombre VARCHAR(80) NOT NULL,
+              precio DECIMAL(10,2) NOT NULL
+            )""");
+        System.out.println("Tabla creada");
+    }
+    ```
+
+    - **`mem:`** = la base de datos vive en memoria y desaparece al cerrar. Perfecto para probar.
+    - **`DB_CLOSE_DELAY=-1`** = no la borres cuando se cierre la primera conexión. Sin esto, la tabla se evapora entre un `try` y el siguiente.
+    - **`try-with-resources`** con conexión y sentencia. Una conexión que no se cierra acaba agotando el pool.
+
+## E20 ● — `executeQuery` o `executeUpdate`
+
+¿Cuál usas en cada caso, y qué devuelve?
+
+??? success "Solución"
+
+    | Sentencia | Método | Devuelve |
+    |---|---|---|
+    | `SELECT` | `executeQuery()` | `ResultSet` |
+    | `INSERT`, `UPDATE`, `DELETE` | `executeUpdate()` | `int`: **filas afectadas** |
+    | `CREATE`, `DROP` | `execute()` | `boolean` |
+
+    ```java
+    int filas = ps.executeUpdate();
+    if (filas == 0) System.out.println("No existía ese id");
+    ```
+
+    **Ese `int` es la respuesta a «¿se ha borrado?».** Un `DELETE` de un id que no existe no lanza nada: devuelve `0`. Quien no lo mira, informa al usuario de un borrado que no ocurrió.
+
+## E21 ●● — Insertar con `PreparedStatement`
+
+Inserta tres productos y recupera el id generado.
+
+??? success "Solución"
+
+    ```java
+    var sql = "INSERT INTO producto (codigo, nombre, precio) VALUES (?, ?, ?)";
+
+    try (var con = DriverManager.getConnection(URL, "sa", "");
+         var ps  = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+        ps.setString(1, "A1");
+        ps.setString(2, "Casco");
+        ps.setBigDecimal(3, new java.math.BigDecimal("35.00"));
+        ps.executeUpdate();
+
+        try (var claves = ps.getGeneratedKeys()) {
+            if (claves.next()) System.out.println("id generado: " + claves.getInt(1));
+        }
+        // id generado: 1
+    }
+    ```
+
+    Dos detalles que caen en el test: **los `?` se numeran desde 1**, no desde 0, y `RETURN_GENERATED_KEYS` va en el `prepareStatement`, no en el `executeUpdate`.
+
+## E22 ●● — La inyección SQL, provocada
+
+Escribe la búsqueda concatenando, pásale `x' OR '1'='1` y cuenta las filas.
+
+??? success "Solución"
+
+    ```java
+    // NUNCA hagas esto
+    var entrada = "x' OR '1'='1";
+    var sql = "SELECT * FROM producto WHERE codigo = '" + entrada + "'";
     ```
 
     La consulta que llega a la base de datos es:
@@ -415,503 +638,269 @@ Escribe la versión insegura de una búsqueda por código, pásale `x' OR '1'='1
     SELECT * FROM producto WHERE codigo = 'x' OR '1'='1'
     ```
 
-    `'1'='1'` es siempre cierto. Y con un poco más: `x'; DROP TABLE producto; --`.
+    `'1'='1'` es siempre cierto: **devuelve la tabla entera**. Con `; DROP TABLE producto; --` la borra.
 
     ```java
-    // SEGURA
-    try (var con = conectar();
-         var ps = con.prepareStatement("SELECT * FROM producto WHERE codigo = ?")) {
-        ps.setString(1, codigo);
-        …
+    // BIEN
+    try (var ps = con.prepareStatement("SELECT * FROM producto WHERE codigo = ?")) {
+        ps.setString(1, entrada);
+        try (var rs = ps.executeQuery()) {
+            int n = 0; while (rs.next()) n++;
+            System.out.println("Filas: " + n);    // Filas: 0
+        }
     }
     ```
 
-    **La estructura de la consulta viaja primero y el valor va aparte.** Cuando la base de datos recibe el dato ya tiene decidido qué es una consulta y qué es un valor, así que el dato no puede cambiar nada: busca un código llamado literalmente `x' OR '1'='1` y no lo encuentra.
+    El `?` **no es una plantilla de texto**: el valor viaja aparte y la base de datos nunca lo interpreta como SQL. Por eso `PreparedStatement` no es «la forma elegante», es **la única forma**.
 
-    La regla, sin excepciones: **ningún valor que venga de fuera se concatena en un SQL. Nunca.**
+## E23 ●● — Dejar que la base de datos valide
 
-### E22 ●● — La comprobación con carrera
-
-```java
-if (dao.buscarPorCodigo(p.codigo()).isPresent()) {
-    throw new CodigoDuplicadoException(p.codigo());
-}
-dao.insertar(p);
-```
-
-Además de hacer dos consultas, ¿qué problema tiene?
+Antes de insertar, ¿compruebas con un `SELECT` si el código existe?
 
 ??? success "Solución"
 
-    **Hay un hueco entre la comprobación y la inserción.** Si dos procesos hacen esto a la vez:
-
-    ```
-    Proceso A: ¿existe SEG-01? → no
-    Proceso B: ¿existe SEG-01? → no
-    Proceso A: INSERT SEG-01   → ok
-    Proceso B: INSERT SEG-01   → ¡duplicado!
-    ```
-
-    Se llama **condición de carrera**, y no se arregla con más comprobaciones: se arregla dejando que lo garantice la base de datos.
-
-    ```sql
-    codigo VARCHAR(20) NOT NULL UNIQUE
-    ```
+    **No.** Entre tu `SELECT` y tu `INSERT` cabe otro programa haciendo lo mismo, y los dos creen que el código está libre.
 
     ```java
     try {
-        …
         ps.executeUpdate();
     } catch (SQLIntegrityConstraintViolationException e) {
-        throw new CodigoDuplicadoException(p.codigo(), e);
+        System.out.println("Ya existe un producto con ese código");
     }
     ```
 
-    La restricción `UNIQUE` es **atómica**: no tiene hueco. Es una consulta en vez de dos, y además es correcta.
+    La restricción `UNIQUE` de la tabla es la única comprobación que **no se puede saltar**, porque la hace la base de datos en el momento de escribir. Se intenta insertar y se captura el fallo.
 
-    Este mismo razonamiento reaparece en la UT5 con las entidades JPA.
+    Vale igual para la clave ajena: si borras una categoría que tiene productos, salta la misma excepción y eso es exactamente lo que quieres.
 
-### E23 ●● — La conexión que se queda abierta
+## E24 ●●● — El CRUD completo contra H2
 
-```java
-public List<Producto> listar() throws SQLException {
-    var con = DriverManager.getConnection(url, usuario, clave);
-    var ps = con.prepareStatement("SELECT * FROM producto");
-    var rs = ps.executeQuery();
-    var lista = new ArrayList<Producto>();
-    while (rs.next()) lista.add(aProducto(rs));
-    return lista;
-}
-```
-
-Funciona en las pruebas y revienta en producción. ¿Por qué?
+Las cuatro operaciones sobre `producto`, cada una en su método.
 
 ??? success "Solución"
 
-    **No se cierra nada.** Cada llamada deja una conexión abierta, y las bases de datos tienen un límite:
-
-    ```
-    com.mysql.cj.jdbc.exceptions.CJCommunicationsException: Too many connections
-    ```
-
-    Lo traicionero es que el síntoma aparece **lejos de la causa y solo bajo carga**: en tu máquina, llamando cinco veces, nunca falla.
-
     ```java
-    try (var con = conectar();
-         var ps  = con.prepareStatement("SELECT * FROM producto");
-         var rs  = ps.executeQuery()) {
+    // Crud.java
+    import java.sql.*;
+    import java.math.BigDecimal;
+    import java.util.*;
 
+    record Producto(int id, String codigo, String nombre, BigDecimal precio) {}
+
+    static final String URL = "jdbc:h2:./datos/tienda";
+
+    Connection con() throws SQLException { return DriverManager.getConnection(URL, "sa", ""); }
+
+    int crear(String codigo, String nombre, BigDecimal precio) throws SQLException {
+        var sql = "INSERT INTO producto (codigo, nombre, precio) VALUES (?, ?, ?)";
+        try (var c = con(); var ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, codigo); ps.setString(2, nombre); ps.setBigDecimal(3, precio);
+            ps.executeUpdate();
+            try (var k = ps.getGeneratedKeys()) { k.next(); return k.getInt(1); }
+        }
+    }
+
+    Optional<Producto> leer(int id) throws SQLException {
+        try (var c = con();
+             var ps = c.prepareStatement("SELECT * FROM producto WHERE id = ?")) {
+            ps.setInt(1, id);
+            try (var rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            }
+        }
+    }
+
+    List<Producto> listar() throws SQLException {
         var lista = new ArrayList<Producto>();
-        while (rs.next()) lista.add(aProducto(rs));
-        return List.copyOf(lista);
+        try (var c = con(); var st = c.createStatement();
+             var rs = st.executeQuery("SELECT * FROM producto ORDER BY codigo")) {
+            while (rs.next()) lista.add(mapear(rs));
+        }
+        return lista;
+    }
+
+    boolean actualizarPrecio(int id, BigDecimal precio) throws SQLException {
+        try (var c = con();
+             var ps = c.prepareStatement("UPDATE producto SET precio = ? WHERE id = ?")) {
+            ps.setBigDecimal(1, precio); ps.setInt(2, id);
+            return ps.executeUpdate() == 1;
+        }
+    }
+
+    boolean borrar(int id) throws SQLException {
+        try (var c = con();
+             var ps = c.prepareStatement("DELETE FROM producto WHERE id = ?")) {
+            ps.setInt(1, id);
+            return ps.executeUpdate() == 1;
+        }
+    }
+
+    Producto mapear(ResultSet rs) throws SQLException {
+        return new Producto(rs.getInt("id"), rs.getString("codigo"),
+                            rs.getString("nombre"), rs.getBigDecimal("precio"));
     }
     ```
 
-    Y un aviso para la UT4: abrir una conexión es **caro**. Por eso las aplicaciones de verdad usan un *pool* —HikariCP, que trae Spring Boot— que las reutiliza. El `try-with-resources` sigue haciendo falta: lo que hace `close()` entonces es devolverla al *pool*, no cerrarla.
+    Tres decisiones que se repiten en toda la asignatura:
 
-### E24 ●●● — El mismo código, otra base de datos
+    - **`leer` devuelve `Optional`**: que no exista un id es normal, no un error.
+    - **`actualizar` y `borrar` devuelven `boolean`**, leído de las filas afectadas.
+    - **`mapear` está una sola vez.** Cuando la tabla gane una columna, se toca un método.
 
-Tienes el CRUD funcionando con H2 y te piden pasarlo a MySQL en Docker. ¿Qué tocas exactamente?
+## E25 ●●● — El mismo código, contra MySQL
+
+Levanta MySQL con Docker y haz que el E24 funcione sin tocar la lógica.
 
 ??? success "Solución"
 
-    Dos cosas, y ninguna está en el DAO:
-
-    1. **La dependencia del driver** en el `pom.xml`:
-
-    ```xml
-    <dependency>
-      <groupId>com.mysql</groupId>
-      <artifactId>mysql-connector-j</artifactId>
-      <version>9.1.0</version>
-    </dependency>
-    ```
-
-    2. **La cadena de conexión**:
-
-    ```java
-    // antes
-    new ProductoDao("jdbc:h2:./datos/tienda", "sa", "");
-    // después
-    new ProductoDao("jdbc:mysql://localhost:3306/tienda?serverTimezone=Europe/Madrid",
-                    "alumno", "alumno");
-    ```
-
-    Y el `compose.yaml`, con las dos cosas que se olvidan:
-
-    ```yaml
+    ```yaml title="compose.yaml"
     services:
-      mysql:
+      db:
         image: mysql:8.4
         environment:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: tienda
-          MYSQL_USER: alumno
-          MYSQL_PASSWORD: alumno
         ports: ["3306:3306"]
-        volumes:
-          - datos-mysql:/var/lib/mysql       # (1)
-        healthcheck:                         # (2)
+        volumes: [dbdata:/var/lib/mysql]
+        healthcheck:
           test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
           interval: 5s
           retries: 10
-
     volumes:
-      datos-mysql:
-    ```
-
-    1.  **Sin el volumen los datos desaparecen** con el contenedor. Y `docker compose down -v` sí los borra: esa `-v` es la peligrosa.
-    2.  Un contenedor arrancado **no es** una base de datos lista. El `healthcheck` dice cuándo acepta conexiones de verdad.
-
-    Que el DAO no se toque es exactamente lo que aporta JDBC: es un estándar, y el *driver* traduce.
-
-    El matiz profesional: **desarrolla contra el mismo motor que usarás en producción**. Probar con H2 y desplegar en MySQL es la forma más segura de descubrir las diferencias el día del despliegue.
-
----
-
-# Cierre
-
-### E25 ●●● — Convierte tus propios ejercicios en preguntas
-
-Coge tres ejercicios que ya hayas resuelto y **escribe una pregunta de test sobre cada uno**, con sus cuatro opciones y los tres distractores plausibles.
-
-??? success "Solución"
-
-    No hay una única respuesta; hay un método. Para convertir un ejercicio en pregunta, cambia **una sola cosa** de tu código correcto y pregunta por el resultado.
-
-    **Del E5 (doble agrupación):**
-
-    ```java
-    Map<String, Map<String, Long>> r = bicis.stream()
-            .collect(groupingBy(Bici::marca, TreeMap::new,
-                     groupingBy(Bici::tipo, counting())));
-    ```
-
-    > ¿Qué cambia si se quita el `TreeMap::new`?
-    >
-    > **A.** Nada, el resultado es el mismo · **B.** Las marcas dejan de salir ordenadas · **C.** Los tipos dejan de salir ordenados · **D.** No compila
-
-    El distractor bueno es la **C**: es el fallo real, confundir en qué nivel actúa el `TreeMap`.
-
-    **Del E2 (CSV con trampas):**
-
-    ```java
-    String[] campos = linea.split(";");
-    ```
-
-    > Con la línea `B-004;Orbea;;;;` ¿cuántos elementos tiene `campos`?
-    >
-    > **A.** 6 · **B.** 2 · **C.** 5 · **D.** 3
-
-    La respuesta es **B**: `split` sin `-1` descarta los vacíos finales. Es el error que más `ArrayIndexOutOfBounds` provoca.
-
-    **Del E9 (fechas ISO):**
-
-    Enseña la salida `"fecha": [2026,3,14]` y pregunta qué falta configurar.
-
-    ---
-
-    **Por qué este ejercicio es el más rentable de la unidad:** escribir el distractor te obliga a saber **por qué** alguien se equivocaría. Y ese «por qué» es justo lo que se pregunta en el examen.
-
-    Hazlo en parejas: cada uno escribe tres preguntas y se las pasa al otro. Las que no sabéis resolver son las que hay que repasar.
-
-
----
-
-## Taller largo: seis programas completos
-
-!!! reto "Del E26 al E31 se entrega un programa que funciona"
-    Los veinticinco primeros son fragmentos; estos son **programas enteros**, uno por bloque del temario. Eran el antiguo «reto con tests»: ahora están aquí, resueltos, porque en esta unidad lo que hay que entrenar es **reconocer**, no entregar.
-
-    El dominio es distinto a propósito: un catálogo de productos, para que no valga copiar del de bicis.
-
-### E26 ●● — Lector de CSV
-
-Crea `datos/productos.csv` con cabecera y cinco productos. Escribe `List<Producto> leer(Path)` que lo convierta en objetos, saltando la cabecera y las líneas en blanco.
-
-??? success "Solución"
-
-    ```java
-    List<Producto> leer(Path ruta) throws IOException {
-        try (var lineas = Files.lines(ruta, StandardCharsets.UTF_8)) {   // (1)
-            return lineas
-                    .skip(1)                                             // (2)
-                    .filter(l -> !l.isBlank())                           // (3)
-                    .map(l -> l.split(",", -1))                          // (4)
-                    .map(c -> new Producto(
-                            Integer.parseInt(c[0].trim()),
-                            c[1].trim(),
-                            c[2].trim(),
-                            Double.parseDouble(c[3].trim())))
-                    .toList();
-        }
-    }
-    ```
-
-    1.  `Files.lines` devuelve un stream que **hay que cerrar**: mantiene el fichero abierto. De ahí el *try-with-resources*. Y el juego de caracteres se dice siempre: si no, usa el del sistema y en Windows salen los acentos rotos.
-    2.  `skip(1)` para la cabecera. Sin él, `Integer.parseInt("id")` revienta.
-    3.  Las líneas en blanco del final son la causa número uno de `ArrayIndexOutOfBounds`.
-    4.  El `-1` conserva los campos vacíos del final. Sin él, `"4,Casco,,"` devuelve **dos** elementos y no cuatro.
-
-    Esos cuatro detalles son, literalmente, cuatro preguntas del test.
-
-### E27 ●● — Escribir y capturar el fallo
-
-Escribe los productos de más de 100 € en `caros.csv` conservando la cabecera. Después provoca y captura un `NoSuchFileException`.
-
-??? success "Solución"
-
-    ```java
-    void escribir(Path ruta, List<Producto> productos) throws IOException {
-        var sb = new StringBuilder("id,nombre,categoria,precio\n");
-        for (var p : productos) {
-            sb.append("%d,%s,%s,%.2f%n"
-                    .formatted(p.id(), p.nombre(), p.categoria(), p.precio()));
-        }
-        Files.writeString(ruta, sb.toString(), StandardCharsets.UTF_8);
-    }
-
-    void main() throws IOException {
-        var todos = leer(Path.of("datos/productos.csv"));
-        escribir(Path.of("datos/caros.csv"),
-                 todos.stream().filter(p -> p.precio() > 100).toList());
-
-        try {
-            Files.readString(Path.of("datos/fantasma.csv"));
-        } catch (NoSuchFileException e) {
-            IO.println("No existe: " + e.getFile());       // (1)
-        }
-    }
-    ```
-
-    1.  `NoSuchFileException` trae `getFile()` con la ruta. Capturar `IOException` a secas también funciona y pierdes esa información.
-
-    Dos cosas sobre el formato: `%.2f` usa la coma decimal si la configuración regional es española, y eso **rompe un CSV separado por comas**. Para ficheros de intercambio conviene `Locale.ROOT`:
-
-    ```java
-    String.format(Locale.ROOT, "%.2f", 12.5)   // "12.50" siempre
-    ```
-
-    Y `%n` es el salto de línea **del sistema**; `\n` es siempre `\n`. Para un fichero que se va a leer en otra máquina, `\n` es más predecible.
-
-### E28 ●● — De CSV a JSON
-
-Convierte tu CSV en un `productos.json` legible, con Jackson.
-
-??? success "Solución"
-
-    ```java
-    var mapper = new ObjectMapper();
-    mapper.writerWithDefaultPrettyPrinter()
-          .writeValue(Path.of("datos/productos.json").toFile(), leer(csv));
-    ```
-
-    Tres líneas. Abre el JSON generado: cada `record` se ha convertido en un objeto y la lista en un array, **sin escribir nada de conversión**.
-
-    Lo que hay que saber para el test:
-
-    | Quiero | Se hace con |
-    |---|---|
-    | Objeto → JSON | `writeValue` / `writeValueAsString` |
-    | JSON → objeto | `readValue` |
-    | Que salga con sangría | `writerWithDefaultPrettyPrinter()` |
-    | Fechas en ISO, no como números | `registerModule(new JavaTimeModule())` + desactivar `WRITE_DATES_AS_TIMESTAMPS` |
-    | Que no salgan los nulos | `@JsonInclude(NON_NULL)` |
-
-    Sin el módulo de `java.time`, un `LocalDate` sale como `[2026,3,14]`. Es la pregunta de Jackson que más cae.
-
-### E29 ●● — Consumir JSON ajeno
-
-Te llega esto de una API. Diseña el record y deserialízalo sin que falle por el campo `stock`, que no te interesa.
-
-```json
-[{"id":1,"nombre":"Patinete","precio":120.0,"stock":8},
- {"id":2,"nombre":"Casco","precio":35.0,"stock":40}]
-```
-
-??? success "Solución"
-
-    ```java
-    record ProductoApi(int id, String nombre, double precio) {}
-
-    var mapper = new ObjectMapper()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);   // (1)
-
-    List<ProductoApi> productos =
-            mapper.readValue(json, new TypeReference<List<ProductoApi>>() {});      // (2)
-    ```
-
-    1.  Sin esto: `UnrecognizedPropertyException: "stock"`. Al consumir APIs de terceros se desactiva **siempre**: el día que añadan un campo, tu programa se cae en producción sin que hayas tocado nada.
-    2.  Para una **lista** hace falta `TypeReference`. Con `readValue(json, List.class)` obtienes una lista de `LinkedHashMap`, no de tus objetos: el tipo genérico se pierde al compilar.
-
-    La alternativa a desactivarlo globalmente es `@JsonIgnoreProperties(ignoreUnknown = true)` sobre el record. Hace lo mismo, acotado a esa clase.
-
-### E30 ●●● — Reservas validadas
-
-Crea `record Reserva(String cliente, String email, LocalDate entrada, LocalDate salida)` que valide en el constructor: cliente no vacío, correo con formato, entrada no pasada y salida posterior a la entrada. Añade `noches()`.
-
-??? success "Solución"
-
-    ```java
-    record Reserva(String cliente, String email, LocalDate entrada, LocalDate salida) {
-
-        private static final Pattern CORREO =
-                Pattern.compile("^[\\w.+-]+@[\\w-]+\\.[\\w.]{2,}$");   // (1)
-
-        Reserva {
-            if (cliente == null || cliente.isBlank()) {
-                throw new IllegalArgumentException("Cliente obligatorio");
-            }
-            if (email == null || !CORREO.matcher(email).matches()) {
-                throw new IllegalArgumentException("Correo no válido: " + email);
-            }
-            if (entrada.isBefore(LocalDate.now())) {
-                throw new IllegalArgumentException("La entrada no puede ser pasada");
-            }
-            if (!salida.isAfter(entrada)) {                              // (2)
-                throw new IllegalArgumentException("La salida debe ser posterior");
-            }
-        }
-
-        long noches() { return ChronoUnit.DAYS.between(entrada, salida); }
-    }
-    ```
-
-    1.  El `Pattern` es **`static final`**: compilarlo en cada validación es caro y no cambia nunca.
-    2.  `!salida.isAfter(entrada)` y no `salida.isBefore(entrada)`: así también se rechaza que sean el mismo día. Es la diferencia entre `<` y `<=`, y es donde viven los fallos.
-
-    Y el recordatorio permanente de `java.time`: **todo es inmutable**.
-
-    ```java
-    var f = LocalDate.of(2026, 3, 14);
-    f.plusDays(7);              // no hace nada: se pierde
-    var nueva = f.plusDays(7);  // así sí
-    ```
-
-    `ChronoUnit.DAYS.between` da **noches**, no días de estancia: del 1 al 3 son 2 noches. Ese `±1` es el fallo clásico de cualquier aplicación de reservas.
-
-### E31 ●●● — El CRUD entero, de CSV a base de datos
-
-Monta un proyecto Maven que **cargue el CSV del E26, lo vuelque en una base de datos H2 y ofrezca las cuatro operaciones**: insertar, listar, actualizar el stock y borrar. Después repítelo contra MySQL en Docker sin tocar el DAO.
-
-??? success "Solución"
-
-    El esqueleto:
-
-    ```
-    crud/
-    ├── pom.xml                      ← h2, mysql-connector-j, commons-csv
-    ├── compose.yaml
-    ├── datos/productos.csv
-    └── src/main/java/es/iesx/crud/
-        ├── Producto.java            ← record con validación y BigDecimal
-        ├── ProductoDao.java         ← las cinco operaciones
-        ├── AccesoDatosException.java
-        ├── CodigoDuplicadoException.java
-        └── Main.java
-    ```
-
-    **La carga inicial**, que es lo que junta los dos temas:
-
-    ```java
-    var dao = new ProductoDao("jdbc:h2:./datos/tienda", "sa", "");
-    dao.crearTabla();
-
-    int cargados = 0, duplicados = 0, descartados = 0;
-
-    for (var fila : leerCsv(Path.of("datos/productos.csv"))) {        // (1)
-        try {
-            dao.insertar(fila);
-            cargados++;
-        } catch (CodigoDuplicadoException e) {
-            duplicados++;                                            // (2)
-        }
-    }
-    System.out.printf("Cargados %d · duplicados %d · descartados %d%n",
-                      cargados, duplicados, descartados);
-    ```
-
-    1.  El lector del E26, con Commons CSV y contando los descartes por formato.
-    2.  **El duplicado no se comprueba antes: se deja fallar** y se traduce. Es una consulta en vez de dos y, sobre todo, no tiene la carrera del E22.
-
-    Las cuatro operaciones, con lo que se evalúa de cada una:
-
-    | Operación | Clave |
-    |---|---|
-    | `insertar` | `PreparedStatement` con `?` y `RETURN_GENERATED_KEYS` |
-    | `listar` | `try-with-resources` con las **tres** piezas |
-    | `actualizarStock` | Devolver `executeUpdate() == 1` en vez de hacer antes un `SELECT` |
-    | `borrar` | Lo mismo |
-    | `buscarPorCodigo` | Devolver **`Optional`**, no `null` |
-
-    Y la comprobación que cierra la unidad:
-
-    ```java
-    System.out.println(dao.buscarPorCodigo("x' OR '1'='1").isPresent());   // false
-    ```
-
-    **El paso a MySQL: dos cambios y ninguno en el DAO.**
-
-    ```java
-    var dao = new ProductoDao(
-            "jdbc:mysql://localhost:3306/tienda?serverTimezone=Europe/Madrid",
-            "alumno", "alumno");
+      dbdata:
     ```
 
     ```bash
     docker compose up -d
-    docker compose ps          # esperar a (healthy)
-    mvn exec:java
+    docker compose logs -f db      # espera al "ready for connections"
     ```
 
-    Si al cambiar de motor has tenido que tocar el DAO, mira qué has tocado: casi siempre es un tipo concreto de H2 o un SQL que no era estándar. **Ese descubrimiento es el objetivo del ejercicio.**
+    En el programa, **solo cambian tres constantes**:
 
-    !!! success "Lo que demuestra este ejercicio"
-        Que sabes llevar un dato desde un fichero que te dan hasta una base de datos consultable, contando lo que se pierde por el camino y sin dejar un agujero de seguridad.
+    ```java
+    static final String URL = "jdbc:mysql://localhost:3306/tienda";
+    static final String USER = "root";
+    static final String PASS = "root";
+    ```
 
-        Es, literalmente, la primera tarea que se le encarga a alguien que entra en un equipo de desarrollo.
+    Y en el `pom.xml`, `com.mysql:mysql-connector-j`.
 
----
+    **Nada más.** Ni un `SELECT`, ni un `PreparedStatement`, ni un `ResultSet`. Eso es lo que significa que JDBC sea un estándar: el `Connection` es una interfaz y cada base de datos trae su implementación.
 
-## Del ejercicio a la pregunta de test
+    Lo que sí cambia es el **dialecto SQL**: `AUTO_INCREMENT` existe en los dos, pero `LIMIT`, las funciones de fecha y los tipos no siempre. Por eso en la UT5 aparecerá JPA, que también abstrae eso.
 
-El examen de esta unidad es un **test práctico sobre fragmentos de código** ([batería de test aquí](autoevaluacion.md)). No se pide escribir un programa: se pide leer código y saber qué hace.
-
-La correspondencia es directa. Cada bloque de ejercicios alimenta un bloque de preguntas:
-
-| Ejercicios | Preguntas del examen | Qué se pregunta exactamente |
-|---|:-:|---|
-| **E1–E7** · CSV | 8 preguntas | Por qué falla un `split` sin `-1`; qué pasa sin `skip(1)`; `Files.lines` sin cerrar; el decimal con coma que rompe el fichero |
-| **E8–E13** · JSON | 8 preguntas | La fecha que sale como `[2026,3,14]`; `get` frente a `path`; el campo desconocido que revienta; `TypeReference` |
-| **E14–E18** · Fechas y validación | 6 preguntas | La inmutabilidad de `java.time`; solapes de rangos; `BigDecimal` frente a `double` |
-| **E19–E24** · Base de datos | 8 preguntas | `executeQuery` o `executeUpdate`; la inyección SQL; la conexión sin cerrar; `UNIQUE` frente a comprobarlo tú |
-
-!!! reto "Las tres cosas que de verdad transfieren"
-    Hacer ejercicios **no** prepara para un test por sí solo. Lo que transfiere es esto, y se puede practicar desde la primera sesión:
-
-    1. **Predecir antes de ejecutar.** Antes de darle a *Run*, escribe en un papel qué va a salir. Si aciertas, entendiste; si no, acabas de encontrar tu hueco. **Esta es la única costumbre que hay que coger**, y es exactamente lo que pide el tipo de pregunta 1.
-
-    2. **Romper tu propia solución.** Cuando un ejercicio te salga bien, quítale el `-1` al `split`, cambia el `TreeMap` por un `HashMap`, borra el `skip(1)`. Mira el error que sale y **apúntalo**. El tipo de pregunta 2 —«¿por qué falla?»— es literalmente eso.
-
-    3. **Escribir la pregunta tú (E25).** Inventar los tres distractores te obliga a saber por qué alguien se equivocaría. Es el paso que convierte «sé hacerlo» en «sé reconocerlo».
-
-    Después de cada ejercicio de esta batería, dedica **dos minutos** a los puntos 1 y 2. Son 60 minutos en toda la unidad y valen más que cualquier repaso de la víspera.
+    El `healthcheck` no es adorno: sin él, tu programa intenta conectar mientras MySQL todavía está arrancando y falla con un `Communications link failure`.
 
 ---
 
-## Cómo usarlos en clase
+# Bloque 5 · Programas integradores
 
-| Momento | Ejercicios |
-|---|---|
-| Para arrancar la sesión, 10 min | E1 · E8 · E14 · E19 |
-| Taller de la sesión, 25-30 min | E2 · E3 · E9 · E17 · E21 |
-| Los que hay que hacer sí o sí | **E2 · E3 · E9 · E14 · E21** |
-| Para quien va sobrado | E5 · E7 · E12 · E18 · E24 · E31 |
-| Repaso antes del test | E2 · E9 · E14 · E21 · E25 + [batería de test](autoevaluacion.md) |
+## E26 ●●● — Del CSV al informe
 
-!!! tip "Los dos que más caen"
-    El **E2** (CSV con sus trampas) y el **E9** (fechas ISO y sin nulos) concentran entre los dos **seis de las treinta preguntas**. Si vas justo de tiempo, esos dos antes que ninguno.
+Lee `productos.csv` e imprime: el total por categoría ordenado, el producto más caro y cuántas filas se descartaron.
 
-    Y de la última parte, el **E21** (la inyección SQL provocada): es la pregunta que nadie falla después de haberla visto, y la que casi todos fallan si solo la han leído.
+??? success "Solución"
 
-    Y el **E25** hazlo siempre: es el puente entre haber resuelto los ejercicios y saber contestar sobre ellos.
+    Es la unión del E6 (lectura con descartes) y de los streams de la UT2:
+
+    ```java
+    var porCategoria = buenos.stream().collect(
+            Collectors.groupingBy(Producto::categoria, TreeMap::new,
+                                  Collectors.summingDouble(Producto::precio)));
+    porCategoria.forEach((c, v) -> IO.println("  %-12s %9.2f €".formatted(c, v)));
+
+    IO.println("Más caro: " + buenos.stream()
+            .max(Comparator.comparingDouble(Producto::precio))
+            .map(Producto::nombre).orElse("—"));
+    IO.println("Descartes: " + descartes);
+    ```
+
+    ```
+      movilidad     570,00 €
+      seguridad      75,50 €
+    Más caro: Bici de paseo
+    Descartes: {}
+    ```
+
+    Los streams no se explican aquí: **son la UT2**. Aquí solo se usan.
+
+## E27 ●●● — Consumir una API de verdad
+
+Descarga un JSON con `HttpClient`, léelo con `readTree` y saca tres campos.
+
+??? success "Solución"
+
+    ```java
+    import java.net.http.*;
+    import java.net.URI;
+
+    var cliente = HttpClient.newHttpClient();
+    var peticion = HttpRequest.newBuilder(URI.create("https://api.ejemplo.es/productos"))
+            .header("Accept", "application/json")
+            .GET().build();
+
+    var respuesta = cliente.send(peticion, HttpResponse.BodyHandlers.ofString());
+    IO.println("Estado: " + respuesta.statusCode());
+
+    if (respuesta.statusCode() == 200) {
+        var raiz = new ObjectMapper().readTree(respuesta.body());
+        for (var item : raiz.path("items")) {
+            IO.println(item.path("nombre").asText("(sin nombre)")
+                     + " → " + item.path("precio").asDouble(0.0));
+        }
+    }
+    ```
+
+    Aquí se junta **toda la UT1** (códigos de estado, cabecera `Accept`) con **toda la UT3** (JSON, `path`). Y con `path` y los valores por defecto, un campo que falte no tira el programa.
+
+    **Comprueba siempre el `statusCode` antes de parsear el cuerpo.** Un 404 devuelve una página de error, no tu JSON.
+
+## E28 ●●● — El taller de bicis
+
+`datos/bicis.csv`, 300 filas sucias. Cárgalo contando descartes por motivo, expórtalo a JSON con fechas ISO y vuélcalo en H2 con el CRUD funcionando.
+
+??? success "Solución"
+
+    No hay solución nueva: **es el E6 + el E12 + el E24, uno detrás de otro**.
+
+    ```
+    Cargadas 283 de 300 filas
+    Descartes: {fecha ilegible=4, falta el código=2, precio no numérico=11}
+    Escrito salida/bicis.json (283 registros, 4 categorías)
+    Insertadas 283 filas en H2
+    ```
+
+    El orden de trabajo, que es el que importa:
+
+    1. **Primero el lector**, y que imprima los descartes. Sin esto no sabes qué datos tienes.
+    2. **Después el JSON**, con el módulo de `java.time` puesto desde el principio.
+    3. **Al final la base de datos**, con `PreparedStatement` y capturando la violación de `UNIQUE`.
+
+    Si lo haces al revés, depuras tres cosas a la vez y no avanzas.
+
+    !!! success "Esto es literalmente la primera tarea de un becario"
+        «Toma este fichero que nos ha mandado el cliente y métemelo en la base de datos, y dime qué filas están mal». Si lo sabes hacer, ya sabes trabajar.
+
+---
+
+## Reparto sugerido
+
+| Sesión | Bloque | Ejercicios |
+|:-:|---|---|
+| **S1** | 1 · CSV a mano y sus trampas | E1 – E4 |
+| **S2** | 1 · Commons CSV | E5 – E6 |
+| **S3** | 2 · Jackson ida y vuelta | E7 – E8 |
+| **S4** | 2 · Configuración y `readTree` | E9 – E11 |
+| **S5** | 2 · CSV → JSON | E12 · E26 |
+| **S6** | 3 · `java.time` | E13 – E16 |
+| **S7** | 3 · Validación y rangos | E17 – E18 |
+| **S8** | 4 · JDBC y H2 | E19 – E24 |
+| **S9** | 4 · MySQL en Docker | E25 · E27 |
+| **S10** | — | [Simulacro de test](autoevaluacion.md) |
+
+E28 es el reto largo de la unidad y se hace en pareja, fuera de la sesión.
+
+!!! success "Si vas justo de tiempo"
+    El mínimo: **E1, E4, E5, E9, E10, E13, E18, E20, E22**.
+
+    Y los dos que más se preguntan: **E22** (por qué el `?` no es una plantilla) y **E18** (`isBefore` y no `isBefore || isEqual`).

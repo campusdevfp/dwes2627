@@ -1,13 +1,17 @@
 # 5. Excepciones y `Optional`
 
-Qué hacer cuando algo sale mal, y qué hacer cuando algo simplemente no está. Son dos cosas distintas y se resuelven distinto.
+Dos situaciones que se parecen y no son lo mismo:
+
+- **Algo ha ido mal** y no se puede continuar → **excepción**.
+- **Algo simplemente no está**, y es normal → **`Optional`**.
+
+Buscar un cliente que no existe **no es un error**: es un resultado posible. Que se caiga la base de datos, sí lo es.
 
 !!! tip "Todo esto se copia y se pega en `jshell`"
-    Los bloques están escritos para pegarlos tal cual; el comentario de la derecha dice lo que tiene que salir. Pega primero los `import`:
+    Los bloques están escritos para pegarlos tal cual; el comentario de la derecha dice lo que tiene que salir. Pega primero:
 
     ```java
     import java.util.*;
-    import java.nio.file.*;
     ```
 
 ---
@@ -19,17 +23,17 @@ Cuando Java no puede seguir, **lanza** un objeto que describe el problema y abor
 ```java
 System.out.println(10 / 0);
 // lanza java.lang.ArithmeticException: / by zero
-String s = null; s.length();
-// lanza java.lang.NullPointerException
+
 Integer.parseInt("hola");
 // lanza java.lang.NumberFormatException: For input string: "hola"
-List.of(1,2,3).get(7);
+
+List.of(1, 2, 3).get(7);
 // lanza java.lang.IndexOutOfBoundsException: Index 7 out of bounds for length 3
 ```
 
-Fíjate en que **el mensaje dice exactamente qué pasó**. Antes de buscar en internet, léelo: el 80 % de las veces ya está ahí la respuesta.
+**El mensaje dice exactamente qué ha pasado.** Antes de buscar en internet, léelo.
 
-Si nadie la captura, la excepción sube hasta arriba y el programa termina imprimiendo la **traza**: la lista de métodos por los que pasó, del más reciente al más antiguo.
+Si nadie la captura, sube hasta arriba, el programa termina y se imprime la **traza**:
 
 ```
 Exception in thread "main" java.lang.NumberFormatException: For input string: "hola"
@@ -38,11 +42,11 @@ Exception in thread "main" java.lang.NumberFormatException: For input string: "h
     at Main.main(Main.java:7)
 ```
 
-**La línea que importa es la primera que lleva tu nombre de clase.** Las de `java.base` son las tripas del lenguaje.
+**La línea que importa es la primera que lleva el nombre de una clase tuya.** Las de `java.base` son las tripas del lenguaje.
 
 ---
 
-## 2. `try / catch`
+## 2. Capturarla: `try / catch`
 
 ```java
 void convertir(String texto) {
@@ -53,510 +57,505 @@ void convertir(String texto) {
         System.out.println("No es un número: " + texto);
     }
 }
-System.out.println(convertir("42"));
-// Número: 42
-System.out.println(convertir("hola"));
-// No es un número: hola
+
+convertir("42");         // Número: 42
+convertir("hola");       // No es un número: hola
 ```
 
-Y `finally`, que **se ejecuta pase lo que pase**:
-
-```java
-void prueba(int n) {
-    try {
-        System.out.println(100 / n);
-        return;
-    } catch (ArithmeticException e) {
-        System.out.println("División por cero");
-    } finally {
-        System.out.println("--- siempre paso por aquí ---");
-    }
-}
-System.out.println(prueba(5));
-// 20
-// --- siempre paso por aquí ---
-System.out.println(prueba(0));
-// División por cero
-// --- siempre paso por aquí ---
-```
-
-Se ejecuta incluso con un `return` de por medio. Sirve para cerrar cosas… aunque para eso hay algo mejor, que viene en el punto 5.
-
-### Varios `catch`
+Con varios `catch`, **del más concreto al más general**:
 
 ```java
 try {
-    procesar(fichero);
-} catch (NoSuchFileException e) {
-    System.out.println("No existe: " + e.getFile());
-} catch (IOException e) {                        // (1)
-    System.out.println("Error de lectura: " + e.getMessage());
+    // ...
+} catch (NumberFormatException e) {
+    System.out.println("Formato malo");
+} catch (Exception e) {
+    System.out.println("Otro fallo: " + e.getMessage());
 }
 ```
 
-1. **Del más concreto al más general.** Si pones `IOException` primero, el `catch` de `NoSuchFileException` no se alcanza nunca y **no compila**.
+Si pones `Exception` primero, los siguientes no compilan: ya lo captura todo él.
 
-!!! danger "Las tres formas de hacerlo mal"
+!!! danger "El error que más caro sale"
     ```java
-    catch (Exception e) { }                      // 1 · tragárselo
-    catch (Exception e) { e.printStackTrace(); } // 2 · imprimir y seguir
-    catch (Exception e) { throw new RuntimeException(); }  // 3 · perder la causa
+    try {
+        procesar(fichero);
+    } catch (Exception e) {
+        // nada
+    }
     ```
 
-    1. **El fallo desaparece** y el programa sigue con datos a medias. Es el peor error de esta unidad: el problema aparecerá diez minutos después en otro sitio y no habrá forma de relacionarlos.
-    2. Ensucia la salida y **tampoco detiene nada**.
-    3. Se pierde la traza original. La causa se pasa siempre: `new RuntimeException("mensaje", e)`.
+    El programa sigue como si todo hubiera ido bien, con datos a medias, y **nadie se entera**. Semanas después aparece un resultado absurdo y no hay ni una línea de log que explique por qué.
 
-    Pruébalo para verlo:
+    Un `catch` mínimamente decente siempre hace **una** de estas tres cosas: arreglarlo, informar, o volver a lanzar.
 
-    ```java
-    try { Integer.parseInt("x"); } catch (Exception e) { }
-    System.out.println("sigo como si nada");
-    // sigo como si nada
-    ```
+Y `finally`, que se ejecuta pase lo que pase:
+
+```java
+try {
+    System.out.println(10 / 0);
+} catch (ArithmeticException e) {
+    System.out.println("capturada");
+} finally {
+    System.out.println("esto se ejecuta siempre");
+}
+// capturada
+// esto se ejecuta siempre
+```
 
 ---
 
 ## 3. Comprobadas y no comprobadas
 
-Java tiene dos familias, y la diferencia es **si el compilador te obliga a tratarlas**.
+Es la clasificación que hay que tener clara:
+
+| | Ejemplos | ¿Obliga el compilador? |
+|---|---|---|
+| **No comprobadas** (`RuntimeException`) | `NullPointerException`, `IllegalArgumentException`, `NumberFormatException` | No |
+| **Comprobadas** (`Exception`) | `IOException`, `SQLException` | **Sí**: o la capturas o la declaras |
 
 ```java
-Files.readString(Path.of("x.txt"));
-// lanza unreported exception IOException; must be caught or declared to be thrown
-Integer.parseInt("x");
-// lanza java.lang.NumberFormatException      // compila, falla al ejecutar
+// No compila: java.io.IOException must be caught or declared to be thrown
+java.nio.file.Files.readString(java.nio.file.Path.of("x.txt"));
 ```
 
-| | Comprobadas (*checked*) | No comprobadas (*unchecked*) |
-|---|---|---|
-| Heredan de | `Exception` | `RuntimeException` |
-| El compilador | **Obliga** a `catch` o a `throws` | No dice nada |
-| Ejemplos | `IOException`, `SQLException` | `NullPointerException`, `IllegalArgumentException` |
-| Significan | «Puede fallar por causas externas» | «Alguien programó mal» o «los datos no valen» |
-
-Dos formas de tratar una comprobada:
+Las dos salidas:
 
 ```java
-// 1 · la capturo aquí
-String leer(Path p) {
-    try {
-        return Files.readString(p);
-    } catch (IOException e) {
-        return "";
-    }
+// (a) capturarla
+try {
+    var t = java.nio.file.Files.readString(java.nio.file.Path.of("x.txt"));
+} catch (java.io.IOException e) {
+    System.out.println("No se pudo leer: " + e.getMessage());
 }
 
-// 2 · la paso a quien me llamó
-String leer(Path p) throws IOException {
-    return Files.readString(p);
+// (b) declararla y que se ocupe quien llama
+String leer(String ruta) throws java.io.IOException {
+    return java.nio.file.Files.readString(java.nio.file.Path.of(ruta));
 }
 ```
 
 !!! info "La regla práctica"
-    **Captura donde puedas hacer algo útil.** Si en ese método no sabes qué hacer con el fallo, no lo captures: propágalo.
-
-    Un `catch` que solo escribe «error» y devuelve `null` es peor que no capturar.
+    **Comprobada** = algo externo puede fallar aunque tu código sea perfecto (disco, red, base de datos).
+    **No comprobada** = tu código tiene un fallo o le han pasado algo que no debía.
 
 ---
 
-## 4. Excepciones propias
+## 4. Crear tus propias excepciones
 
-Las excepciones del lenguaje hablan de Java. Las tuyas hablan de **tu problema**, y eso es mucho más útil.
-
-```java
-class ProductoNoEncontradoException extends RuntimeException {
-    private final String codigo;
-    ProductoNoEncontradoException(String codigo) {
-        super("No existe el producto " + codigo);     // (1)
-        this.codigo = codigo;
-    }
-    String codigo() { return codigo; }                // (2)
-}
-throw new ProductoNoEncontradoException("PC-042");
-// lanza ProductoNoEncontradoException: No existe el producto PC-042
-```
-
-1. El mensaje se pasa al constructor de arriba.
-2. **Guardar el dato** permite que quien la capture haga algo con él, en vez de tener que sacarlo del texto del mensaje.
-
-### Envolver sin perder la causa
+Es más simple de lo que parece: una clase que hereda y pasa el mensaje hacia arriba.
 
 ```java
-class CatalogoNoDisponibleException extends RuntimeException {
-    CatalogoNoDisponibleException(String mensaje, Throwable causa) {
-        super(mensaje, causa);                  // ← la causa, SIEMPRE
-    }
-}
-
-List<Producto> cargar(Path fichero) {
-    try {
-        return leer(fichero);
-    } catch (IOException e) {
-        throw new CatalogoNoDisponibleException(
-                "No se pudo cargar el catálogo desde " + fichero, e);
+class SaldoInsuficienteException extends RuntimeException {
+    SaldoInsuficienteException(String mensaje) {
+        super(mensaje);
     }
 }
 ```
 
-Quien llama a `cargar` no necesita saber que por debajo hay ficheros — puede que mañana haya una base de datos. Pero **la traza conserva el fallo original**, así que sigue siendo depurable:
+Eso es todo. `super(mensaje)` es lo que hace que `getMessage()` funcione.
 
+Se lanza con `throw`:
+
+```java
+double saldo = 50;
+
+void retirar(double cantidad) {
+    if (cantidad <= 0)
+        throw new IllegalArgumentException("La cantidad debe ser positiva: " + cantidad);
+    if (cantidad > saldo)
+        throw new SaldoInsuficienteException(
+                "Saldo %.2f, se piden %.2f".formatted(saldo, cantidad));
+    saldo -= cantidad;
+    System.out.println("Retirados " + cantidad + ", queda " + saldo);
+}
+
+retirar(20);
+// Retirados 20.0, queda 30.0
+
+retirar(500);
+// lanza SaldoInsuficienteException: Saldo 30,00, se piden 500,00
+
+retirar(-5);
+// lanza java.lang.IllegalArgumentException: La cantidad debe ser positiva: -5.0
 ```
-CatalogoNoDisponibleException: No se pudo cargar el catálogo desde datos/x.csv
-    at Catalogo.cargar(Catalogo.java:22)
-Caused by: java.nio.file.NoSuchFileException: datos/x.csv       ← aquí está
-    at ...
+
+!!! tip "Tres decisiones que se toman aquí"
+    - **`RuntimeException` o `Exception`**: hereda de `RuntimeException` salvo que quieras obligar a quien llama a capturarla. En la práctica, casi siempre `RuntimeException`.
+    - **El mensaje lleva los datos**: `"Saldo 30,00, se piden 500,00"` sirve; `"Error"` no sirve para nada.
+    - **No inventes una clase por cada fallo.** Para argumentos malos ya existe `IllegalArgumentException`; créala solo cuando quien llama vaya a querer capturar **ese caso concreto**.
+
+Y si capturas una para lanzar otra, **encadénala** con `cause` para no perder la pista:
+
+```java
+class CatalogoException extends RuntimeException {
+    CatalogoException(String mensaje, Throwable causa) { super(mensaje, causa); }
+}
+
+try {
+    Integer.parseInt("hola");
+} catch (NumberFormatException e) {
+    throw new CatalogoException("Precio mal escrito en la línea 12", e);
+}
+// lanza CatalogoException: Precio mal escrito en la línea 12
+// Caused by: java.lang.NumberFormatException: For input string: "hola"
 ```
 
-Sin la `e`, ese `Caused by` no aparece y la información se pierde para siempre.
-
-!!! success "Esto reaparece en la UT4"
-    `ProductoNoEncontradoException` se traducirá automáticamente en un **404** sin que el servicio sepa nada de HTTP. Por eso merece la pena crearla ahora.
+Ese **`Caused by:`** es lo que te lleva al origen real. Sin pasar la `e`, se pierde.
 
 ---
 
 ## 5. `try-with-resources`
 
-Todo lo que se abre hay que cerrarlo: ficheros, conexiones, streams. Con `finally` es incómodo y fácil de olvidar. Con `try-with-resources` se cierra solo:
+Todo lo que se abre (fichero, conexión) hay que cerrarlo, también si hay un fallo. Se declara **dentro del paréntesis** y Java lo cierra solo:
 
 ```java
-try (var lineas = Files.lines(Path.of("datos.csv"))) {
+try (var lineas = java.nio.file.Files.lines(java.nio.file.Path.of("datos.txt"))) {
     lineas.forEach(System.out::println);
-}   // ← aquí se cierra, pase lo que pase
-```
-
-Y con varios recursos:
-
-```java
-try (var entrada = Files.newBufferedReader(origen);
-     var salida  = Files.newBufferedWriter(destino)) {
-
-    String linea;
-    while ((linea = entrada.readLine()) != null) {
-        salida.write(linea.toUpperCase());
-        salida.newLine();
-    }
+} catch (java.io.IOException e) {
+    System.out.println("No se pudo leer: " + e.getMessage());
 }
 ```
 
-Dos cosas que se preguntan:
-
-1. **Se cierran en orden inverso** al de apertura: primero `salida`, después `entrada`.
-2. **Se cierran todos**, aunque uno falle al cerrarse.
-
-!!! warning "`Files.lines` hay que cerrarlo"
-    ```java
-    var lineas = Files.lines(ruta);       // deja el fichero ABIERTO
-    lineas.forEach(...);                  // y nadie lo cierra
-    ```
-
-    Con unos pocos ficheros no se nota. Con muchos, el sistema se queda sin descriptores y todo deja de funcionar. Siempre dentro de un `try`.
+Sin esto harían falta un `finally`, una variable fuera y un `if (x != null)`. En la UT3, **todas las conexiones a base de datos se abren así**.
 
 ---
 
-## 6. `Optional`: «puede que no haya»
+## 6. `Optional`: cuando el resultado puede no existir
 
-Un método que devuelve `null` obliga a que **quien lo llama se acuerde** de comprobarlo. Si se le olvida, el programa revienta más adelante y muy lejos de la causa.
+El problema de siempre:
 
 ```java
-Map<String,Integer> stock = new HashMap<>(Map.of("casco", 5));
-System.out.println(stock.get("bici") + 1);
+var precios = Map.of("pan", 1.20, "leche", 0.95);
+double p = precios.get("caviar") + 1;
 // lanza java.lang.NullPointerException
 ```
 
-`Optional` convierte eso en algo que **el compilador te obliga a tratar**:
+`null` no avisa. Compila perfectamente y explota cuando se ejecuta.
+
+**`Optional<T>` es una caja que puede tener un valor dentro o estar vacía**, y el tipo lo dice: quien lo recibe *sabe* que puede venir vacío.
 
 ```java
-Optional<Integer> vacio = Optional.empty();
-Optional<Integer> lleno = Optional.of(5);
-System.out.println(lleno.get());   // 5
+Optional<String> hay   = Optional.of("hola");
+Optional<String> vacio = Optional.empty();
+
+System.out.println(hay.isPresent());     // true
 System.out.println(vacio.isPresent());   // false
+System.out.println(hay);                 // Optional[hola]
+System.out.println(vacio);               // Optional.empty
 ```
 
-### Cómo se usa de verdad
-
-**Lo que NO hay que hacer**, aunque funcione:
+### Devolverlo
 
 ```java
-if (opt.isPresent()) { return opt.get().toUpperCase(); }
-else                 { return "SIN NOMBRE"; }
+record Cliente(int id, String nombre, String email) {}
+
+var clientes = List.of(
+    new Cliente(1, "Ana", "ana@iesx.es"),
+    new Cliente(2, "Bruno", "bruno@iesx.es"));
+
+Optional<Cliente> buscar(int id) {
+    return clientes.stream().filter(c -> c.id() == id).findFirst();
+}
+
+System.out.println(buscar(1));    // Optional[Cliente[id=1, nombre=Ana, ...]]
+System.out.println(buscar(99));   // Optional.empty
 ```
 
-Eso es escribir el mismo `if (x != null)` de siempre con más letras. `Optional` está para **encadenar**:
+Fíjate: **`findFirst()` ya devuelve un `Optional`**. Los streams lo usan por todas partes.
+
+### Sacar el valor
+
+Aquí está el 90 % de lo que se usa:
 
 ```java
-record Alumno(String nombre, int nota) {}
-var alumnos = List.of(new Alumno("Ana", 8), new Alumno("Bruno", 4));
-System.out.println(alumnos.stream()
-        .filter(a -> a.nota() >= 5)
-        .findFirst()
-        .map(Alumno::nombre)
+// 1 · un valor por defecto
+System.out.println(buscar(99).map(Cliente::nombre).orElse("desconocido"));
+// desconocido
+
+// 2 · calcular el defecto solo si hace falta
+System.out.println(buscar(99).map(Cliente::nombre).orElseGet(() -> "cliente-" + 99));
+// cliente-99
+
+// 3 · si no está, es un error de verdad → lanza
+System.out.println(buscar(99)
+        .orElseThrow(() -> new NoSuchElementException("No existe el cliente 99")));
+// lanza java.util.NoSuchElementException: No existe el cliente 99
+
+// 4 · hacer algo solo si está
+buscar(1).ifPresent(c -> System.out.println("Encontrado: " + c.nombre()));
+// Encontrado: Ana
+
+// 5 · y si no, lo otro
+buscar(99).ifPresentOrElse(
+        c -> System.out.println("Encontrado: " + c.nombre()),
+        () -> System.out.println("No está"));
+// No está
+```
+
+### Encadenar sin un solo `if`
+
+Esta es la razón de ser de `Optional`. «El correo del cliente 1, en mayúsculas, y si algo falta, un guion»:
+
+```java
+System.out.println(buscar(1)
+        .map(Cliente::email)
         .map(String::toUpperCase)
-        System.out.println(.orElse("NINGUNO"));
-// ANA
-System.out.println(alumnos.stream()
-        .filter(a -> a.nota() >= 9)
-        .findFirst()
-        .map(Alumno::nombre)
-        System.out.println(.orElse("NINGUNO"));
-// NINGUNO
+        .orElse("—"));
+// ANA@IESX.ES
+
+System.out.println(buscar(99)
+        .map(Cliente::email)
+        .map(String::toUpperCase)
+        .orElse("—"));
+// —
 ```
 
-**En ningún momento hay un `if`.** Si el `Optional` está vacío, las transformaciones simplemente no se ejecutan.
+Los `map` sobre un `Optional` vacío **no hacen nada**: la caja vacía sigue vacía hasta el final. Con `null` habría hecho falta un `if` antes de cada paso.
 
-### Las cuatro formas de terminar
+Y para filtrar:
 
 ```java
-Optional<String> n = Optional.empty();
-// 1 · un valor fijo
-System.out.println(n.orElse("por defecto"));   // por defecto
-System.out.println(n.orElseGet(() -> consultarValorCaro()));   // 2 · solo si hace falta
-n.orElseThrow(() -> new IllegalStateException("No hay"));   // 3 · lanzar
-// lanza java.lang.IllegalStateException: No hay
-n.ifPresent(v -> System.out.println(v));                  // 4 · hacer algo solo si hay
+System.out.println(buscar(1)
+        .filter(c -> c.email().endsWith("@iesx.es"))
+        .map(Cliente::nombre)
+        .orElse("sin correo del centro"));
+// Ana
 ```
 
-La diferencia entre `orElse` y `orElseGet` importa: **`orElse` evalúa siempre su argumento**, incluso cuando el `Optional` tiene valor. Si dentro hay una consulta cara, se hace para nada.
+!!! danger "`get()` no se usa"
+    ```java
+    System.out.println(buscar(99).get());
+    // lanza java.util.NoSuchElementException: No value present
+    ```
 
-```java
-Optional.of("hay").orElse(caro());   // ← caro() SE EJECUTA
-Optional.of("hay").orElseGet(() -> caro());   // ← no se ejecuta
-```
+    Llamar a `get()` sin comprobar antes es exactamente el `NullPointerException` del que querías escapar, con otro nombre. Usa `orElse`, `orElseGet`, `orElseThrow` o `ifPresent`.
 
-### `map` frente a `flatMap`
+!!! warning "Dónde NO se pone un `Optional`"
+    - **No** como parámetro de un método: `void f(Optional<String> s)` — haz dos métodos, o acepta `null`.
+    - **No** como campo de una clase o un `record`.
+    - **No** en una colección: `List<Optional<String>>` no tiene sentido; filtra y quédate con los que hay.
 
-```java
-Optional<String> texto = Optional.of("42");
-System.out.println(texto.map(Integer::parseInt));   // Optional[42]
-Optional<Optional<String>> anidado = Optional.of(Optional.of("x"));
-System.out.println(anidado.flatMap(o -> o));   // Optional[x]
-```
-
-**Si la función que aplicas ya devuelve un `Optional`, usa `flatMap`.** Con `map` te quedas con un `Optional<Optional<...>>`, que no sirve para nada.
-
-!!! danger "Dónde NO se usa `Optional`"
-    - **Nunca como parámetro de un método.** Sobrecarga el método o pasa el valor.
-    - **Nunca como campo de una clase.** No es serializable y complica el modelo.
-    - **Nunca `Optional<List<T>>`.** Una lista vacía ya expresa «no hay nada».
-
-    Su sitio es **el tipo de retorno** de un método que puede no encontrar lo que busca.
+    Su sitio es **lo que devuelve un método de búsqueda**. Y punto.
 
 ---
 
-## 7. Cuándo excepción y cuándo `Optional`
+## 7. Cuándo cada cosa
 
-Es la decisión de esta página, y se contesta con una sola pregunta:
-
-> **¿Que no esté es normal, o es un error?**
-
-| Situación | Qué se devuelve |
+| Situación | Qué se hace |
 |---|---|
-| Buscar un producto que puede no existir | `Optional<Producto>` |
-| Buscar el producto que el usuario acaba de pedir por su id | **Excepción** |
-| Comprobar si un correo ya está registrado | `Optional` o `boolean` |
-| Leer un fichero de configuración obligatorio | **Excepción** |
+| El cliente no existe | `Optional.empty()` — es normal |
+| El id es negativo | `IllegalArgumentException` — te han llamado mal |
+| El CSV tiene una línea rota | Saltarla y contarla, o excepción propia si es grave |
+| La base de datos no responde | Excepción — no se puede seguir |
+| Falta un dato opcional del formulario | `Optional`, o un valor por defecto |
 
-Y lo normal es tener **los dos**, y que quien decide sea la capa de arriba:
-
-```java
-class CatalogoRepositorio {
-    Optional<Producto> buscarPorCodigo(String codigo) { … }   // solo informa
-}
-
-class CatalogoServicio {
-    Producto obtener(String codigo) {                          // decide
-        return repositorio.buscarPorCodigo(codigo)
-                .orElseThrow(() -> new ProductoNoEncontradoException(codigo));
-    }
-}
+```mermaid
+flowchart TD
+    A["Puede no haber resultado"] --> B{"¿Es normal<br/>que no lo haya?"}
+    B -->|"Sí: una búsqueda"| C["<b>Optional</b>"]
+    B -->|"No: algo ha fallado"| D["<b>Excepción</b>"]
+    D --> E{"¿Puede fallar<br/>aunque el código<br/>sea correcto?"}
+    E -->|"Sí: disco, red, BD"| F["Comprobada<br/><i>IOException</i>"]
+    E -->|"No: es un fallo tuyo"| G["No comprobada<br/><i>RuntimeException</i>"]
 ```
 
-**El repositorio no sabe si no encontrarlo es grave; el servicio sí.** Ese reparto es exactamente el que se usará en la UT4 y en la UT5.
+!!! success "Lo que hay que llevarse"
+    1. Leer la traza y encontrar **tu** línea.
+    2. Un `catch` vacío es peor que no capturar nada.
+    3. Una excepción propia son **tres líneas**, y el mensaje lleva los datos.
+    4. Comprobada = algo externo; no comprobada = fallo del código.
+    5. `Optional` se devuelve, se encadena con `map` y se cierra con `orElse`. **Nunca con `get()`.**
 
 ---
 
 ## Pruébalo ahora (10 min)
 
-```java
-record Libro(String isbn, String titulo, int anio) {}
-var libros = List.of(
-    new Libro("978-1", "Ensayo sobre la ceguera", 1995),
-    new Libro("978-2", "La colmena", 1951),
-    new Libro("978-3", "Nada", 1945));
-```
+Con el `record Cliente` y la lista del punto 6 en `jshell`:
 
-1. Escribe `Optional<Libro> buscar(String isbn)` usando streams.
-2. Escribe `Libro obtener(String isbn)` que lance una excepción propia si no está.
-3. Devuelve el título en mayúsculas del libro `978-2`, o `"DESCONOCIDO"`, **sin usar ningún `if`**.
-4. Provoca un `NumberFormatException` con `Integer.parseInt` y captúralo dando un mensaje útil.
-5. Escribe un `catch` vacío y comprueba que el programa sigue como si nada. Después bórralo.
+1. Escribe `dividir(int a, int b)` que devuelva `Optional<Integer>`, vacío si `b` es 0.
+2. Un método `edad(String texto)` que devuelva `Optional<Integer>`: vacío si el texto no es un número.
+3. El nombre del cliente 2 en mayúsculas, con `"—"` si no existe. Pruébalo con el 2 y con el 50.
+4. Haz que `buscar(50)` lance una excepción con un mensaje que incluya el id.
 
-??? success "Solución de las cinco"
+??? success "Solución de las cuatro"
 
     ```java
-    // 1 · buscar puede no encontrar: Optional
-    Optional<Libro> buscar(String isbn) {
-        return libros.stream().filter(l -> l.isbn().equals(isbn)).findFirst();
+    // 1
+    Optional<Integer> dividir(int a, int b) {
+        return b == 0 ? Optional.empty() : Optional.of(a / b);
     }
+    System.out.println(dividir(10, 2));    // Optional[5]
+    System.out.println(dividir(10, 0));    // Optional.empty
 
-    // 2 · aquí no encontrarlo SÍ es un error: excepción
-    class LibroNoEncontradoException extends RuntimeException {
-        LibroNoEncontradoException(String isbn) { super("No existe el ISBN " + isbn); }
+    // 2
+    Optional<Integer> edad(String texto) {
+        try {
+            return Optional.of(Integer.parseInt(texto));
+        } catch (NumberFormatException e) {
+            return Optional.empty();
+        }
     }
+    System.out.println(edad("34"));        // Optional[34]
+    System.out.println(edad("treinta"));   // Optional.empty
 
-    Libro obtener(String isbn) {
-        return buscar(isbn).orElseThrow(() -> new LibroNoEncontradoException(isbn));
-    }
+    // 3
+    System.out.println(buscar(2).map(c -> c.nombre().toUpperCase()).orElse("—"));
+    // BRUNO
+    System.out.println(buscar(50).map(c -> c.nombre().toUpperCase()).orElse("—"));
+    // —
 
-    // 3 · encadenado, sin un solo if
-    buscar("978-2").map(Libro::titulo).map(String::toUpperCase).orElse("DESCONOCIDO");
-    // LA COLMENA
-
-    // 4 · capturar dando información útil
-    try {
-        Integer.parseInt("mil");
-    } catch (NumberFormatException e) {
-        System.out.println("«mil» no es un número. Detalle: " + e.getMessage());
-    }
-    // «mil» no es un número. Detalle: For input string: "mil"
+    // 4
+    buscar(50).orElseThrow(() -> new NoSuchElementException("No existe el cliente 50"));
+    // lanza java.util.NoSuchElementException: No existe el cliente 50
     ```
 
-    **5.** El que hay que ver con los propios ojos:
+    **En el 2 se ve la frontera entera del tema:** `parseInt` avisa de un texto malo con una **excepción**, pero para quien llama a `edad` un texto que no es un número es un caso normal, así que se traduce a **`Optional`**. Ahí dentro, el `catch` no está vacío: transforma.
 
-    ```java
-    try {
-        Integer.parseInt("mil");
-    } catch (Exception e) { }                 // ← vacío
+    **En el 3, el `map` sobre el vacío no se ejecuta.** Ni un `if`.
 
-    System.out.println("sigo como si nada");
-    // sigo como si nada
-    ```
-
-    El programa **continúa sin enterarse**. Si esa conversión formaba parte de cargar un fichero, ahora tienes una lista a medias y ningún aviso: el fallo aparecerá dentro de media hora, en otro sitio, y no habrá forma de relacionarlo con esta línea.
-
-    Por eso un `catch` vacío es el peor error de esta página. Si de verdad no hay nada que hacer, como mínimo se deja constancia:
-
-    ```java
-    } catch (NumberFormatException e) {
-        log.warn("Valor no numérico, se descarta la línea: {}", texto);
-    }
-    ```
-
-    En los puntos 1 y 2 está lo importante de la página: **el mismo dato ausente puede ser normal o ser un error**, y quien lo decide no es el que busca, sino el que llama.
 ---
 
 ## Ejercicios (con solución)
 
-### E1 — ¿Compila?
+### E1 — ¿Qué imprime?
 
 ```java
-String contenido = Files.readString(Path.of("datos.txt"));
+try {
+    System.out.println(10 / 0);
+} catch (ArithmeticException e) {
+    System.out.println("A");
+} finally {
+    System.out.println("B");
+}
+System.out.println("C");
 ```
 
 ??? success "Solución"
 
-    **No.** `IOException` es comprobada: hay que capturarla o declararla con `throws`.
+    **`A`, `B` y `C`.**
+
+    El `catch` corta la excepción, `finally` se ejecuta siempre y el programa continúa con normalidad. Si no hubiera `catch`, saldría `B` y el programa moriría sin llegar a `C`.
+
+### E2 — Traduce el error a `Optional`
+
+Escribe `precio(String texto)` que devuelva `Optional<Double>`: vacío si el texto no es un número o si es negativo.
+
+??? success "Solución"
+
+    ```java
+    Optional<Double> precio(String texto) {
+        try {
+            double d = Double.parseDouble(texto);
+            return d < 0 ? Optional.empty() : Optional.of(d);
+        } catch (NumberFormatException e) {
+            return Optional.empty();
+        }
+    }
+    System.out.println(precio("12.50"));   // Optional[12.5]
+    System.out.println(precio("-3"));      // Optional.empty
+    System.out.println(precio("caro"));    // Optional.empty
+    ```
+
+    Es el patrón que usarás en la UT3 para leer cada celda de un CSV sucio.
+
+### E3 — Tu excepción
+
+Crea `ProductoNoEncontradoException` y un método `buscarProducto(String codigo)` que la lance con un mensaje que incluya el código.
+
+??? success "Solución"
+
+    ```java
+    class ProductoNoEncontradoException extends RuntimeException {
+        ProductoNoEncontradoException(String codigo) {
+            super("No existe el producto con código " + codigo);
+        }
+    }
+
+    var catalogo = Map.of("A1", "Casco", "B2", "Bici");
+
+    String buscarProducto(String codigo) {
+        var nombre = catalogo.get(codigo);
+        if (nombre == null) throw new ProductoNoEncontradoException(codigo);
+        return nombre;
+    }
+
+    System.out.println(buscarProducto("A1"));    // Casco
+    buscarProducto("Z9");
+    // lanza ProductoNoEncontradoException: No existe el producto con código Z9
+    ```
+
+    El constructor recibe **el dato**, no el mensaje ya montado: así todos los mensajes salen iguales y nadie se lo inventa.
+
+    Discutible pero importante: aquí el `Optional` sería mejor diseño si «no existe» es un caso normal. Se lanza excepción cuando el código **tenía** que existir.
+
+### E4 — Encadenar sin `if`
+
+Con `buscar(int id)` del punto 6, escribe en **una sola expresión**: el dominio del correo (lo que va detrás de la `@`) del cliente `id`, o `"sin correo"`.
+
+??? success "Solución"
+
+    ```java
+    String dominio(int id) {
+        return buscar(id)
+                .map(Cliente::email)
+                .filter(e -> e.contains("@"))
+                .map(e -> e.substring(e.indexOf('@') + 1))
+                .orElse("sin correo");
+    }
+    System.out.println(dominio(1));     // iesx.es
+    System.out.println(dominio(99));    // sin correo
+    ```
+
+    Tres cosas pueden faltar —el cliente, el correo, la `@`— y **no hay un solo `if`**. En cuanto la caja se vacía, los pasos siguientes se saltan.
+
+### E5 — El `catch` vacío
+
+Explica qué tiene de malo y arréglalo.
+
+```java
+try {
+    guardar(pedido);
+} catch (Exception e) { }
+```
+
+??? success "Solución"
+
+    El pedido **no se ha guardado** y el programa continúa como si sí. El fallo aparecerá días después, en otro sitio, y no habrá rastro de dónde empezó.
 
     ```java
     try {
-        String contenido = Files.readString(Path.of("datos.txt"));
-    } catch (IOException e) {
-        throw new UncheckedIOException(e);      // envolver, conservando la causa
+        guardar(pedido);
+    } catch (SQLException e) {
+        throw new PedidoException("No se pudo guardar el pedido " + pedido.id(), e);
     }
     ```
 
-    `UncheckedIOException` existe precisamente para esto: convertir una `IOException` en no comprobada sin perder nada.
+    Dos cambios: se captura **lo concreto** (`SQLException`, no `Exception`) y se relanza **con la causa**, para que el `Caused by:` lleve al origen.
 
-### E2 — El orden de los `catch`
+### E6 — `Optional` mal usado
+
+Di qué está mal en cada línea.
 
 ```java
-try { … }
-catch (IOException e) { … }
-catch (NoSuchFileException e) { … }
+// (a)
+void registrar(Optional<String> telefono) { ... }
+
+// (b)
+record Cliente(String nombre, Optional<String> email) {}
+
+// (c)
+if (buscar(1).isPresent()) System.out.println(buscar(1).get().nombre());
 ```
 
 ??? success "Solución"
 
-    **No compila:** `NoSuchFileException` hereda de `IOException`, así que el primer `catch` ya la atrapa y el segundo es inalcanzable. Hay que ponerlos **del más concreto al más general**.
+    **(a)** `Optional` no se usa como parámetro. Quien llama tiene que envolver el valor para nada, y además puede pasarte `null` — con lo que tendrías un `Optional` nulo, que es lo peor de los dos mundos. Haz dos métodos, o acepta el `String` y comprueba.
 
-### E3 — `orElse` frente a `orElseThrow`
+    **(b)** Tampoco como campo. `Optional` no es serializable y complica Jackson y JPA, que verás en la UT3 y la UT4.
 
-¿Cuándo se usa cada una de estas dos formas de terminar un `Optional`?
-
-```java
-Optional<Usuario> u = repositorio.buscar(id);
-
-u.orElse(new Usuario("invitado"));                          // (a)
-u.orElseThrow(() -> new UsuarioNoEncontradoException(id));  // (b)
-```
-
-??? success "Solución"
-
+    **(c)** Compila y funciona, pero es `Optional` escrito como si fuera `null`: hace la búsqueda **dos veces** y usa `get()`. Se escribe así:
 
     ```java
-    Optional<Usuario> u = repositorio.buscar(id);
-
-    u.orElse(new Usuario("invitado"));                          // (a)
-    u.orElseThrow(() -> new UsuarioNoEncontradoException(id));  // (b)
+    buscar(1).map(Cliente::nombre).ifPresent(System.out::println);
     ```
-
-    - **(a)** cuando no encontrarlo es **normal** y hay una alternativa sensata.
-    - **(b)** cuando no encontrarlo es **un error** que hay que comunicar.
-
-    Lo que no vale es `u.get()` sin comprobar: lanza `NoSuchElementException` con un mensaje que no dice nada de tu dominio.
-
-### E4 — La causa perdida
-
-¿Qué le falta a este `catch`, y por qué importa?
-
-```java
-catch (SQLException e) {
-    throw new RuntimeException("Error de base de datos");
-}
-```
-
-??? success "Solución"
-
-
-    ```java
-    catch (SQLException e) {
-        throw new RuntimeException("Error de base de datos");
-    }
-    ```
-
-    Falta la `e`. Sin ella, la traza se corta ahí y pierdes la consulta que falló, la tabla y el motivo real.
-
-    ```java
-    throw new RuntimeException("Error de base de datos", e);
-    ```
-
-    Cuesta tres caracteres y es la diferencia entre depurar en cinco minutos o en dos horas.
-
-### E5 — Excepción o `Optional`
-
-Decide para cada método:
-
-(a) `buscarPorCorreo(String)` en un registro de usuarios · (b) `cargarConfiguracion()` al arrancar · (c) `siguienteMensaje()` de una cola que puede estar vacía · (d) `dividir(int, int)`
-
-??? success "Solución"
-
-    | | Qué devuelve | Por qué |
-    |---|---|---|
-    | (a) Buscar por correo | `Optional<Usuario>` | Que no esté es normal |
-    | (b) Cargar configuración | **Excepción** | Sin configuración no se puede arrancar |
-    | (c) Siguiente mensaje | `Optional<Mensaje>` | Una cola vacía es un estado normal |
-    | (d) Dividir | **Excepción** | Dividir por cero es un error del que llama |
-
-### E6 — Los recursos, en orden
-
-```java
-try (var a = abrir("A"); var b = abrir("B")) { … }
-```
-
-¿En qué orden se cierran, y qué pasa si `b` falla al cerrarse?
-
-??? success "Solución"
-
-    Se cierran **`b` primero y `a` después** —orden inverso al de apertura— y **los dos se cierran** aunque `b` lance al cerrarse.
-
-    La excepción de `b` no impide que `a` se cierre; se guarda como *supressed* y aparece en la traza bajo `Suppressed:`.

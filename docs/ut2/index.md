@@ -17,7 +17,7 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 - [ ] Escribir, compilar y ejecutar programas **Java 25** desde la consola, sin depender del IDE.
 - [ ] Usar con soltura los **tipos, `var`, `record` y el `switch` moderno**.
 - [ ] Aplicar **POO**: clases, interfaces y `record`, y saber cuándo toca cada uno.
-- [ ] Manipular **colecciones** y sacar informes con *streams*: `groupingBy`, comparadores encadenados, estadísticas y `flatMap`.
+- [ ] Manipular **colecciones** y sacar informes con *streams*: `filter`, `map`, comparadores y `groupingBy`.
 - [ ] Gestionar errores con **excepciones y `Optional`**, sin devolver `null`.
 - [ ] Montar un proyecto con **Maven**, añadirle una dependencia y empaquetarlo en un `.jar` ejecutable.
 
@@ -28,8 +28,8 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 | **S1** | Entorno y primer programa · tipos, `var`, cadenas y `switch` moderno | [1. Primeros pasos](01-primeros-pasos.md) + [2. Sintaxis y tipos](02-sintaxis-y-tipos.md) |
 | **S2** | Clases, encapsulación, **`record`** y `enum`, en `jshell` | [3. POO en Java](03-poo-en-java.md) §1–4 |
 | **S3** | **Interfaces** y el ejemplo largo de pedidos, paso a paso | [3. POO en Java](03-poo-en-java.md) §5–6 |
-| **S4** | Colecciones a fondo: `List`, `Set`, `Map` y cuál elegir | [4. Colecciones y funcional](04-colecciones-y-funcional.md) §1–7 |
-| **S5** | **Streams** a fondo: `groupingBy`, comparadores, estadísticas y `flatMap` | [4. Colecciones y funcional](04-colecciones-y-funcional.md) §8–12 |
+| **S4** | Colecciones: `List`, `Set`, `Map`, cuál elegir y cómo recorrerlas | [4. Colecciones y streams](04-colecciones-y-funcional.md) §1–4 |
+| **S5** | **Streams** paso a paso: `filter`, `map`, ordenar y `groupingBy` | [4. Colecciones y streams](04-colecciones-y-funcional.md) §5–7 |
 | **S6** | Excepciones y `Optional`: cuándo cada uno | [5. Excepciones y Optional](05-excepciones-y-optional.md) |
 | **S7** | **Proyecto Maven paso a paso**: se junta toda la unidad | [6. Un proyecto Maven](06-proyecto-maven.md) |
 | **S8** | :material-form-select: **Test de RA2 (100 %)** — 30 preguntas | [Simulacro](autoevaluacion.md) |
@@ -60,7 +60,7 @@ La mayoría son **preguntas de código**: un fragmento delante y decir qué impr
 
 | | |
 |---|---|
-| [**Batería de ejercicios**](ejercicios.md) | 35 ejercicios con solución: 27 fragmentos y 8 programas completos, uno por tema. Es la práctica de la unidad |
-| [**Simulacro de test**](autoevaluacion.md) | 80 preguntas con solución + una selección de 30 para cronometrar |
+| [**Batería de ejercicios**](ejercicios.md) | 32 con solución, **graduales y en el orden de los temas**. Es la práctica de la unidad |
+| [**Simulacro de test**](autoevaluacion.md) | Las 30 preguntas del examen, con solución razonada y el ejercicio del que sale cada una |
 | [Chuleta de Java 25](chuleta.md) | La sintaxis esencial en una página |
 | [Comprobar tu trabajo](../comprobar-tu-trabajo.md) | Pega tu código y recibe comentarios |

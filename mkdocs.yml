@@ -184,7 +184,7 @@ nav:
       - 3. Un CRUD contra base de datos: ut3/03-base-de-datos.md
       - Chuleta: ut3/chuleta.md
       - Batería de ejercicios: ut3/ejercicios.md
-      - Batería de test: ut3/autoevaluacion.md
+      - Simulacro de test: ut3/autoevaluacion.md
     - UT4 · RA5 · Capas con Spring Boot:
       - ut4/index.md
       - 1. Spring Boot: ut4/01-spring-boot.md

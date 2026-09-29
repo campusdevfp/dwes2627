@@ -1,265 +1,602 @@
 # Simulacro de test — UT2
 
-**93 preguntas con solución.** Mismo formato que el test de la unidad: opción múltiple, **una sola correcta**, sin penalización por fallo.
+**30 preguntas, 55 minutos.** Es el examen de la S8: mismo número, mismo formato y mismo reparto.
 
-!!! info "De dónde sale todo lo que se pregunta"
-    De **los temas 1 a 6** y de la **[batería de ejercicios](ejercicios.md)**. Nada más.
-
-    La mayoría son de **leer código y decir qué pasa**, porque así es el test real. Estudiar esta unidad leyendo apuntes no funciona: hay que teclear.
-
-| Bloque | De dónde | Preguntas |
+| Bloque | De dónde sale | Preguntas |
 |---|---|:-:|
-| 1 | Primeros pasos | 7 |
-| 2 | Sintaxis y tipos | 9 |
-| 3 | POO | 10 |
-| 4 | Colecciones y streams | 22 |
-| 5 | Excepciones y `Optional` | 9 |
-| 6 | Un proyecto Maven | 10 |
-| **7** | **Directamente sobre los ejercicios** | **26** |
+| **1** | Primeros pasos y sintaxis | 5 |
+| **2** | POO: records, clases e interfaces | 5 |
+| **3** | Colecciones | 6 |
+| **4** | Streams | 7 |
+| **5** | Excepciones y `Optional` | 4 |
+| **6** | Proyecto Maven | 3 |
 
-**El test oficial son 30 preguntas en 55 minutos.** Se aprueba con 15.
+!!! success "Todas salen de un ejercicio que ya has hecho"
+    Cada pregunta lleva debajo **el ejercicio de la batería del que sale**. Si has hecho la [batería](ejercicios.md), has visto antes todos estos fragmentos en tu pantalla.
 
----
+    Las opciones incorrectas son **los errores que se cometen escribiendo ese código**, no distractores inventados.
 
-## Bloque 1 — Primeros pasos
+!!! tip "Cómo se hace"
+    Tápate la solución, contesta, y **solo entonces** despliega. Si dudas, **ejecútalo**: `jshell` arranca en dos segundos.
 
-1. Para **desarrollar** en Java necesitas… a) solo la JRE · b) **el JDK** · c) solo la JVM · d) un servidor
-2. El bytecode `.class` lo ejecuta… a) el SO directamente · b) `javac` · c) **la JVM** · d) el navegador
-3. `java Hola.java` (JDK 25)… a) solo compila · b) **compila y ejecuta en un paso** · c) da error · d) crea un .jar
-4. `int x = "hola";` produce… a) nada · b) error de ejecución · c) **error de compilación** · d) x vale 0
-5. `String s = null; s.length();` produce… a) error de compilación · b) **NullPointerException en ejecución** · c) 0 · d) null
-6. La ventaja del bytecode es… a) más rápido que C · b) **portabilidad entre sistemas** · c) no necesita JVM · d) ocupa menos
-7. JDK 25 es… a) una versión intermedia · b) **la LTS vigente** · c) obsoleta · d) de pago
-
-> **Soluciones:** 1b · 2c · 3b · 4c · 5b · 6b · 7b
+Se aprueba con 15 y **no hay penalización por fallo**: contesta todas.
 
 ---
 
-## Bloque 2 — Sintaxis y tipos
+## Bloque 1 — Primeros pasos y sintaxis
 
-1. `IO.println(7 / 2);` imprime… a) 3.5 · b) **3** · c) 4 · d) error
-2. `IO.println("5" + 3);` imprime… a) 8 · b) **53** · c) error · d) "5 3"
-3. Para comparar el contenido de dos Strings se usa… a) `==` · b) **`.equals()`** · c) `=` · d) `.compare()`
-4. `var` significa que… a) el tipo cambia en ejecución · b) **el compilador deduce el tipo, que luego es fijo** · c) es una constante · d) es un objeto
-5. `var x = 5; x = "cinco";` → a) funciona · b) **error de compilación** · c) error de ejecución · d) x vale "cinco"
-6. En el `switch` moderno con `->`… a) hace falta `break` · b) **no hace falta `break`** · c) no admite varios valores · d) no devuelve valor
-7. `if (n % 2 == 0)` comprueba que n sea… a) impar · b) **par** · c) positivo · d) divisible entre 3
-8. Para dinero, en producción, es preferible… a) `double` · b) `float` · c) **`BigDecimal`** · d) `int`
-9. Un text block se delimita con… a) comillas simples · b) **tres comillas dobles** · c) backticks · d) `<<`
+### 1 · ¿Qué imprime?
 
-> **Soluciones:** 1b · 2b · 3b · 4b · 5b · 6b · 7b · 8c · 9b
-
----
-
-## Bloque 3 — POO
-
-1. Los atributos se declaran `private` para… a) que ocupen menos · b) **controlar el acceso y proteger las reglas** · c) que sean más rápidos · d) obligación del compilador
-2. Un `record` genera automáticamente… a) solo el constructor · b) **constructor, getters, equals, hashCode y toString** · c) solo getters y setters · d) nada
-3. Los getters de `record Producto(String nombre)` se llaman… a) `getNombre()` · b) **`nombre()`** · c) `get()` · d) `nombre`
-4. Los records son… a) mutables · b) **inmutables** · c) abstractos · d) interfaces
-5. Para el DTO de una API REST conviene… a) clase con setters · b) **record** · c) enum · d) interfaz
-6. `@Override` sirve para… a) obligatorio al heredar · b) **avisar al compilador de que redefines: caza errores de nombre** · c) crear un método nuevo · d) hacerlo privado
-7. Una interfaz define… a) la implementación · b) **un contrato: qué se puede hacer** · c) atributos privados · d) el constructor
-8. El polimorfismo permite… a) heredar de varias clases · b) **tratar igual a distintas implementaciones de una interfaz** · c) cambiar tipos en ejecución · d) evitar interfaces
-9. Un `enum` es mejor que Strings para estados porque… a) ocupa menos · b) **el compilador garantiza los valores válidos** · c) es más rápido · d) permite null
-10. La regla profesional dice… a) hereda siempre que puedas · b) **composición sobre herencia** · c) no uses interfaces · d) todo público
-
-> **Soluciones:** 1b · 2b · 3b · 4b · 5b · 6b · 7b · 8b · 9b · 10b
-
----
-
-## Bloque 4 — Colecciones y streams
-
-1. Para una colección **sin duplicados** usas… a) List · b) **Set** · c) Map · d) Array
-2. Para buscar por clave usas… a) List · b) Set · c) **Map** · d) Queue
-3. `List.of("a","b")` devuelve una lista… a) vacía · b) **inmutable** · c) ordenable · d) con null
-4. `map.getOrDefault("x", 0)` si la clave no existe devuelve… a) null · b) error · c) **0** · d) ""
-5. En un stream, `filter` es una operación… a) terminal · b) **intermedia** · c) de agrupación · d) final
-6. Un stream **sin operación terminal**… a) se ejecuta igual · b) **no ejecuta nada** · c) da error · d) devuelve null
-7. `productos.stream().map(Producto::nombre)` transforma… a) filtra · b) **cada elemento en otro valor** · c) ordena · d) cuenta
-8. Para sumar precios se usa… a) `.sum()` directamente · b) **`.mapToDouble(...).sum()`** · c) `.count()` · d) `.reduce()` obligatorio
-9. `Collectors.groupingBy` sirve para… a) ordenar · b) **agrupar en un Map por una clave** · c) filtrar · d) contar solo
-10. `String::length` es… a) un error · b) **una referencia a método** · c) una clase · d) un tipo
-11. `groupingBy` devuelve un mapa cuyas claves salen… a) alfabéticas · b) **sin orden garantizado** · c) en orden de inserción · d) invertidas
-12. Para que ese mapa salga ordenado se escribe… a) `.sorted()` antes · b) **`groupingBy(clave, TreeMap::new, downstream)`** · c) `groupingBy(clave).sort()` · d) no se puede
-13. Al agrupar en **dos niveles**, el `TreeMap::new` hay que ponerlo… a) solo fuera · b) solo dentro · c) **en los dos niveles** · d) en ninguno
-14. `Collectors.mapping(Venta::producto, Collectors.toSet())` sirve para… a) filtrar el grupo · b) **transformar dentro de cada grupo antes de recogerlo** · c) ordenar el grupo · d) contar
-15. `partitioningBy` frente a `groupingBy`: el primero… a) es más rápido · b) **devuelve siempre las dos claves, aunque un grupo esté vacío** · c) solo admite números · d) no admite downstream
-16. `comparing(A).thenComparing(B).reversed()` invierte… a) solo A · b) solo B · c) **los dos criterios** · d) ninguno
-17. Para ordenar un `Map` por su **valor** hay que… a) usar `TreeMap` · b) **volver a hacer stream sobre `entrySet()`** · c) llamar a `map.sort()` · d) no se puede
-18. `mapToDouble(...).summaryStatistics()` recorre la lista… a) cinco veces · b) **una** · c) dos · d) depende del tamaño
-19. `average()` sobre un `DoubleStream` devuelve… a) `double` · b) `Optional<Double>` · c) **`OptionalDouble`** · d) `Double`
-20. `anyMatch` es preferible a `filter(...).count() > 0` porque… a) es más corto · b) **para en cuanto encuentra uno** · c) no usa lambdas · d) devuelve `Optional`
-21. Si la función que aplicas devuelve una **colección** y no quieres una lista de listas, usas… a) `map` · b) **`flatMap`** · c) `collect` · d) `reduce`
-22. Un stream ya consumido, al reutilizarlo… a) vuelve a empezar · b) **lanza `IllegalStateException`** · c) devuelve vacío · d) se clona
-
-> **Soluciones:** 1b · 2c · 3b · 4c · 5b · 6b · 7b · 8b · 9b · 10b · 11b · 12b · 13c · 14b · 15b · 16c · 17b · 18b · 19c · 20b · 21b · 22b
-
----
-
-## Bloque 5 — Excepciones y Optional
-
-1. El bloque `finally` se ejecuta… a) solo si hay error · b) solo si no hay error · c) **siempre** · d) nunca
-2. `NullPointerException` es… a) checked · b) **unchecked** · c) un error de compilación · d) un warning
-3. `IOException` es… a) **checked: hay que capturarla o declararla** · b) unchecked · c) opcional · d) un enum
-4. Un `catch (Exception e) { }` vacío es… a) buena práctica · b) **silenciar el error: la peor práctica** · c) obligatorio · d) igual que no capturar
-5. `try-with-resources` sirve para… a) reintentar · b) **cerrar recursos automáticamente** · c) capturar todo · d) lanzar excepciones
-6. `Optional` se usa preferentemente… a) en atributos · b) en parámetros · c) **como retorno de métodos que pueden no encontrar nada** · d) en constructores
-7. `opt.orElseThrow(...)` sirve para… a) ignorar · b) **obtener el valor o lanzar una excepción con sentido** · c) devolver null · d) capturar
-8. Devolver `null` cuando no se encuentra algo provoca… a) mejor rendimiento · b) **NullPointerException aguas abajo** · c) error de compilación · d) nada
-9. Una excepción de dominio (`ProductoNoEncontradoException`) en una API se traduce en… a) 200 · b) 500 · c) **404** · d) 301
-
-> **Soluciones:** 1c · 2b · 3a · 4b · 5b · 6c · 7b · 8b · 9c
-
----
-
-## Bloque 6 — Un proyecto Maven
-
-1. Las dependencias de un proyecto Maven se declaran en… a) `build.gradle` · b) **`pom.xml`** · c) `package.json` · d) `application.properties`
-2. El código va en… a) `src/test/java` · b) **`src/main/java`** · c) `target/` · d) la raíz
-3. Un CSV de datos o un `.properties` van en… a) `src/main/java` · b) **`src/main/resources`** · c) `target/` · d) la raíz
-4. `mvn package` genera… a) la documentación · b) **el `.jar` en `target/`** · c) el `pom.xml` · d) las dependencias
-5. `target/` en Git… a) se sube siempre · b) **no se sube: es generado** · c) se sube comprimido · d) es obligatorio
-6. Sin `<maven.compiler.release>25</maven.compiler.release>`… a) no pasa nada · b) **falla al compilar un `record`** · c) va más lento · d) no descarga dependencias
-7. Las coordenadas de una librería son… a) nombre y autor · b) **`groupId`, `artifactId` y `version`** · c) la URL · d) el `.jar`
-8. `mvn dependency:tree` sirve para… a) borrar dependencias · b) **ver todas, incluidas las indirectas** · c) actualizar versiones · d) compilar
-9. `java -jar mi.jar` responde «no main manifest attribute» porque… a) falta Java · b) **el `.jar` no declara su clase principal** · c) el código no compila · d) falta `target/`
-10. `mvn -o compile` significa… a) compilar solo · b) **compilar sin conexión, con lo ya descargado** · c) compilar optimizado · d) compilar los tests
-
-> **Soluciones:** 1b · 2b · 3b · 4b · 5b · 6b · 7b · 8b · 9b · 10b
-
-## Bloque 7 — Sobre los ejercicios
-
-Estas 26 salen directamente de la [batería](ejercicios.md). Son del tipo que más pesa en el test: **código delante y decidir**.
-
-**1.** ¿Qué imprime?
-
-```java
-IO.println(9 / 5);
-IO.println(9 / 5.0);
+``` { .java .numerado }
+System.out.println(7 / 2);
+System.out.println(7 / 2.0);
 ```
 
-a) `1.8` y `1.8` · b) **`1` y `1.8`** · c) `1.8` y `1` · d) Error de compilación
+**a)** `3.5` y `3.5` · **b)** `3` y `3.5` · **c)** `3` y `3` · **d)** `3.5` y `3`
 
-**2.** En `var precioBase = 20;`, el tipo inferido es…
-a) `double` · b) **`int`** · c) `Number` · d) `var`
+??? success "Solución"
 
-**3.** Si falta un `;`, el compilador suele señalar…
-a) La primera línea del fichero · b) **La línea siguiente, que es donde se da cuenta** · c) Siempre la línea exacta · d) Ninguna: falla en ejecución
+    **b)** Dos `int` dan **división entera**: se trunca, no se redondea (`9/2` es `4`). Basta con que uno de los dos sea `double` para que no.
 
-**4.** `switch (codigo / 100)` con `codigo = 404` entra por el caso…
-a) `case 404` · b) **`case 4`** · c) `case 40` · d) `default`
+    → [E1](ejercicios.md)
 
-**5.** En un `switch` de flecha…
-a) Hace falta `break` · b) **No hace falta: no hay caída entre casos** · c) No admite varios valores por caso · d) No puede devolver valor
+### 2 · ¿Cuál no compila?
 
-**6.** El constructor compacto de un `record` se escribe…
-a) `Producto(String n, double p) { ... }` · b) **`Producto { ... }`** · c) `compact Producto() { ... }` · d) `record() { ... }`
+**a)** `var a = 10;` · **b)** `var b = "hola";` · **c)** `var c = null;` · **d)** `var d = new ArrayList<String>();`
 
-**7.** Un `record` **no** genera automáticamente…
-a) `equals` · b) `hashCode` · c) `toString` · d) **Métodos `setX`**
+??? success "Solución"
 
-**8.** ¿Cuándo **no** conviene un `record`?
-a) Cuando hay muchos campos · b) **Cuando el objeto debe cambiar de estado** · c) Cuando hay que compararlo · d) Nunca
+    **c)** `null` no dice de qué tipo es, así que `var` no puede deducir nada. Tampoco compila `var c;` sin valor.
 
-**9.** En `procesarCompra(MetodoPago metodo, double importe)`, que dependa de la interfaz y no de `Tarjeta` es un ejemplo de…
-a) Responsabilidad única · b) **Inversión de dependencias** · c) Liskov · d) Segregación de interfaces
+    `var` es solo para **variables locales con valor inicial**. Nunca campos ni parámetros.
 
-**10.** ¿Qué devuelve `catalogo.stream().max(Comparator.comparingDouble(Producto::precio))`?
-a) Un `Producto` · b) **Un `Optional<Producto>`** · c) Un `double` · d) Una `List`
+    → [E2](ejercicios.md)
 
-**11.** `Collectors.groupingBy(Producto::categoria)` devuelve un mapa cuyo orden de claves…
-a) Es alfabético · b) Es el de inserción · c) **No está garantizado: es un `HashMap`** · d) Es inverso
+### 3 · El `switch` moderno
 
-**12.** Para que ese mapa salga ordenado hay que escribir…
-a) `.sorted()` antes · b) **`groupingBy(clave, TreeMap::new, downstream)`** · c) `groupingBy(clave).sort()` · d) No se puede
-
-**13.** ¿Por qué `mapToDouble(...).sum()` es preferible a un `reduce` con `Double`?
-a) Es más corto · b) **Evita el autoboxing** · c) Es la única forma · d) Devuelve `Optional`
-
-**14.** Un repositorio que devuelve `null` cuando no encuentra…
-a) Es correcto y eficiente · b) **Obliga a quien llama a acordarse de comprobarlo; `Optional` lo obliga el compilador** · c) Es obligatorio en Java 25 · d) Lanza excepción
-
-**15.** `orElseThrow(() -> new ProductoNoEncontradoException(nombre))` se usa cuando…
-a) La ausencia es normal · b) **La ausencia es un error** · c) Siempre · d) Nunca
-
-**16.** ¿Qué imprime?
-
-```java
-System.out.println(0.1 + 0.2);
+``` { .java .numerado }
+var tipo = switch (codigo / 100) {
+    case 2 -> "OK";
+    case 4 -> "Error del cliente";
+};
 ```
 
-a) `0.3` · b) **`0.30000000000000004`** · c) Error · d) `0.30`
+**a)** Funciona · **b)** No compila: falta `default` · **c)** No compila: faltan los `break` · **d)** Funciona pero devuelve `null` si no encaja
 
-**17.** En el proyecto del catálogo, el servicio recibe `CatalogoRepositorio` por constructor. Si en su lugar hiciera `new CatalogoEnMemoria()` dentro…
-a) Sería más eficiente · b) **Quedaría atado a esa implementación y no se podría cambiar ni sustituir** · c) No compilaría · d) Daría igual
+??? success "Solución"
 
-**18.** `Optional.ofNullable(mapa.get(clave))` sirve para…
-a) Acelerar la búsqueda · b) **Convertir el posible `null` del mapa en un `Optional`** · c) Ordenar el mapa · d) Evitar duplicados
+    **b)** Un `switch` que **devuelve un valor** tiene que cubrir todos los casos. Con `int` eso significa `default` obligatorio.
 
-**19.** En el catálogo se usa `LinkedHashMap` y no `HashMap` porque…
-a) Es más rápido · b) **El listado sale en el orden en que se cargaron los productos** · c) Admite claves nulas · d) Ocupa menos
+    La (c) es el reflejo del `switch` antiguo: con flechas **no hay caída** entre casos y los `break` no existen.
 
-**20.** ¿Qué imprime?
+    → [E4](ejercicios.md)
 
-```java
-var lista = new ArrayList<>(List.of(1, 2, 3));
-for (var n : lista) { if (n == 2) lista.remove(n); }
+### 4 · ¿Qué imprime?
+
+``` { .java .numerado }
+var a = "hola";
+var c = new String("hola");
+System.out.println(a == c);
+System.out.println(a.equals(c));
 ```
 
-a) `[1, 3]` · b) **`ConcurrentModificationException`** · c) `[1, 2, 3]` · d) Error de compilación
+**a)** `true` y `true` · **b)** `false` y `true` · **c)** `true` y `false` · **d)** `false` y `false`
 
-**21.** La forma correcta de eliminar mientras recorres es…
-a) `for` con índice hacia delante · b) **`lista.removeIf(...)`** · c) `lista.remove()` dentro del `for-each` · d) `lista.clear()`
+??? success "Solución"
 
-**22.** `comparing(P::puntos).thenComparing(P::nombre).reversed()` invierte…
-a) Solo los puntos · b) **Todo, incluido el desempate por nombre** · c) Solo el nombre · d) Nada
+    **b)** `==` compara **si son el mismo objeto**; `equals` compara el **contenido**.
 
-**23.** ¿Qué tiene de malo `catch (IOException e) { }`?
-a) No compila · b) **Hace desaparecer el fallo y el programa sigue con datos a medias** · c) Es lento · d) Nada
+    Lo que hace este fallo tan difícil de encontrar es que con literales (`"hola" == "hola"`) sale `true`, porque la JVM los reutiliza. En cuanto el texto viene de un fichero o de un formulario, deja de salir. **Para textos, siempre `equals`.**
 
-**24.** Al envolver una excepción, pasar la causa (`super(mensaje, e)`) sirve para…
-a) Que compile · b) **No perder la traza del fallo original** · c) Cifrar el mensaje · d) Reintentar
+    → [E5](ejercicios.md)
 
-**25.** En un `try` con varios recursos, se cierran…
-a) En el orden de apertura · b) **En orden inverso, y todos aunque uno falle al cerrarse** · c) Solo el primero · d) Solo si no hay excepción
+### 5 · Bloques de texto
 
-**26.** `List.copyOf(lista)` hace dos cosas:
-a) Ordena y copia · b) **Copia y devuelve una lista inmutable** · c) Copia y permite `add` · d) Solo comprueba nulos
+¿Qué hace un `\` al final de una línea dentro de un `"""`?
 
-> **Soluciones bloque 7:** 1b · 2b · 3b · 4b · 5b · 6b · 7d · 8b · 9b · 10b · 11c · 12b · 13b · 14b · 15b · 16b · 17b · 18b · 19b · 20b · 21b · 22b · 23b · 24b · 25b · 26b
+**a)** Escapa la comilla siguiente · **b)** Une esa línea con la siguiente, sin salto · **c)** Es un error de sintaxis · **d)** Indenta la línea siguiente
+
+??? success "Solución"
+
+    **b)** Sirve para escribir una línea larga partida en el código sin que el salto acabe en el texto.
+
+    Y lo otro que hay que saber: **la indentación común se quita sola**, y manda la línea menos indentada, incluida la de cierre `"""`.
+
+    → [E3](ejercicios.md)
 
 ---
 
-## Simulacro cronometrado
+## Bloque 2 — POO
 
-Con la unidad hecha, siéntate **55 minutos con un reloj** y contesta, sin mirar nada:
+### 6 · ¿Qué imprime?
 
-| Bloque | Preguntas |
-|---|---|
-| **2** · Sintaxis y tipos | 1, 2, 4, 5, 6 |
-| **3** · POO | 1, 2, 3 |
-| **4** · Colecciones y streams | 1, 5, 9, 11, 13, 16, 17, 19, 21 |
-| **5** · Excepciones y `Optional` | 1, 2, 4 |
-| **6** · Proyecto Maven | 1, 6, 9 |
-| **7** · Sobre los ejercicios | 1, 4, 10, 16, 20, 23, 26 |
+``` { .java .numerado }
+record Punto(int x, int y) {}
+var a = new Punto(1, 2);
+var b = new Punto(1, 2);
+System.out.println(a.equals(b));
+System.out.println(a == b);
+```
 
-Son **30 preguntas**, con la misma proporción que el test real: la mayoría de código, y un tercio salidas directamente de la batería.
+**a)** `true` y `true` · **b)** `true` y `false` · **c)** `false` y `false` · **d)** `false` y `true`
 
-El **bloque 4 es el que más pesa**, y es deliberado: las colecciones y los *streams* son la herramienta con la que se trabaja el resto del curso, y desde este curso **no se vuelven a explicar en la UT3**.
+??? success "Solución"
 
-| Aciertos | Lectura |
-|:-:|---|
-| **24 o más** | Vas sobrado |
-| **18 a 23** | Aprobado holgado. Vuelve al bloque que peor te fue |
-| **15 a 17** | Justo. Rehaz los ejercicios del E28 al E35 |
-| **menos de 15** | El problema no es de memoria: falta teclear |
+    **b)** El `record` genera `equals` comparando los campos, así que dos puntos iguales **son iguales**. Pero siguen siendo **dos objetos distintos**, así que `==` es `false`.
 
-!!! tip "Cómo se estudia esta unidad"
-    Leyendo, no. El test pone **código delante** y pregunta qué imprime, si compila o dónde está el fallo. Eso solo se entrena de una forma:
+    Un `record` trae gratis `toString`, `equals`, `hashCode` y los captadores, que se llaman `x()`, no `getX()`.
 
-    1. **Predice antes de ejecutar.** Escribe en un papel qué va a salir, y después ejecuta.
-    2. **Rompe tu propia solución.** Quítale el `hashCode`, mueve el `.reversed()`, borra la causa del `throw`. Apunta qué cambia.
-    3. **Escribe tú la pregunta**, con sus tres distractores.
+    → [E7](ejercicios.md)
 
-    Las respuestas de este banco siguen un orden fijo para corregir rápido; en el test real **las opciones van mezcladas**, así que no memorices letras.
+### 7 · El constructor compacto
+
+``` { .java .numerado }
+record Producto(String nombre, double precio) {
+    Producto {
+        if (precio < 0) throw new IllegalArgumentException("Precio negativo");
+        nombre = nombre.trim();
+    }
+}
+```
+
+**a)** No compila: falta asignar `this.nombre` · **b)** Compila y el `trim` se aplica · **c)** Compila pero el `trim` no hace nada · **d)** No compila: falta el paréntesis
+
+??? success "Solución"
+
+    **b)** En el constructor compacto puedes **reasignar los parámetros**, y Java los guarda en los campos después. Ni paréntesis ni `this.nombre = nombre`.
+
+    Es la forma de que un objeto **no pueda existir nunca en estado inválido**.
+
+    → [E8](ejercicios.md)
+
+### 8 · El record que no era inmutable
+
+``` { .java .numerado }
+record Equipo(String nombre, List<String> jugadores) {}
+var lista = new ArrayList<>(List.of("Ana"));
+var e = new Equipo("Rojo", lista);
+lista.add("Intruso");
+System.out.println(e.jugadores());
+```
+
+**a)** `[Ana]` · **b)** `[Ana, Intruso]` · **c)** `UnsupportedOperationException` · **d)** `[]`
+
+??? success "Solución"
+
+    **b) `[Ana, Intruso]`.** El `record` protege **la referencia**, no el contenido: quien te dio la lista puede seguir tocándola.
+
+    ```java
+    Equipo { jugadores = List.copyOf(jugadores); }
+    ```
+
+    `List.copyOf` copia **y** congela.
+
+    → [E9](ejercicios.md)
+
+### 9 · El `enum`
+
+**a)** Es una lista de constantes `int` · **b)** Es una clase con un número fijo de instancias, y puede tener campos y métodos · **c)** No puede tener constructor · **d)** Se compara con `equals`, nunca con `==`
+
+??? success "Solución"
+
+    **b)** Un `enum` **es una clase**: puede llevar campos, constructor y métodos.
+
+    La (d) está al revés: como solo existe una instancia de cada valor, `==` es correcto y además seguro con `null`.
+
+    → [E10](ejercicios.md)
+
+### 10 · Para qué sirve una interfaz
+
+`ServicioPedidos` recibe un `Notificador` por el constructor. ¿Cuál es la ventaja principal?
+
+**a)** Escribir menos código · **b)** Añadir un notificador nuevo sin tocar el servicio, y poder probarlo con uno falso · **c)** Es más rápido · **d)** Obliga a usar `record`
+
+??? success "Solución"
+
+    **b)** El servicio **no sabe** cómo se envía. Añadir Telegram es una clase nueva y cero líneas tocadas.
+
+    Y la consecuencia grande: puedes pasarle un `NotificadorFalso` que solo apunte lo que le piden y **probar el servicio sin enviar nada**. Es la inyección de dependencias que en la UT4 hará Spring por ti.
+
+    → [E11](ejercicios.md)
+
+---
+
+## Bloque 3 — Colecciones
+
+### 11 · ¿Qué imprime?
+
+``` { .java .numerado }
+var m = new HashMap<String, Integer>();
+m.put("pera", 3);
+m.put("pera", 7);
+System.out.println(m.size());
+System.out.println(m.get("kiwi"));
+```
+
+**a)** `2` y `0` · **b)** `1` y `null` · **c)** `2` y `null` · **d)** `1` y `0`
+
+??? success "Solución"
+
+    **b)** `put` con una clave que ya existe **sustituye**, así que hay una sola entrada. Y `get` de una clave que no está devuelve **`null`**.
+
+    Si después haces `m.get("kiwi") + 1`, tienes un `NullPointerException`. Por eso existe `getOrDefault("kiwi", 0)`.
+
+    → [E13](ejercicios.md)
+
+### 12 · ¿Qué imprime?
+
+``` { .java .numerado }
+var l = new ArrayList<>(List.of(10, 20, 30));
+l.remove(1);
+System.out.println(l);
+```
+
+**a)** `[10, 20, 30]` · **b)** `[20, 30]` · **c)** `[10, 30]` · **d)** Excepción
+
+??? success "Solución"
+
+    **c) `[10, 30]`.** Con `List<Integer>`, `remove(int)` borra **la posición**, no el valor.
+
+    Para borrar el número 1: `l.remove(Integer.valueOf(1))`. Con `List<String>` no hay ambigüedad.
+
+    → [E14](ejercicios.md)
+
+### 13 · Qué colección
+
+Tienes que guardar el stock de cada código de producto, con 20.000 productos y búsquedas constantes.
+
+**a)** `ArrayList<Producto>` · **b)** `HashMap<String, Integer>` · **c)** `HashSet<Producto>` · **d)** `TreeSet<Producto>`
+
+??? success "Solución"
+
+    **b)** Búsqueda **directa por clave**.
+
+    La (a) es la respuesta que se da y la que hunde el programa: buscar en una lista la recorre entera. Con 20 productos no se nota; con 20.000, la diferencia medida es de unos **1.500 µs a 3 µs**.
+
+    → [E15](ejercicios.md)
+
+### 14 · Contar apariciones
+
+``` { .java .numerado }
+var cuenta = new HashMap<String, Integer>();
+for (var p : palabras) {
+    cuenta.???(p, 1, Integer::sum);
+}
+```
+
+**a)** `put` · **b)** `merge` · **c)** `computeIfAbsent` · **d)** `putIfAbsent`
+
+??? success "Solución"
+
+    **b) `merge`**: «si no está, pon 1; si está, súmale 1».
+
+    `computeIfAbsent` es la otra que hay que conocer, pero sirve para lo otro: **crear una lista vacía** si no hay nada para esa clave, y después añadir.
+
+    → [E16](ejercicios.md) · [E17](ejercicios.md)
+
+### 15 · ¿Qué pasa?
+
+``` { .java .numerado }
+var l = new ArrayList<>(List.of(1, 2, 3, 4));
+for (var n : l) { if (n % 2 == 0) l.remove(n); }
+```
+
+**a)** `[1, 3]` · **b)** `ConcurrentModificationException` · **c)** `IndexOutOfBoundsException` · **d)** No compila
+
+??? success "Solución"
+
+    **b)** No se puede modificar una colección mientras se recorre con `for-each`: el `remove` deja obsoleto al iterador y la excepción salta en la vuelta siguiente.
+
+    ```java
+    l.removeIf(n -> n % 2 == 0);
+    ```
+
+    → [E18](ejercicios.md)
+
+### 16 · ¿Qué lanza?
+
+``` { .java .numerado }
+var fija = List.of("a", "b");
+fija.add("c");
+```
+
+**a)** Nada, añade · **b)** `UnsupportedOperationException` · **c)** No compila · **d)** `IllegalStateException`
+
+??? success "Solución"
+
+    **b)** `List.of(...)` crea una lista **inmutable**. Lo mismo con `removeIf` o `set`.
+
+    Para poder modificarla: `new ArrayList<>(List.of(...))`. Y compila perfectamente: el fallo aparece al ejecutar.
+
+    → [E18](ejercicios.md)
+
+---
+
+## Bloque 4 — Streams
+
+Las preguntas de este bloque usan esta lista:
+
+``` { .java .numerado }
+record Producto(String nombre, String categoria, double precio) {}
+// Patinete/movilidad/120 · Casco/seguridad/35 · Bici/movilidad/450
+// Candado/seguridad/25 · Luces/seguridad/15
+```
+
+### 17 · ¿Qué devuelve?
+
+``` { .java .numerado }
+productos.stream()
+         .filter(p -> p.precio() < 100)
+         .map(Producto::nombre)
+         .sorted()
+         .toList();
+```
+
+**a)** `[Casco, Candado, Luces]` · **b)** `[Candado, Casco, Luces]` · **c)** `[Luces, Candado, Casco]` · **d)** Una lista de `Producto`
+
+??? success "Solución"
+
+    **b)** Se cae lo caro, lo que queda se convierte en texto y **después** se ordena alfabéticamente: `Candado` < `Casco` < `Luces`.
+
+    La (a) es el orden de la lista original, sin ordenar. La (d) olvida que el `map` ya ha cambiado el tipo.
+
+    → [E19](ejercicios.md)
+
+### 18 · ¿Qué pasa aquí?
+
+``` { .java .numerado }
+productos.stream()
+         .map(Producto::nombre)
+         .sorted(Comparator.comparingDouble(Producto::precio))
+         .toList();
+```
+
+**a)** Ordena por precio · **b)** No compila · **c)** Ordena alfabéticamente · **d)** Lanza `ClassCastException`
+
+??? success "Solución"
+
+    **b) No compila.** Después del `map` los elementos ya no son productos, **son textos**, y un texto no tiene precio.
+
+    Es la consecuencia práctica de que un stream se lea **de arriba abajo**: cada operación trabaja sobre lo que le dejó la anterior.
+
+    → [E19](ejercicios.md)
+
+### 19 · ¿Qué imprime?
+
+``` { .java .numerado }
+var s = productos.stream();
+System.out.println(s.count());
+System.out.println(s.count());
+```
+
+**a)** `5` y `5` · **b)** `5` y `0` · **c)** `5` y luego `IllegalStateException` · **d)** No compila
+
+??? success "Solución"
+
+    **c)** *stream has already been operated upon or closed*.
+
+    **Un stream se usa una vez**: se crea, se usa y se tira. Nunca se guarda en una variable para reutilizarlo.
+
+    → [E20](ejercicios.md)
+
+### 20 · La suma
+
+¿Cómo sumas los precios?
+
+**a)** `.map(Producto::precio).sum()` · **b)** `.mapToDouble(Producto::precio).sum()` · **c)** `.sum(Producto::precio)` · **d)** `.collect(Collectors.sum())`
+
+??? success "Solución"
+
+    **b)** `mapToDouble` convierte el stream a un `DoubleStream`, y **eso** es lo que desbloquea `sum()`, `average()` y `summaryStatistics()`.
+
+    Con `map` tendrías un `Stream<Double>`, que no tiene `sum()`.
+
+    → [E20](ejercicios.md)
+
+### 21 · Dónde va el `.reversed()`
+
+Quieres categoría **descendente** y, dentro, nombre ascendente.
+
+**a)** `comparing(cat).thenComparing(nombre).reversed()` · **b)** `comparing(cat).reversed().thenComparing(nombre)` · **c)** `comparing(cat).thenComparing(nombre.reversed())` · **d)** Las dos primeras son iguales
+
+??? success "Solución"
+
+    **b)** `reversed()` invierte **todo lo encadenado hasta ese punto**, así que va pegado a lo que quieres invertir.
+
+    La (a) invierte también el nombre, que es el fallo que comete la mayoría porque «reversed va al final» parece razonable.
+
+    → [E21](ejercicios.md)
+
+### 22 · ¿En qué orden salen las claves?
+
+``` { .java .numerado }
+productos.stream().collect(
+    Collectors.groupingBy(Producto::categoria, Collectors.counting()));
+```
+
+**a)** Alfabético · **b)** El de aparición en la lista · **c)** No está garantizado · **d)** Inverso
+
+??? success "Solución"
+
+    **c) No está garantizado.** `groupingBy` devuelve un **`HashMap`**.
+
+    ```java
+    Collectors.groupingBy(Producto::categoria, TreeMap::new, Collectors.counting())
+    ```
+
+    Que con cinco productos salga siempre igual es exactamente lo que engaña: el día que cambien los datos, cambia el orden y tu informe sale distinto sin que hayas tocado nada.
+
+    **Es la pregunta que más cae.**
+
+    → [E22](ejercicios.md)
+
+### 23 · El esquema de `groupingBy`
+
+Quieres, por categoría, **la suma de los precios**.
+
+**a)** `groupingBy(cat, summingDouble(Producto::precio))` · **b)** `groupingBy(cat, mapping(Producto::precio))` · **c)** `groupingBy(cat).sum()` · **d)** `summingDouble(groupingBy(cat))`
+
+??? success "Solución"
+
+    **a)** Siempre el mismo esquema:
+
+    ```
+    groupingBy( cómo hago los montones , qué hago con cada montón )
+    ```
+
+    El segundo parámetro decide: `counting()` cuántos, `summingDouble(...)` cuánto suman, `averagingDouble(...)` la media, `mapping(..., toList())` quedarse solo con un campo.
+
+    → [E23](ejercicios.md)
+
+---
+
+## Bloque 5 — Excepciones y `Optional`
+
+### 24 · ¿Qué imprime?
+
+``` { .java .numerado }
+try {
+    System.out.println(10 / 0);
+} catch (ArithmeticException e) {
+    System.out.println("A");
+} finally {
+    System.out.println("B");
+}
+System.out.println("C");
+```
+
+**a)** `A B C` · **b)** `A B` · **c)** `B C` · **d)** `A C`
+
+??? success "Solución"
+
+    **a)** El `catch` corta la excepción, `finally` se ejecuta siempre y el programa continúa.
+
+    Sin el `catch` saldría solo `B` y el programa moriría sin llegar a `C`.
+
+    → [E25](ejercicios.md)
+
+### 25 · Comprobada o no
+
+¿Cuál de estas obliga el compilador a capturar o declarar?
+
+**a)** `NullPointerException` · **b)** `IllegalArgumentException` · **c)** `IOException` · **d)** `NumberFormatException`
+
+??? success "Solución"
+
+    **c)** `IOException` hereda de `Exception`, no de `RuntimeException`: es **comprobada**.
+
+    La regla práctica: **comprobada** = algo externo puede fallar aunque tu código sea perfecto (disco, red, base de datos). **No comprobada** = tu código tiene un fallo.
+
+    → Tema [5](05-excepciones-y-optional.md)
+
+### 26 · El `catch` vacío
+
+``` { .java .numerado }
+try { guardar(pedido); } catch (Exception e) { }
+```
+
+**a)** Está bien, no queremos que se caiga · **b)** El pedido no se guarda y nadie se entera · **c)** No compila · **d)** Solo falta un `finally`
+
+??? success "Solución"
+
+    **b)** El programa sigue como si todo hubiera ido bien, con datos a medias. El fallo aparece días después, en otro sitio, sin una línea que explique por qué.
+
+    Un `catch` decente siempre hace **una** de tres cosas: arreglarlo, informar, o **volver a lanzar con la causa**:
+
+    ```java
+    catch (SQLException e) {
+        throw new PedidoException("No se pudo guardar el pedido " + id, e);
+    }
+    ```
+
+    Esa `e` al final es la que produce el `Caused by:` que lleva al origen.
+
+    → [E29](ejercicios.md)
+
+### 27 · ¿Qué está mal?
+
+``` { .java .numerado }
+if (buscar(1).isPresent()) System.out.println(buscar(1).get().nombre());
+```
+
+**a)** Nada · **b)** Busca dos veces y usa `get()`; se escribe con `map` e `ifPresent` · **c)** No compila · **d)** `isPresent` no existe
+
+??? success "Solución"
+
+    **b)** Es `Optional` escrito como si fuera `null`.
+
+    ```java
+    buscar(1).map(Cliente::nombre).ifPresent(System.out::println);
+    ```
+
+    Y `get()` sin comprobar es el `NullPointerException` del que querías escapar con otro nombre: lanza `NoSuchElementException: No value present`.
+
+    → [E28](ejercicios.md) · [E29](ejercicios.md)
+
+---
+
+## Bloque 6 — Proyecto Maven
+
+### 28 · ¿Qué falta?
+
+El proyecto no compila un `record`: *«records are not supported in -source 8»*.
+
+**a)** Falta el JDK 25 · **b)** Falta `<maven.compiler.release>25</maven.compiler.release>` · **c)** Falta una dependencia · **d)** Falta `<packaging>jar</packaging>`
+
+??? success "Solución"
+
+    **b)** Sin esa propiedad Maven usa una versión antigua por defecto, aunque tengas instalado el JDK 25.
+
+    Y la acompañante, que evita que las tildes se rompan en otro sistema:
+
+    ```xml
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    ```
+
+    → [E30](ejercicios.md)
+
+### 29 · El `.jar` que no arranca
+
+Empaquetas con `mvn package`, ejecutas `java -jar` y sale `NoClassDefFoundError` de una clase de Jackson.
+
+**a)** Falta el `Main-Class` · **b)** El `.jar` no lleva las dependencias dentro · **c)** Falta recompilar · **d)** Jackson no funciona en un `.jar`
+
+??? success "Solución"
+
+    **b)** Un `.jar` normal solo lleva **tus** clases. Las dependencias se quedan fuera.
+
+    Se resuelve con el **maven-shade-plugin**, que las empaqueta todas dentro. Es el fallo clásico de la primera entrega.
+
+    → [E32](ejercicios.md)
+
+### 30 · `mvn dependency:tree`
+
+Añades una dependencia y el árbol muestra tres. ¿Por qué?
+
+**a)** Maven se ha equivocado · **b)** Una dependencia arrastra las suyas · **c)** Están duplicadas · **d)** Son versiones distintas de la misma
+
+??? success "Solución"
+
+    **b)** Son **dependencias transitivas**. `jackson-databind` necesita `jackson-core` y `jackson-annotations`, y Maven las trae solas.
+
+    Por eso un `pom.xml` con cinco líneas acaba con treinta `.jar`, y por eso conviene mirar el árbol de vez en cuando: ahí se ven los conflictos de versión.
+
+    → [E31](ejercicios.md)
+
+---
+
+## Cómo se corrige
+
+Sin penalización: **nota = aciertos / 3**.
+
+| Aciertos (de 30) | Nota | Qué significa |
+|:-:|:-:|---|
+| 27 – 30 | 9 – 10 | Dominas la unidad |
+| 21 – 26 | 7 – 8 | Sólido; repasa los fallos concretos |
+| 15 – 20 | 5 – 6 | Aprobado justo: rehaz la batería del bloque que peor te fue |
+| < 15 | — | Vuelve a los temas con `jshell` abierto, no releyendo |
+
+!!! tip "Lo que hay que hacer después"
+    Apunta **el número de bloque** de cada fallo, no la pregunta. Si tres fallos son del bloque 4, lo que hay que repasar no son tres preguntas: son los streams enteros, y se repasan **rehaciendo el E24 desde cero**.
+
+    Releer la solución de una pregunta que fallaste da la sensación de haberlo arreglado. No lo arregla.
