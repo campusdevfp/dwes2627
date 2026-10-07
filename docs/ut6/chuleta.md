@@ -1,199 +1,387 @@
-# Chuleta REST + Security (UT6)
+# Chuleta de la UT6 — WebSockets, GraphQL y documentación
 
-## Diseño de URLs
+Una página. **Es la que se puede imprimir y llevar al examen práctico.**
 
-```http
-GET    /api/v1/productos                  200
-GET    /api/v1/productos/42               200 · 404
-POST   /api/v1/productos                  201 + Location
-PUT    /api/v1/productos/42               200 (reemplazo completo)
-PATCH  /api/v1/productos/42               200 (parcial)
-DELETE /api/v1/productos/42               204
-GET    /api/v1/clientes/7/pedidos         subrecurso
-POST   /api/v1/libros/42/prestamo         acción no-CRUD
+---
+
+## WebSockets
+
+```xml
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-websocket</artifactId>
+</dependency>
 ```
-
-Sustantivos en plural · minúsculas con guiones · sin verbos · versión en la URL · máximo 2 niveles de anidación.
-
-## ResponseEntity
 
 ```java
-ResponseEntity.ok(dto);
-ResponseEntity.created(uri).body(dto);          // 201
-ResponseEntity.noContent().build();             // 204
-ResponseEntity.status(HttpStatus.CONFLICT).body(x);
+@Component
+public class FunkosWebSocketHandler extends TextWebSocketHandler {
 
-var location = ServletUriComponentsBuilder.fromCurrentRequest()
-    .path("/{id}").buildAndExpand(creado.id()).toUri();
+    private final Set<WebSocketSession> sesiones = new CopyOnWriteArraySet<>();
+
+    @Override public void afterConnectionEstablished(WebSocketSession s) { sesiones.add(s); }
+    @Override public void afterConnectionClosed(WebSocketSession s, CloseStatus st) { sesiones.remove(s); }
+    @Override public void handleTransportError(WebSocketSession s, Throwable e) { sesiones.remove(s); }
+
+    @Override protected void handleTextMessage(WebSocketSession s, TextMessage m) { … }  // bidireccional
+
+    public void enviarATodos(String mensaje) {
+        for (var s : sesiones) {
+            try {
+                if (s.isOpen()) s.sendMessage(new TextMessage(mensaje));
+                else sesiones.remove(s);
+            } catch (IOException e) { sesiones.remove(s); }
+        }
+    }
+}
 ```
-
-## Códigos
-
-| Código | Cuándo |
-|---|---|
-| 200 / 201 / 204 | OK / creado / sin contenido |
-| 400 | validación, JSON malformado |
-| 401 | sin token o inválido |
-| 403 | autenticado sin permiso |
-| 404 | no existe |
-| 405 | método no permitido |
-| 409 | conflicto (duplicado, sin stock) |
-| 429 | demasiadas peticiones |
-| 500 / 502 / 503 | error interno / fallo de servicio externo |
-
-## Problem Details
 
 ```java
-var pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
-pd.setTitle("Producto no encontrado");
-pd.setType(URI.create("https://api.tienda.com/errores/no-encontrado"));
-pd.setInstance(URI.create(req.getRequestURI()));
-pd.setProperty("timestamp", Instant.now());
+@Configuration
+@EnableWebSocket
+public class WebSocketConfig implements WebSocketConfigurer {
+    @Override public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+        registry.addHandler(handler, "/ws/v1/funkos")
+                .setAllowedOrigins("http://localhost:5173");    // NUNCA "*"
+    }
+}
 ```
 
-## Paginación, orden y filtros
+:material-alert: `CopyOnWriteArraySet`, no `HashSet`: se recorre y se modifica desde hilos distintos.
+:material-alert: Quitar la sesión **en los tres sitios** y además al fallar el envío.
+:material-alert: El `try` **dentro** del bucle: sin él, un cliente roto deja sin mensaje a los demás.
+:material-alert: Sin `setAllowedOrigins`, cualquier web del mundo puede conectarse: los WebSockets **no** están sujetos a la política del mismo origen.
+
+### Notificar después de confirmar
 
 ```java
-@GetMapping
-public Page<Dto> buscar(
-    @RequestParam(required = false) String categoria,
-    @RequestParam(required = false) Double precioMax,
-    @PageableDefault(size = 20, sort = "nombre") Pageable pageable) { }
+public record FunkoCambiadoEvent(Tipo tipo, FunkoResponse funko) {
+    public enum Tipo { CREATE, UPDATE, DELETE }
+}
 ```
 
-```
-?page=0&size=10&sort=precio,desc&sort=nombre,asc&categoria=movilidad
-```
-
-Filtro opcional:.filter(p -> categoria == null || p.categoria().equals(categoria)) Respuesta: content, `totalElements`, `totalPages`, number, size, first, last.
-:material-alert:
-
-page empieza en 0. Página inexistente → 200 con content vacío, no 404.
-
-## OpenAPI
-
-```
-springdoc-openapi-starter-webmvc-ui
+```java
+// En el servicio: 2 líneas y nada más
+private final ApplicationEventPublisher eventos;
+eventos.publishEvent(new FunkoCambiadoEvent(Tipo.CREATE, respuesta));
 ```
 
-`/swagger-ui.html` · `/v3/api-docs`
+```java
+// En el notificador
+@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+public void alCambiar(FunkoCambiadoEvent e) { handler.enviarATodos(json(e)); }
+```
 
+:material-alert: **Sin `AFTER_COMMIT`, un `rollback` deja el mensaje ya enviado**: los clientes ven algo que no existe.
+:material-alert: Se manda el **DTO**, no la entidad: aquí estamos fuera de toda transacción → `LazyInitializationException`.
+
+| | Dirección | Reconexión | Cuándo |
+|---|---|:-:|---|
+| *Polling* | Cliente pregunta | — | Nunca, si hay alternativa |
+| **SSE** | Servidor → cliente | **Automática** | Notificaciones, progreso |
+| **WebSocket** | **Bidireccional** | La haces tú | Chat, pujas, alta frecuencia |
+
+```javascript
+const ws = new WebSocket(`ws://${location.host}/ws/v1/funkos`);
+ws.onopen    = () => …;
+ws.onmessage = e  => console.log(JSON.parse(e.data));
+ws.onclose   = () => …;      // aquí va el reintento
+ws.send(JSON.stringify({…}));
 ```
-@Tag(name="Productos") @Operation(summary="...") @ApiResponses({...})
-@Parameter(description="...", example="42")
-@Schema(description="...", example="Patinete")
-```
+
+`HTTP/1.1 101 Switching Protocols` — el único `1xx` que verás. La conexión deja de ser HTTP.
+
+---
 
 ## GraphQL
 
-```graphql title="src/main/resources/graphql/schema.graphqls"
-type Query { libros: [Libro!]!  libro(id: ID!): Libro }
-type Mutation { crearLibro(entrada: LibroEntrada!): Libro! }
-type Libro { id: ID!  titulo: String!  autor: Autor }
+```xml
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-graphql</artifactId>
+</dependency>
+<dependency>
+  <groupId>org.springframework.graphql</groupId>
+  <artifactId>spring-graphql-test</artifactId><scope>test</scope>
+</dependency>
 ```
-`src/main/resources/graphql/schema.graphqls`
+
+```graphql title="src/main/resources/graphql/schema.graphqls"
+type Funko {
+    id: ID!
+    nombre: String!
+    precio: Float!
+    categoria: Categoria!
+}
+
+input FunkoInput  { nombre: String!  precio: Float!  categoria: String! }
+input FunkoFiltro { categoria: String  precioMin: Float  nombre: String }
+
+type Query {
+    funkos(filtro: FunkoFiltro, pagina: Int = 0, tamano: Int = 20): [Funko!]!
+    funkoById(id: ID!): Funko
+}
+
+type Mutation {
+    crearFunko(input: FunkoInput!): Funko!
+    borrarFunko(id: ID!): Boolean!
+}
+
+type Subscription { funkoCambiado: Notificacion! }
+```
+
+| Tipo | Significa |
+|---|---|
+| `String` | Puede ser `null` |
+| `String!` | No puede ser `null` |
+| `[String]` | Lista y elementos pueden ser `null` |
+| `[String!]!` | **Ni la lista ni los elementos** — lo correcto para un listado |
+
+Escalares: `Int` `Float` `String` `Boolean` `ID`
 
 ```java
 @Controller
-public class LibroGraphQlControlador {
-    @QueryMapping    public List<LibroDto> libros()                  { … }
-    @QueryMapping    public LibroDto libro(@Argument Long id)        { … }
-    @MutationMapping public LibroDto crearLibro(@Argument LibroEntrada entrada) { … }
-    @SchemaMapping   public Autor autor(Libro libro)                 { … }   // OJO N+1
-    @BatchMapping    public Map<Libro, Autor> autor(List<Libro> libros) { … } // BIEN
+public class FunkosGraphQlController {
+
+    private final FunkosService servicio;        // ← EL MISMO que usa REST
+
+    @QueryMapping
+    public List<FunkoResponse> funkos(@Argument Optional<FunkoFiltro> filtro) { … }
+
+    @QueryMapping
+    public FunkoResponse funkoById(@Argument Long id) { return servicio.findById(id); }
+
+    @MutationMapping
+    public FunkoResponse crearFunko(@Argument("input") @Valid FunkoCreateRequest input) { … }
+
+    /** Campo calculado que no existe en la entidad */
+    @SchemaMapping(typeName = "Matricula", field = "aprobada")
+    public Boolean aprobada(MatriculaResponse m) { … }
+
+    /** Resuelve la relación para TODOS de golpe: evita el N+1 */
+    @BatchMapping(typeName = "Funko")
+    public Map<FunkoResponse, CategoriaResponse> categoria(List<FunkoResponse> funkos) { … }
+
+    @SubscriptionMapping
+    public Flux<Notificacion> funkoCambiado() { return emisor.asFlux(); }
 }
 ```
-```yaml
-spring.graphql.graphiql.enabled: true      # playground en /graphiql
-```
-
-## Tiempo real
 
 ```java
-@Configuration @EnableWebSocketMessageBroker
-class WsConfig implements WebSocketMessageBrokerConfigurer {
-    public void registerStompEndpoints(StompEndpointRegistry r) { r.addEndpoint("/ws").withSockJS(); }
-    public void configureMessageBroker(MessageBrokerRegistry r) {
-        r.enableSimpleBroker("/tema");
-        r.setApplicationDestinationPrefixes("/app");
+@Component
+public class GraphQlExceptionHandler extends DataFetcherExceptionResolverAdapter {
+    @Override
+    protected GraphQLError resolveToSingleError(Throwable ex, DataFetchingEnvironment env) {
+        return switch (ex) {
+            case FunkoNotFoundException e -> error(env, ErrorType.NOT_FOUND, e);
+            case FunkoConflictException e -> error(env, ErrorType.BAD_REQUEST, e);
+            default -> null;
+        };
     }
 }
-ws.convertAndSend("/tema/prestamos", dto);      // SimpMessagingTemplate
+```
+
+`ErrorType`: `NOT_FOUND` · `BAD_REQUEST` · `UNAUTHORIZED` · `FORBIDDEN` · `INTERNAL_ERROR`
+
+```properties
+spring.graphql.graphiql.enabled=true                 # /graphiql — SOLO dev
+spring.graphql.schema.printer.enabled=true           # /graphql/schema
+spring.graphql.schema.introspection.enabled=false    # false en PROD
 ```
 
 ```java
-@GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-public SseEmitter suscribirse() { … }
-```
-
-| | SSE | WebSocket |
-|---|---|---|
-| Sentido | servidor → cliente | los dos |
-| Reconexión | automática | la programas tú |
-| Cuándo | notificaciones, paneles | chat, colaboración |
-
-## Tests
-
-```java
-@WebMvcTest(ProductoControlador.class)
-@Autowired MockMvc mockMvc;  @MockitoBean ProductoServicio servicio;
-
-mockMvc.perform(get("/api/v1/productos/1"))
-    .andExpect(status().isOk())
-    .andExpect(jsonPath("$.nombre").value("Patinete"))
-    .andExpect(jsonPath("$.content.length()").value(2))
-    .andExpect(header().exists("Location"));
-
-@WithMockUser(roles = "ADMIN")     // simula usuario autenticado
-@SpringBootTest(webEnvironment = RANDOM_PORT) + TestRestTemplate   // integración
-```
-
-
-## Idempotencia y verbos
-
-| Verbo | Seguro | Idempotente | Notas |
-|---|---|---|---|
-| GET | :material-check: | :material-check: | Nunca debe modificar nada |
-| POST | :material-close: | :material-close: | Crea uno nuevo cada vez |
-| PUT | :material-close: | :material-check: | Reemplazo **completo** |
-| PATCH | :material-close: | :material-close:* | Idempotente con valores absolutos |
-| DELETE | :material-close: | :material-check: | 204 la 1.ª vez, 404 después; mismo **estado** |
-
-Reintentar solo lo idempotente. Para POST críticos: cabecera `Idempotency-Key`.
-
-## Versionado
-
-`/api/v1/...` en el `@RequestMapping` de la clase.
-**No rompe** (misma versión): añadir campo, añadir endpoint, añadir parámetro opcional.
-**Sí rompe** (nueva versión): quitar/renombrar campo, cambiar tipo, hacer obligatorio un parámetro, cambiar un código.
-
-## Consumir APIs
-
-```java
-@Bean RestClient client(RestClient.Builder b) {
-    var f = new SimpleClientHttpRequestFactory();
-    f.setConnectTimeout(Duration.ofSeconds(3));      // OJO SIEMPRE timeouts
-    f.setReadTimeout(Duration.ofSeconds(5));
-    return b.baseUrl("https://api.ejemplo.com").requestFactory(f).build();
+@Bean
+public GraphQlSourceBuilderCustomizer limites() {
+    return b -> b.configureGraphQl(g -> g.instrumentation(List.of(
+            new MaxQueryDepthInstrumentation(10),
+            new MaxQueryComplexityInstrumentation(200))));
 }
-
-client.get().uri("/users/{id}", id)                  // parametrizado, no concatenado
-      .retrieve()
-      .onStatus(s -> s.value() == 404, (rq, rs) -> { throw new NoEncontradoException(); })
-      .onStatus(HttpStatusCode::is5xxServerError, (rq, rs) -> { throw new ExternoException(); })
-      .body(MiDto.class);
 ```
 
-`@JsonIgnoreProperties(ignoreUnknown = true)` en los DTO externos · error del proveedor → `502`, nunca 500 · `@Cacheable` para no agotar el límite de peticiones.
+:material-alert: **El N+1 es el problema característico de GraphQL.** Pedir la categoría de 100 funkos son 101 consultas sin `@BatchMapping`, y **no se arregla con `JOIN FETCH`** porque la consulta depende de lo que pida el cliente.
+:material-alert: **GraphQL devuelve 200 casi siempre.** Los errores van en `errors`, así que no se puede monitorizar por el código de estado.
+:material-alert: Todo va por **`POST` a `/graphql`**, también las lecturas → **la caché HTTP no funciona**.
+:material-alert: `introspection` en producción regala el esquema completo.
+:material-alert: Sin límites de profundidad, **el cliente decide el coste** de tu consulta.
 
-## Errores frecuentes que cuestan puntos
+```bash
+curl -s localhost:8080/graphql -H "Content-Type: application/json" \
+     -d '{"query":"{ funkos { nombre } }"}' | jq
+```
 
-1. POST que devuelve 200 sin Location → debe ser 201 + Location.
-2. @RequestBody sin `@Valid` → no se valida nada.
-3. .anyRequest().permitAll()
-    arriba de la cadena → API abierta.
-4. roles = "ROLE_ADMIN" en `@WithMockUser` → genera `ROLE_ROLE_ADMIN` → 403.
-5. @WebMvcTest sin `@Import(SecurityConfig.class)` → los tests de 401/403 no prueban nada.
-6. ?page=99 devolviendo 404 → debe ser 200 con `content: []`.
-7. Ordenar por cualquier campo que mande el cliente → lista blanca.
-8. Traza de la excepción en la respuesta → al log, nunca al cliente.
+```java
+@SpringBootTest @AutoConfigureGraphQlTester
+class Test {
+    @Autowired GraphQlTester tester;
+
+    @Test void consulta() {
+        tester.document("{ funkos { nombre } }").execute()
+              .path("funkos[0].nombre").entity(String.class).isNotNull();
+    }
+    @Test void error() {
+        tester.document("{ funkoById(id: 9999) { nombre } }").execute()
+              .errors().expect(e -> e.getErrorType() == ErrorType.NOT_FOUND);
+    }
+}
+```
+
+| | REST | GraphQL |
+|---|---|---|
+| Endpoints | Uno por recurso | **Uno**: `/graphql` |
+| Qué llega | Lo que decide el servidor | **Lo que pide el cliente** |
+| Varios recursos | Varias peticiones | **Una** |
+| Códigos de estado | 200/201/400/404/409 | **200 casi siempre** |
+| Caché HTTP | **Nativa** | Hay que montarla |
+| Esquema | OpenAPI, opcional | **Obligatorio y verificado** |
+| Coste de una petición | Conocido | **Lo decide el cliente** |
+
+---
+
+## CORS
+
+```java
+@Configuration
+public class CorsConfig implements WebMvcConfigurer {
+    @Override public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/api/**")
+                .allowedOrigins(origenes)        // de application-{perfil}.properties
+                .allowedMethods("GET","POST","PUT","PATCH","DELETE","OPTIONS")
+                .allowedHeaders("*")
+                .exposedHeaders("Location")      // para que el JS lea el 201
+                .allowCredentials(true)
+                .maxAge(3600);
+    }
+}
+```
+
+```properties
+# dev
+cors.origenes-permitidos=http://localhost:5173,http://localhost:3000
+# prod
+cors.origenes-permitidos=https://miapp.es
+```
+
+**El *preflight*:**
+
+```
+OPTIONS /api/v1/funkos
+Origin: http://localhost:5173
+Access-Control-Request-Method: POST
+Access-Control-Request-Headers: content-type
+
+→ 200
+Access-Control-Allow-Origin: http://localhost:5173
+Access-Control-Allow-Methods: POST
+Access-Control-Allow-Headers: content-type
+Access-Control-Max-Age: 3600
+```
+
+Dispara *preflight*: verbo distinto de GET/HEAD/POST · `Content-Type: application/json` · cabeceras propias.
+Es decir: **casi cualquier petición de una API REST**.
+
+:material-alert: **Bloquea el NAVEGADOR, no tu servidor.** La petición llega, se procesa y se responde 200; el navegador le niega el resultado al JavaScript. Por eso funciona con `curl`.
+:material-alert: **CORS no protege tu API**: protege al usuario de que otra web use su sesión. Cualquiera puede llamarte desde fuera de un navegador.
+:material-alert: `allowedOrigins("*")` + `allowCredentials(true)` → **el navegador lo rechaza**, y a propósito. Usa `allowedOriginPatterns`.
+:material-alert: Sin `exposedHeaders`, el JS solo puede leer seis cabeceras: `Location` no está entre ellas.
+
+```bash
+curl -i -X OPTIONS localhost:8080/api/v1/funkos \
+  -H "Origin: http://localhost:5173" \
+  -H "Access-Control-Request-Method: POST"
+```
+
+---
+
+## OpenAPI y Swagger
+
+```xml
+<dependency>
+  <groupId>org.springdoc</groupId>
+  <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+  <version>2.7.0</version>
+</dependency>
+```
+
+| | |
+|---|---|
+| `/v3/api-docs` | El JSON de la especificación |
+| `/swagger-ui/index.html` | La interfaz, **con botón de disparar** |
+
+```java
+@Configuration
+public class OpenApiConfig {
+    @Bean public OpenAPI apiInfo() {
+        return new OpenAPI()
+            .info(new Info().title("API de Funkos").version("v1")
+                  .description("…")
+                  .contact(new Contact().name("…").email("…"))
+                  .license(new License().name("CC BY-NC-SA 4.0").url("…")))
+            .servers(List.of(new Server().url("http://localhost:8080").description("Dev")))
+            .tags(List.of(new Tag().name("Funkos").description("CRUD de funkos")));
+    }
+}
+```
+
+```java
+@Tag(name = "Funkos", description = "CRUD y búsqueda")
+@RestController
+public class FunkosRestController {
+
+    @Operation(summary = "Obtiene un funko por su id",
+               description = "Los borrados lógicamente se tratan como inexistentes.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Encontrado",
+            content = @Content(schema = @Schema(implementation = FunkoResponse.class))),
+        @ApiResponse(responseCode = "404", description = "No existe", content = @Content),
+        @ApiResponse(responseCode = "409", description = "Nombre repetido", content = @Content)
+    })
+    @GetMapping("/{id}")
+    public ResponseEntity<FunkoResponse> findById(
+            @Parameter(description = "Id del funko", example = "1", required = true)
+            @PathVariable Long id) { … }
+}
+```
+
+```java
+@Schema(description = "Datos de un funko")
+public record FunkoResponse(
+        @Schema(description = "Identificador", example = "1") Long id,
+        @Schema(description = "Nombre", example = "Mickey Mouse") String nombre) {}
+```
+
+```properties
+# dev
+springdoc.api-docs.enabled=true
+springdoc.swagger-ui.enabled=true
+springdoc.swagger-ui.path=/swagger-ui.html
+springdoc.swagger-ui.operationsSorter=method
+# PROD
+springdoc.api-docs.enabled=false
+springdoc.swagger-ui.enabled=false
+```
+
+| Lo deduce de tu código | Hay que escribirlo |
+|---|---|
+| Ruta, verbo, parámetros | **Para qué sirve** |
+| Tipos y obligatoriedad (de `@NotBlank`, `@Min`…) | **Qué errores** devuelve y cuándo |
+| Esquema de los DTOs | **Ejemplos** de valores reales |
+
+:material-alert: **Swagger UI es un cliente HTTP completo**, no un visor. En producción, apagado: publica todos tus endpoints y un botón para llamarlos.
+:material-alert: Los **409 de negocio** no los puede deducir ninguna herramienta. Son justo lo que necesita quien consume tu API.
+
+---
+
+## Los diez errores del examen
+
+| | Síntoma | Causa |
+|:-:|---|---|
+| 1 | `ConcurrentModificationException` en el *broadcast* | `HashSet` en vez de `CopyOnWriteArraySet` |
+| 2 | Un cliente desconectado deja sin mensaje a los demás | Falta el `try` **dentro** del bucle |
+| 3 | Los clientes ven algo que no está en la BD | Falta `@TransactionalEventListener(AFTER_COMMIT)` |
+| 4 | `LazyInitializationException` en el notificador | Se manda la entidad, no el DTO |
+| 5 | 101 consultas en una query GraphQL | Falta `@BatchMapping` |
+| 6 | La monitorización no detecta errores de GraphQL | GraphQL devuelve **200** casi siempre |
+| 7 | Funciona en Postman y falla en el navegador | **CORS**: falta el origen permitido |
+| 8 | `OPTIONS` devuelve 403 | Origen no incluido en `allowedOrigins` |
+| 9 | El JS no puede leer la cabecera `Location` del 201 | Falta `exposedHeaders("Location")` |
+| 10 | Swagger accesible en producción | Falta apagarlo en `application-prod.properties` |

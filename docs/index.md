@@ -29,9 +29,9 @@ Los RA **no pesan lo mismo**: cada uno lleva un peso según su dificultad, y ese
 | **1º** | **UT1** | RA1 | Cómo funciona la web por dentro: HTTP, arquitecturas, APIs, despliegue | 6 h | 5 % |
 | **1º** | **UT2** | RA2 | Java moderno en el servidor: sintaxis, POO, colecciones, excepciones | 8 h | 5 % |
 | **1º** | **UT3** | RA3 | Estructuras de datos, ficheros y JSON | 10 h | 6 % |
-| **1º** | **UT4** | RA5 | Separar la lógica de la presentación: capas con Spring Boot | 18 h | 11 % |
-| **1º** | **UT5** | RA6 | Acceso a bases de datos con JPA | 20 h | 13 % |
-| **1º** | **UT6** | RA7 | Servicios web: REST, GraphQL y WebSockets | 18 h | 11 % |
+| **1º** | **UT4** | RA5 | Spring Boot: capas, REST, DTOs, validación y caché | 18 h | 11 % |
+| **1º** | **UT5** | RA6 | Spring Data con JPA y SQL: entidades, relaciones y consultas | 20 h | 13 % |
+| **1º** | **UT6** | RA7 | Servicios web: WebSockets, GraphQL y documentación | 18 h | 11 % |
 | | | | *Total primer trimestre* | *80 h* | *51 %* |
 | **2º** | **UT7** | RA4 | Estado, sesiones, cookies y autenticación | 20 h | 12 % |
 | **2º** | **UT8** | RA8 | Páginas dinámicas generadas en el servidor (Thymeleaf) | 26 h | 17 % |
@@ -79,19 +79,19 @@ Los **nueve resultados de aprendizaje** no se imparten en el orden en que los nu
     : 1. El viaje de una petición · 2. Cliente y servidor · 3. Arquitecturas y MVC · 4. HTTP a fondo · 5. APIs a fondo · 6. Web dinámica y lenguajes · 7. Java en 2026 · 8. Servidores y despliegue · 9. Seguridad y monitorización · 10. Resumen
 
     **UT2 · RA2 · Java moderno** — 6 temas
-    : 1. Primeros pasos · 2. Sintaxis y tipos · 3. POO en Java · 4. Colecciones y programación funcional · 5. Excepciones y `Optional` · 6. Proyectos y testing
+    : 1. Primeros pasos · 2. Sintaxis y tipos · 3. POO en Java · 4. Colecciones y streams · 5. Excepciones y `Optional` · 6. Un proyecto Maven
 
-    **UT3 · RA3 · Datos, ficheros y JSON** — 5 temas
-    : 1. Estructuras de datos · 2. Ficheros · 3. JSON y Jackson · 4. Fechas y validación · 5. El patrón repositorio y las capas
+    **UT3 · RA3 · Datos, intercambio y base de datos** — 3 temas
+    : 1. CSV y JSON · 2. Fechas y validación · 3. CRUD contra base de datos
 
-    **UT4 · RA5 · Capas con Spring Boot** — 6 temas
-    : 1. Spring Boot · 2. Inyección de dependencias · 3. Las capas en Spring · 4. DTO y validación · 5. Errores y configuración · 6. Testing en Spring
+    **UT4 · RA5 · Spring Boot, capas y REST** — 5 temas
+    : 1. Introducción a Spring Boot · 2. Spring Web REST · 3. Servicios, DTOs y caché · 4. Proyecto completo paso a paso · 5. Configuración y variables de entorno
 
-    **UT5 · RA6 · Acceso a datos (JPA)** — 6 temas
-    : 1. Qué hace JPA por debajo · 2. Entidades y mapeo · 3. Spring Data JPA · 4. Relaciones · 5. Transacciones e integridad · 6. De H2 a producción
+    **UT5 · RA6 · Spring Data con JPA y SQL** — 4 temas
+    : 1. Spring Data con JPA y SQL · 2. Resultados avanzados · 3. Proyecto completo paso a paso · 4. Referencia de JPA y validaciones
 
-    **UT6 · RA7 · Servicios web** — 8 temas
-    : 1. Diseño de APIs REST · 2. Respuestas y errores · 3. Paginación y búsqueda · 4. Documentación con OpenAPI · 5. GraphQL · 6. WebSockets y tiempo real · 7. Testing de APIs · 8. Consumir APIs
+    **UT6 · RA7 · Servicios web** — 4 temas
+    : 1. WebSockets · 2. GraphQL · 3. CORS y documentación de APIs · 4. Proyecto completo paso a paso
 
 ??? note "2.º trimestre — desplegar para ver los temas"
 
@@ -282,3 +282,35 @@ Todo el temario está también en **[una única página imprimible](curso-comple
 3. <kbd>Ctrl</kbd>+<kbd>P</kbd> → **Guardar como PDF**, activando *Gráficos de fondo*.
 
 Sale bien aunque estés navegando en modo oscuro: la hoja de impresión fuerza fondo blanco.
+
+## 9. Créditos y licencia del material
+
+Casi todo el temario es original de este curso, con una excepción importante que conviene conocer.
+
+!!! quote "Las unidades UT4, UT5 y UT6 se apoyan en el material de José Luis González Sánchez"
+    Los temas marcados abajo son una **adaptación del repositorio [DesarrolloWebEntornosServidor-02-2025-2026](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026)** de **[José Luis González Sánchez](https://github.com/joseluisgs)** ([joseluisgs.dev](https://joseluisgs.dev)), publicado bajo licencia [Creative Commons Reconocimiento-NoComercial-CompartirIgual 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/).
+
+    | Unidad | Temas adaptados | Archivo original |
+    |---|---|---|
+    | **UT4** | 1. Introducción a Spring Boot | `springboot/03-Spring.md` |
+    | **UT4** | 2. Spring Web REST | `springboot/04-SpringWebRest.md` |
+    | **UT4** | 3. Servicios, DTOs y caché | `springboot/05-Servicios.md` |
+    | **UT5** | 1. Spring Data con JPA y SQL | `springboot/07-SpringDataJPASQL.md` |
+    | **UT5** | 2. Resultados avanzados | `springboot/10-ResultadosAvazados.md` |
+    | **UT6** | 1. WebSockets | `springboot/09-WebSockets.md` |
+    | **UT6** | 2. GraphQL | `springboot/16-GraphQL.md` |
+    | **UT6** | 3. CORS y documentación de APIs | `springboot/13-Documentacion.md` |
+
+    **Qué se ha conservado:** el texto, los diagramas, los ejemplos de código y las «Notas del Profesor» y «Tips del Examinador» del autor.
+
+    **Qué se ha adaptado a este curso:** **Maven** en lugar de Gradle (en pestañas, con el original al lado), **Java 25** en lugar de Java 17, la renumeración de apartados para encajar en estas unidades, y los temas de proyecto, referencias, retos y baterías de ejercicios, que son propios.
+
+    Cada uno de esos temas lleva su nota de autoría al principio.
+
+!!! info "Material complementario del autor, por si quieres ir más allá"
+    - **Vídeos:** [Construyendo Servicios Web con Spring Boot](https://youtu.be/oat9HhL2Nvc) · [Spring Data JPA y SQL](https://youtu.be/teZSHyXWLzs) · [WebSockets](https://youtu.be/QyOSZc2g8fQ) · [GraphQL](https://youtu.be/c_aNuF8oBVM)
+    - **Proyecto completo del autor**, por etapas: [DesarrolloWebEntornosServidor-02-Proyecto-SpringBoot](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-Proyecto-SpringBoot)
+
+    Está organizado por etiquetas, una por tema, así que se puede ir viendo cómo crece el proyecto sesión a sesión.
+
+El resto del material de este sitio se publica también bajo **CC BY-NC-SA 4.0**: puedes usarlo, copiarlo y modificarlo citando la fuente, sin fines comerciales y compartiéndolo en las mismas condiciones.

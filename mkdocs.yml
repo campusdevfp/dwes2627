@@ -185,38 +185,31 @@ nav:
       - Chuleta: ut3/chuleta.md
       - Batería de ejercicios: ut3/ejercicios.md
       - Simulacro de test: ut3/autoevaluacion.md
-    - UT4 · RA5 · Capas con Spring Boot:
+    - UT4 · RA5 · Spring Boot, capas y REST:
       - ut4/index.md
-      - 1. Spring Boot: ut4/01-spring-boot.md
-      - 2. Inyección de dependencias: ut4/02-inyeccion-dependencias.md
-      - 3. Las capas en Spring: ut4/03-capas-en-spring.md
-      - 4. DTO y validación: ut4/04-dto-y-validacion.md
-      - 5. Errores y configuración: ut4/05-errores-y-configuracion.md
-      - 6. Testing en Spring: ut4/06-testing-en-spring.md
+      - 1. Introducción a Spring Boot: ut4/01-introduccion-spring-boot.md
+      - 2. Spring Web REST: ut4/02-spring-web-rest.md
+      - 3. Servicios, DTOs y caché: ut4/03-servicios-dtos-y-cache.md
+      - 4. Proyecto completo paso a paso: ut4/04-proyecto-completo.md
+      - 5. Configuración y variables de entorno: ut4/05-configuracion.md
       - Chuleta: ut4/chuleta.md
       - Retos: ut4/retos.md
       - Batería de ejercicios: ut4/ejercicios.md
-    - UT5 · RA6 · Acceso a datos (JPA):
+    - UT5 · RA6 · Spring Data con JPA y SQL:
       - ut5/index.md
-      - 1. Qué hace JPA por debajo: ut5/01-que-hace-jpa-por-debajo.md
-      - 2. Entidades y mapeo: ut5/02-entidades-y-mapeo.md
-      - 3. Spring Data JPA: ut5/03-spring-data-jpa.md
-      - 4. Relaciones: ut5/04-relaciones.md
-      - 5. Transacciones e integridad: ut5/05-transacciones.md
-      - 6. De H2 a producción: ut5/06-produccion.md
+      - 1. Spring Data con JPA y SQL: ut5/01-spring-data-jpa-sql.md
+      - 2. Resultados avanzados: ut5/02-resultados-avanzados.md
+      - 3. Proyecto completo paso a paso: ut5/03-proyecto-completo.md
+      - 4. Referencia de JPA y validaciones: ut5/04-referencias.md
       - Chuleta: ut5/chuleta.md
       - Retos: ut5/retos.md
       - Batería de ejercicios: ut5/ejercicios.md
     - UT6 · RA7 · Servicios web:
       - ut6/index.md
-      - 1. Diseño de APIs REST: ut6/01-diseno-rest.md
-      - 2. Respuestas y errores: ut6/02-respuestas-y-errores.md
-      - 3. Paginación y búsqueda: ut6/03-paginacion-y-busqueda.md
-      - 4. Documentación OpenAPI: ut6/04-documentacion-openapi.md
-      - 5. GraphQL: ut6/05-graphql.md
-      - 6. WebSockets y tiempo real: ut6/06-websockets.md
-      - 7. Testing de APIs: ut6/07-testing-apis.md
-      - 8. Consumir APIs: ut6/08-consumir-apis.md
+      - 1. WebSockets: ut6/01-websockets.md
+      - 2. GraphQL: ut6/02-graphql.md
+      - 3. CORS y documentación de APIs: ut6/03-documentacion-apis.md
+      - 4. Proyecto completo paso a paso: ut6/04-proyecto-completo.md
       - Chuleta: ut6/chuleta.md
       - Retos: ut6/retos.md
       - Batería de ejercicios: ut6/ejercicios.md

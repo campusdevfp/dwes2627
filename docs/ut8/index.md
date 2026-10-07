@@ -85,5 +85,5 @@ Esta unidad tiene cuatro trampas que se repiten curso tras curso, y las cuatro d
 ## Antes de la S1
 
 - [ ] Tu proyecto de la UT7 arranca y la API responde.
-- [ ] Repasa qué es un DTO ([UT4 tema 4](../ut4/04-dto-y-validacion.md)): aquí vuelven a ser la pieza clave.
+- [ ] Repasa qué es un DTO ([UT4 tema 3](../ut4/03-servicios-dtos-y-cache.md)): aquí vuelven a ser la pieza clave.
 - [ ] Ten a mano las llaves de tu base de datos: vamos a mirar mucho el HTML generado.

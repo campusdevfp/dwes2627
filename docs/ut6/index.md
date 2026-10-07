@@ -1,63 +1,139 @@
-# UT6 — Servicios web: REST, GraphQL y WebSockets
+# UT6 — Servicios web: WebSockets, GraphQL y documentación
 
 **18 h · 18 sesiones · Trimestre 1.º** · Evaluación: :material-laptop: **examen práctico (100 %)**
 
 > **RA7:** Desarrolla servicios web reutilizables y accesibles mediante protocolos web, verificando su funcionamiento.
 
-La unidad más larga y la más "de empresa" del curso. Entre la UT4 y la UT5 montaste una aplicación por capas con datos reales detrás; aquí la conviertes en una **API profesional**: paginada, filtrable, documentada y probada. Y añades las dos cosas que hoy pide cualquier empresa además de REST: **GraphQL** y **tiempo real con WebSockets**.
+Hasta ahora, **el cliente preguntaba y el servidor contestaba**. Siempre, en un solo formato, por una sola puerta y sin documentar.
 
-!!! info "Continuamos el proyecto"
-    Seguimos con la *TiendaAPI*, ya persistida en la UT5. No se empieza de cero: se amplía. La paginación de esta unidad es la de verdad, contra la base de datos — no cortar una lista en memoria.
+Aquí se abren tres puertas más a lo mismo: **WebSockets** para que el servidor hable cuando quiera, **GraphQL** para que el cliente pida exactamente lo que necesita, y **OpenAPI** para que alguien pueda usar tu API sin preguntarte nada.
 
-!!! note "Y la seguridad, ¿cuándo?"
-    En la **UT7**, ya en el segundo trimestre. Proteger endpoints se entiende mejor cuando la API está terminada y sabes exactamente qué hay que proteger.
+!!! quote "Autoría del material de los temas 1, 2 y 3"
+    Los tres primeros temas son una **adaptación del material de [José Luis González Sánchez](https://github.com/joseluisgs)** (repositorio [DesarrolloWebEntornosServidor-02-2025-2026](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026), licencia [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/)), con el texto, los diagramas y los ejemplos originales.
 
+    Las adaptaciones de este curso: **Maven en vez de Gradle**, **Java 25**, y los apartados de proyecto, retos y ejercicios. Cada tema lleva su nota de autoría arriba.
+
+!!! success "Un servicio, tres transportes"
+    ```mermaid
+    graph TB
+        REST["REST<br/>/api/v1/funkos"] --> S["FunkosService<br/>@Service"]
+        WS["WebSocket<br/>/ws/v1/funkos"] --> S
+        GQL["GraphQL<br/>/graphql"] --> S
+        S --> R["FunkosRepository"]
+        R --> BD[("MySQL")]
+        DOC["OpenAPI<br/>/swagger-ui"] -.->|documenta| REST
+    ```
+
+    **Esta unidad no va de aprender tres tecnologías.** Va de comprobar que la arquitectura de la UT4 y la UT5 aguanta: que el mismo servicio sirve para tres transportes distintos sin tocarlo.
+
+!!! danger "Lo que esta unidad mide de verdad"
+    El criterio que vale más puntos en las tres rúbricas es el mismo:
+
+    ```bash
+    git diff --stat src/main/java/**/services/
+    ```
+
+    Si el servicio ha cambiado en algo más que un `publishEvent`, la unidad está mal resuelta **aunque todo funcione**. Y lo que estará mal no es esta unidad: es la de hace dos meses.
+
+    Un servicio con `ResponseEntity` dentro no se puede usar desde un WebSocket ni desde GraphQL, porque ahí los códigos HTTP no significan nada.
+
+---
 
 ## Al terminar sabrás hacer
 
-Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede sin marcar la semana del examen es exactamente lo que hay que repasar.
+Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**.
 
-- [ ] Diseñar una **API REST** con rutas, verbos y códigos de estado correctos.
-- [ ] Construir respuestas con las **cabeceras** adecuadas y errores en formato **RFC 7807**.
-- [ ] Implementar **paginación, ordenación y búsqueda** con criterios combinables.
-- [ ] Documentar la API con **OpenAPI** y publicar su interfaz interactiva.
-- [ ] Exponer los mismos datos con **GraphQL** y evitar el N+1 con `@BatchMapping`.
-- [ ] Empujar datos al cliente con **WebSockets** o SSE cuando la petición-respuesta no basta.
-- [ ] **Probar** la API a todos los niveles y **consumir** APIs de terceros con `RestClient`.
+- [ ] Explicar cuándo toca **WebSocket, SSE o *polling***, y por qué.
+- [ ] Montar un **WebSocket** con sesiones concurrentes, limpieza y *broadcast* tolerante a fallos.
+- [ ] Notificar **después de confirmar la transacción**, con eventos de Spring.
+- [ ] Escribir un **esquema GraphQL** con tipos, entradas, queries, mutaciones y suscripciones.
+- [ ] Resolver el **N+1 de GraphQL** con `@BatchMapping`, y **medirlo**.
+- [ ] Traducir tus excepciones de dominio a `ErrorType` de GraphQL.
+- [ ] Limitar **profundidad y complejidad** de las consultas, y apagar la introspección.
+- [ ] Explicar **quién bloquea** una petición por CORS y configurarlo por perfiles.
+- [ ] Documentar una API con **OpenAPI**, incluidos los errores de negocio.
+- [ ] Testear los tres transportes: `MockMvc`, cliente WebSocket y `GraphQlTester`.
+
+## Los temas
+
+| | | |
+|:-:|---|---|
+| **1** | [WebSockets](01-websockets.md) | Comunicación bidireccional, sesiones, notificaciones |
+| **2** | [GraphQL](02-graphql.md) | Esquema, queries, mutaciones, suscripciones, el N+1 |
+| **3** | [CORS y documentación de APIs](03-documentacion-apis.md) | Política de origen, *preflight*, OpenAPI y Swagger |
+| **4** | [Proyecto completo paso a paso](04-proyecto-completo.md) | Los tres sobre el proyecto de la UT5, en 14 pasos |
 
 ## Calendario
 
 | Sesión (55') | En clase | Lectura previa |
 |---|---|---|
-| **S1** | Repaso REST · diseño de recursos, jerarquías y versionado | [1. Diseño de APIs REST](01-diseno-rest.md) §1–4 |
-| **S2** | `ResponseEntity` y control fino de la respuesta | [2. Respuestas y errores](02-respuestas-y-errores.md) §1–2 |
-| **S3** | Cabeceras, `Location` y negociación de contenido | [2. Respuestas y errores](02-respuestas-y-errores.md) §3 |
-| **S4** | Errores con **Problem Details** (RFC 7807) | [2. Respuestas y errores](02-respuestas-y-errores.md) §4–5 |
-| **S5** | Paginación con `Pageable` y ordenación | [3. Paginación y búsqueda](03-paginacion-y-busqueda.md) §1–3 |
-| **S6** | Filtrado y búsqueda por criterios combinables | [3. Paginación y búsqueda](03-paginacion-y-busqueda.md) §4–5 |
-| **S7** | OpenAPI: documentar la API · Swagger UI y anotaciones | [4. Documentar con OpenAPI](04-documentacion-openapi.md) |
-| **S8** | Lo que REST no resuelve: *over-* y *under-fetching* | [5. GraphQL](05-graphql.md) §1–2 |
-| **S9** | Esquema, `@QueryMapping` y el *playground* | [5. GraphQL](05-graphql.md) §3–4 |
-| **S10** | Mutaciones y `@BatchMapping`: el N+1 otra vez · cuándo REST y cuándo GraphQL | [5. GraphQL](05-graphql.md) §5–6 |
-| **S11** | Tiempo real: *polling*, SSE y WebSockets | [6. WebSockets](06-websockets.md) §1–2 |
-| **S12** | STOMP: canales, suscripciones y difusión | [6. WebSockets](06-websockets.md) §3–4 |
-| **S13** | Un chat y un panel de stock en vivo | [6. WebSockets](06-websockets.md) §5 |
-| **S14** | Tests de API con `MockMvc` y de integración | [7. Testing de APIs](07-testing-apis.md) |
-| **S15** | Consumir otras APIs con `RestClient` | [8. Consumir APIs](08-consumir-apis.md) |
-| **S16** | Laboratorio: la API de la biblioteca, paginada y filtrable | [Batería de ejercicios](ejercicios.md) |
-| **S17** | Repaso integrador, documentación y dudas | [Reto R3, a entregar](retos.md) |
-| **S18** | :material-laptop: **Examen práctico de RA7 (100 %)** | [Reto R3, a entregar](retos.md) |
+| **S1** | HTTP frente a WebSocket · *polling*, SSE y WebSocket · el `101` | [1. WebSockets](01-websockets.md) §1.1 |
+| **S2** | Instalar y configurar: el `handler` y las sesiones concurrentes | [1. WebSockets](01-websockets.md) §1.1 |
+| **S3** | Enviar notificaciones · eventos y **`AFTER_COMMIT`** | [1. WebSockets](01-websockets.md) §1.2 |
+| **S4** | :material-check-circle: **Reto 1.1 · Notificador de funkos** | [4. Proyecto](04-proyecto-completo.md) pasos 1–6 |
+| **S5** | :material-check-circle: **Reto 1.2 · Panel de stock**, con huecos | [Retos · bloque 1](retos.md) |
+| **S6** | Qué es GraphQL · comparación con REST · sintaxis del esquema | [2. GraphQL](02-graphql.md) §2.1–2.2 |
+| **S7** | Instalación · esquema de productos y categorías · el controlador | [2. GraphQL](02-graphql.md) §2.3–2.5 |
+| **S8** | Consultas, mutaciones y **suscripciones** · el **N+1** y `@BatchMapping` | [2. GraphQL](02-graphql.md) §2.6–2.7 |
+| **S9** | :material-check-circle: **Reto 2.1 · GraphQL de funkos** | [4. Proyecto](04-proyecto-completo.md) pasos 7–10 |
+| **S10** | :material-check-circle: **Reto 2.2 · GraphQL del instituto**, con huecos | [Retos · bloque 2](retos.md) |
+| **S11** | **CORS**: quién bloquea, el *preflight*, configurar por perfiles | [3. CORS y docs](03-documentacion-apis.md) §3.1 |
+| **S12** | **OpenAPI y Swagger**: documentar endpoints y DTOs | [3. CORS y docs](03-documentacion-apis.md) §3.2 |
+| **S13** | :material-check-circle: **Retos 3.1 y 3.2** · cruzar APIs entre parejas | [4. Proyecto](04-proyecto-completo.md) pasos 11–13 |
+| **S14** | **Testear los tres transportes** | [4. Proyecto](04-proyecto-completo.md) paso 14 |
+| **S15** | :material-upload: Laboratorio de los retos que se entregan (1.ª parte) | [Retos](retos.md) |
+| **S16** | :material-upload: Laboratorio de los retos que se entregan (2.ª parte) | [Retos](retos.md) |
+| **S17** | :material-upload: Defensa de los retos · repaso de la rúbrica | [Retos](retos.md) |
+| **S18** | :material-laptop: **Examen práctico de RA7 (100 %)** | [Chuleta](chuleta.md) |
 
 ## Cómo se evalúa
 
-**Examen práctico (100 %)**: ampliar una API existente con paginación, filtrado, documentación, una consulta GraphQL y tests. Rúbrica de seis criterios, la misma del **[reto R3](retos.md)**.
+:material-laptop: **Examen práctico (100 %)**, en la S18: se da un proyecto con la API REST y la persistencia ya hechas, y hay que **añadirle** un canal de notificaciones, un esquema GraphQL con su resolutor agrupado, y documentarlo.
+
+Se valora, por criterios: que **el servicio no se toque**, las sesiones concurrentes y la limpieza, `AFTER_COMMIT`, el esquema GraphQL, **`@BatchMapping` medido**, las excepciones traducidas, CORS por perfiles, la documentación con los errores de negocio y los tests.
+
+Los **[retos 1.3, 2.3 y 3.3](retos.md)** son enunciados del mismo tamaño y con la misma rúbrica.
+
+!!! success "Las tres rúbricas, resumidas"
+    | Bloque | Lo que más pesa |
+    |---|---|
+    | **1 · WebSockets** | El servicio no cambia (2,0) · `AFTER_COMMIT` (1,5) · sesiones y `try` (3,0) |
+    | **2 · GraphQL** | El servicio no cambia (2,0) · **`@BatchMapping` medido (2,0)** · esquema (1,5) |
+    | **3 · Documentación** | Endpoints documentados (2,0) · **los 409 de negocio (2,0)** · CORS (1,5) |
+
+    Están completas en [Retos](retos.md).
+
+!!! danger "En la defensa se cuentan las consultas"
+    Como en la UT5: se pide una consulta GraphQL anidada **con `show-sql=true` en pantalla** y se cuentan las consultas SQL. Un `@BatchMapping` que falta se ve en dos segundos, y un programa que funciona no lo delata de ninguna otra manera.
 
 ## Material
 
 | | |
 |---|---|
-| [**Retos**](retos.md) | Dos retos **resueltos** que se construyen en clase y **un tercero que se entrega**, con los mismos criterios que el examen |
-| [**Batería de ejercicios**](ejercicios.md) | 32 ejercicios con solución sobre otro dominio, para comprobar que lo sabes hacer tú |
-| [Chuleta](chuleta.md) | Anotaciones y estructura en una página |
+| [**Proyecto completo**](04-proyecto-completo.md) | Los tres transportes sobre el proyecto de la UT5, con el código entero |
+| [**Retos**](retos.md) | **Nueve enunciados**: tres por bloque, dos resueltos y uno que se entrega |
+| [**Batería de ejercicios**](ejercicios.md) | 24 con solución, graduales y en el orden de los temas |
+| [Chuleta](chuleta.md) | Los tres transportes y los diez errores del examen, en una página |
 | [Comprobar tu trabajo](../comprobar-tu-trabajo.md) | Pégale tu código y te dice si aguanta la rúbrica |
 
+## Antes de la S1
+
+- [ ] El [proyecto de la UT5](../ut5/03-proyecto-completo.md) funcionando con MySQL en Docker.
+- [ ] Comprueba que tus servicios están limpios:
+
+    ```bash
+    grep -rn "ResponseEntity\|HttpStatus" src/main/java/**/services/
+    ```
+
+    Si eso devuelve algo, **arréglalo antes de la S1**: toda la unidad depende de ello.
+
+- [ ] Repasa los [códigos de estado y la negociación de contenido](../ut1/index.md) de la UT1: CORS y el `101` vienen de ahí.
+- [ ] Node instalado, para `npx wscat` (opcional, pero cómodo).
+
+!!! info "Y con esto se cierra el trimestre"
+    ```mermaid
+    graph LR
+        UT4["UT4 · Capas<br/>RA5"] --> UT5["UT5 · JPA<br/>RA6"] --> UT6["UT6 · Servicios web<br/>RA7"] --> P["2.º trimestre<br/>Proyecto en sprints"]
+    ```
+
+    En enero, el proyecto por sprints parte de aquí: **una API con capas, persistencia, tiempo real y documentada**. Lo que se añade es seguridad (UT8), despliegue (UT9) y trabajo en equipo.

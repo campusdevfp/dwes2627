@@ -1,86 +1,133 @@
-# UT5 — Acceso a datos con JPA
+# UT5 — Spring Data con JPA y SQL
 
 **20 h · 20 sesiones · Trimestre 1.º** · Evaluación: :material-laptop: **examen práctico (100 %)**
 
 > **RA6:** Desarrolla aplicaciones web de acceso a almacenes de datos, aplicando medidas para mantener la seguridad y la integridad de la información.
 
-Tu aplicación de la UT4 tiene las capas bien puestas… y pierde todos los datos al apagarla. El repositorio guarda en un `Map` en memoria. Aquí le pones **una base de datos de verdad** debajo, y descubres que ese trabajo de arquitectura que hiciste ahora te sale gratis: el servicio y el controlador **no se tocan**.
+En la UT3 hablaste con la base de datos **a mano**: `DriverManager`, `PreparedStatement`, `ResultSet`, mapeo fila a fila. En la UT4 montaste las capas, pero el repositorio guardaba en un `HashMap` y los datos se perdían al parar.
 
-!!! success "La prueba de que la UT4 valió la pena"
-    En la **S11** borras `ProductoRepositorioMemoria`, enchufas `JpaRepository` y ejecutas `mvn test`. Si separaste bien las capas, cambias una clase y unos nombres. Si no, reescribes medio proyecto.
+Aquí se juntan las dos cosas: **la misma API de la UT4, con persistencia de verdad**, y escrita en una fracción del código de la UT3.
 
-    Y el repositorio en memoria no se tira: se queda como **doble de test**, que es su papel real en cualquier empresa.
+!!! quote "Autoría del material de los temas 1 y 2"
+    Los dos primeros temas son una **adaptación del material de [José Luis González Sánchez](https://github.com/joseluisgs)** (repositorio [DesarrolloWebEntornosServidor-02-2025-2026](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026), licencia [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/)), con el texto, los diagramas y los ejemplos originales.
 
-## Lo que la memoria no te deja hacer
+    Las adaptaciones de este curso: **Maven en vez de Gradle**, **Java 25**, y los apartados de proyecto, referencias, retos y ejercicios. Cada tema lleva su nota de autoría arriba.
 
-Con un `Map` guardando objetos en RAM, estos siete problemas no tienen solución. Cada bloque de la unidad desactiva uno:
+!!! success "La promesa de la UT4, cobrada"
+    Lo primero que vas a hacer es cambiar `FunkosRepositoryImpl` por una interfaz de tres líneas. Y comprobar que el **controlador, el servicio, los DTOs, el mapeador, las excepciones y los tests de capa web no se tocan**.
 
-| Problema | Cuándo aparece |
-|---|---|
-| Los datos desaparecen al reiniciar | La primera vez que cierras la aplicación |
-| No puedes modelar un pedido con líneas | En cuanto el dominio crece |
-| Listar 100 pedidos lanza 101 consultas | Cuando hay datos de verdad |
-| Una venta que falla a mitad deja el stock descontado | Al primer error en producción |
-| Dos peticiones simultáneas crean el mismo producto | Con dos usuarios a la vez |
-| Dos ediciones concurrentes pierden una, sin error | Y no te enteras hasta que el inventario no cuadra |
-| `ddl-auto: update` no sabe migrar datos | El día que cambias un campo con datos dentro |
+    | | Líneas del repositorio |
+    |---|:-:|
+    | UT3 · JDBC a mano | ~120 |
+    | UT4 · `ConcurrentHashMap` | ~45 |
+    | **UT5 · Spring Data JPA** | **0** |
 
+!!! danger "Lo que de verdad se evalúa aquí no es escribir código"
+    Es **tomar bien cuatro decisiones de modelo de datos**: dónde va la clave ajena, qué se carga en `LAZY`, qué se borra en cascada y qué no, y qué consulta evita el N+1.
+
+    Los cuatro errores correspondientes **compilan y arrancan**, y solo se notan cuando la tabla tiene 10.000 filas o hay dos usuarios a la vez. Por eso están en la rúbrica y por eso se comprueban con `show-sql=true` en la defensa.
+
+---
 
 ## Al terminar sabrás hacer
 
-Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede sin marcar la semana del examen es exactamente lo que hay que repasar.
+Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**.
 
-- [ ] Explicar qué hace **JPA/Hibernate** por debajo y cuál es el ciclo de vida de una entidad.
-- [ ] Mapear una **entidad** con sus tipos, claves, enumerados y restricciones sin caer en las trampas clásicas.
-- [ ] Consultar con **Spring Data JPA**: consultas derivadas, `@Query`, JPQL y paginación real.
-- [ ] Modelar **relaciones** entre entidades y resolver el problema **N+1**.
-- [ ] Delimitar **transacciones** y proteger la integridad frente a accesos concurrentes.
-- [ ] Pasar de H2 a **PostgreSQL** con **Flyway**, y probar contra el motor real.
+- [ ] Configurar **H2 en desarrollo y MySQL en producción** con el mismo `.jar`, por perfiles.
+- [ ] Mapear una **entidad** con `@Entity`, `@Column`, identificadores y marcas temporales.
+- [ ] Modelar las **tres relaciones** (1:1, 1:N, N:M) sabiendo en qué tabla está la clave ajena.
+- [ ] Decidir `LAZY` o `EAGER`, `cascade` y `orphanRemoval`, y **justificar cada elección**.
+- [ ] Escribir repositorios con **consultas derivadas del nombre**, `@Query` con JPQL y `Specification`.
+- [ ] **Paginar y ordenar** con tope de tamaño y lista blanca de campos.
+- [ ] Implementar **borrado lógico** consistente en toda la API.
+- [ ] Usar **`@Transactional`** y saber cuándo no hace rollback.
+- [ ] Detectar y arreglar un **N+1**, un `LazyInitializationException` y una recursión infinita.
+- [ ] Escribir los **tres niveles de test**: `@DataJpaTest`, Mockito y `@SpringBootTest`.
+
+## Los temas
+
+| | | |
+|:-:|---|---|
+| **1** | [Spring Data con JPA y SQL](01-spring-data-jpa-sql.md) | Conexión, entidades, relaciones, repositorios, consultas y testing. **Es la referencia de la unidad** |
+| **2** | [Resultados avanzados](02-resultados-avanzados.md) | Paginación, ordenación, criterios de búsqueda y negociación de contenido |
+| **3** | [Proyecto completo paso a paso](03-proyecto-completo.md) | La API de Funkos con dos entidades, H2 y MySQL en Docker, en 12 pasos |
+| **4** | [Referencia de JPA y validaciones](04-referencias.md) | Todas las anotaciones con sus valores por defecto y sus trampas. Página de consulta |
 
 ## Calendario
 
 | Sesión (55') | En clase | Lectura previa |
 |---|---|---|
-| **S1** | Qué hace JPA por debajo · las cuatro siglas · JDBC a pelo e inyección SQL | [1. Qué hace JPA por debajo](01-que-hace-jpa-por-debajo.md) §1–3 |
-| **S2** | El ciclo de vida de la entidad y el *dirty checking* | [1. Qué hace JPA por debajo](01-que-hace-jpa-por-debajo.md) §4 |
-| **S3** | `@Entity`, `@Id` y generación de claves | [2. Entidades y mapeo](02-entidades-y-mapeo.md) §1–2 |
-| **S4** | Tipos, `@Column`, enumerados y fechas | [2. Entidades y mapeo](02-entidades-y-mapeo.md) §3 |
-| **S5** | Por qué una entidad **no** puede ser un `record` | [2. Entidades y mapeo](02-entidades-y-mapeo.md) §4–5 |
-| **S6** | `JpaRepository`: el CRUD que no escribes · consultas derivadas | [3. Spring Data JPA](03-spring-data-jpa.md) §1–3 |
-| **S7** | `@Query`, JPQL y consultas nativas | [3. Spring Data JPA](03-spring-data-jpa.md) §4 |
-| **S8** | Paginación **de verdad** y proyecciones | [3. Spring Data JPA](03-spring-data-jpa.md) §5–6 |
-| **S9** | Migrar el proyecto: fuera el repositorio en memoria | — |
-| **S10** | `@ManyToOne` y `@OneToMany` · el lado dueño y `mappedBy` | [4. Relaciones](04-relaciones.md) §1–3 |
-| **S11** | `LAZY` vs `EAGER` y el problema **N+1** | [4. Relaciones](04-relaciones.md) §4 |
-| **S12** | `JOIN FETCH`, `@EntityGraph` y `@ManyToMany` | [4. Relaciones](04-relaciones.md) §5–6 |
-| **S13** | `@Transactional`: qué es una transacción · *rollback* y propagación | [5. Transacciones](05-transacciones.md) §1–3 |
-| **S14** | Integridad, restricciones y unicidad | [5. Transacciones](05-transacciones.md) §4 |
-| **S15** | Concurrencia y bloqueo optimista con `@Version` | [5. Transacciones](05-transacciones.md) §5 |
-| **S16** | `ddl-auto` no vale para producción: **Flyway** | [6. De H2 a producción](06-produccion.md) §1–2 |
-| **S17** | PostgreSQL con Docker y perfiles · tests con `@DataJpaTest` | [6. De H2 a producción](06-produccion.md) §3–4 |
-| **S18** | Laboratorio: la escuela de música de principio a fin | [Batería de ejercicios](ejercicios.md) |
-| **S19** | Repaso: las seis trampas y cómo se ven en el *log* | [Reto R3, a entregar](retos.md) |
-| **S20** | :material-laptop: **Examen práctico de RA6 (100 %)** | [Reto R3, a entregar](retos.md) |
+| **S1** | Qué es Spring Data · conexión · `ddl-auto` · datos iniciales | [1. JPA y SQL](01-spring-data-jpa-sql.md) §1.1–1.2 |
+| **S2** | **Entidades**: `@Entity`, `@Column`, identificadores, marcas temporales | [1. JPA y SQL](01-spring-data-jpa-sql.md) §1.3 |
+| **S3** | **Relaciones** 1:1, 1:N, N:M y embebidas | [1. JPA y SQL](01-spring-data-jpa-sql.md) §1.4.1–1.4.5 |
+| **S4** | Cascada, `orphanRemoval`, **`LAZY` frente a `EAGER`** | [1. JPA y SQL](01-spring-data-jpa-sql.md) §1.4.6–1.4.8 |
+| **S5** | Borrado físico y lógico · **la recursión infinita** y por qué existen los DTOs | [1. JPA y SQL](01-spring-data-jpa-sql.md) §1.4.9–1.4.10 |
+| **S6** | **Repositorios**: consultas derivadas, `@Query`, JPQL y SQL nativo | [1. JPA y SQL](01-spring-data-jpa-sql.md) §1.5 |
+| **S7** | Testing del repositorio: `@DataJpaTest` y `TestEntityManager` | [1. JPA y SQL](01-spring-data-jpa-sql.md) §1.6 |
+| **S8** | **Paginación y ordenación**: `Page`, `Slice`, `Pageable` | [2. Resultados avanzados](02-resultados-avanzados.md) §2.1 |
+| **S9** | **Criterios de búsqueda** con `Specification` · negociación de contenido | [2. Resultados avanzados](02-resultados-avanzados.md) §2.2 |
+| **S10** | **Proyecto**: pasos 1 a 5 (configuración, entidades, repositorios) | [3. Proyecto](03-proyecto-completo.md) pasos 1–5 |
+| **S11** | **Proyecto**: pasos 6 a 9 (borrado lógico, transacciones, controlador) | [3. Proyecto](03-proyecto-completo.md) pasos 6–9 |
+| **S12** | **Proyecto**: pasos 10 a 12 (MySQL en Docker, tests, pruebas) | [3. Proyecto](03-proyecto-completo.md) pasos 10–12 |
+| **S13** | Laboratorio: cazar un N+1 y un `LazyInitializationException` reales | [Batería](ejercicios.md) bloque 4 |
+| **S14** | :material-check-circle: **Reto 1 · Videoclub**, resuelto en clase (1.ª parte) | [Reto 1](retos.md) |
+| **S15** | :material-check-circle: **Reto 1 · Videoclub**, resuelto en clase (2.ª parte) | [Reto 1](retos.md) |
+| **S16** | :material-check-circle: **Reto 2 · Instituto**, con huecos: la N:M con datos propios | [Reto 2](retos.md) |
+| **S17** | :material-upload: Laboratorio del **reto 3**: modelo de datos y repositorios | [Reto 3](retos.md) |
+| **S18** | :material-upload: Laboratorio del **reto 3**: reglas de negocio y tests | [Reto 3](retos.md) |
+| **S19** | :material-upload: Defensa del **reto 3** · repaso de la rúbrica | [Reto 3](retos.md) |
+| **S20** | :material-laptop: **Examen práctico de RA6 (100 %)** | [Chuleta](chuleta.md) |
 
 ## Cómo se evalúa
 
-:material-laptop: **Examen práctico (100 %)**, 2 sesiones. Se te da un esqueleto con el modelo y un fichero de datos, y tienes que montar la persistencia completa: entidades, relaciones, repositorios, consultas, transacciones y tests. La rúbrica es la del **[reto R3](retos.md)**, que es un enunciado equivalente.
+:material-laptop: **Examen práctico (100 %)**, en la S20: desarrollo en el ordenador a partir de un enunciado y un esqueleto con el `pom.xml` y la configuración ya puestos.
+
+Se valora, por criterios: el **modelo de datos**, que las relaciones sean **`LAZY`** y no haya **N+1**, los **repositorios** (derivadas, `@Query` y `Specification`), las **reglas de negocio** con `@Transactional`, la **paginación** saneada, el **borrado lógico**, los **DTOs** y los **tests**.
+
+El **[reto 3](retos.md)** es un enunciado del mismo tamaño y con **la misma rúbrica**.
+
+!!! success "La rúbrica, resumida"
+    | | Criterio | Puntos |
+    |---|---|:-:|
+    | 1 | Modelo de datos y relaciones correctas | 2,0 |
+    | 2 | `LAZY` en todas las relaciones y sin N+1 | 1,5 |
+    | 3 | Repositorios: derivadas, `@Query` y `Specification` | 1,5 |
+    | 4 | Reglas de negocio con `@Transactional` y 409 | 1,5 |
+    | 5 | Paginación con tope y lista blanca | 1,0 |
+    | 6 | Borrado lógico consistente | 0,5 |
+    | 7 | DTOs, sin `LazyInitializationException` | 1,0 |
+    | 8 | Los tres niveles de test | 1,0 |
+    | 9 | Perfiles y Docker, los datos persisten | 0,5 |
+
+    Está completa, con los descuentos, en [Retos](retos.md).
+
+!!! danger "En la defensa se mira el log"
+    Parte de la nota se decide con `show-sql=true` delante: se pide un listado y **se cuentan las consultas**. Un N+1 se ve ahí en dos segundos, y no hay forma de que un programa que funciona lo delate de otra manera.
 
 ## Material
 
 | | |
 |---|---|
-| [**Retos**](retos.md) | Dos retos **resueltos** que se construyen en clase y **un tercero que se entrega**, con los mismos criterios que el examen |
-| [**Batería de ejercicios**](ejercicios.md) | 30 ejercicios con solución sobre otro dominio, para comprobar que lo sabes hacer tú |
-| [Chuleta](chuleta.md) | Anotaciones y estructura en una página |
+| [**Proyecto completo**](03-proyecto-completo.md) | La API de Funkos con dos entidades, H2, MySQL en Docker y los tres niveles de test |
+| [**Retos**](retos.md) | Dos **resueltos** en clase y **un tercero que se entrega**, con tres entidades, a elegir entre tres dominios |
+| [**Batería de ejercicios**](ejercicios.md) | 26 con solución, graduales y en el orden de los temas |
+| [**Referencia de JPA**](04-referencias.md) | Todas las anotaciones, con valores por defecto y trampas |
+| [Chuleta](chuleta.md) | Lo imprescindible y los diez errores del examen, en una página |
 | [Comprobar tu trabajo](../comprobar-tu-trabajo.md) | Pégale tu código y te dice si aguanta la rúbrica |
 
 ## Antes de la S1
 
-Instala **Docker Desktop** y comprueba que arranca:
+- [ ] El [proyecto de la UT4](../ut4/04-proyecto-completo.md) funcionando: es el punto de partida.
+- [ ] **Docker Desktop instalado y arrancado** (`docker --version`). Se usa desde la S10.
+- [ ] Repasa el [tema 3 de la UT3](../ut3/03-base-de-datos.md): el SQL que vas a ver en el log es ese.
+- [ ] Repasa [`Optional`](../ut2/05-excepciones-y-optional.md): `findById` devuelve uno, y se usa en cada método.
 
-```bash
-docker run --rm hello-world
-```
+!!! info "Y lo que viene después"
+    ```mermaid
+    graph LR
+        UT3["UT3 · JDBC a mano<br/>~120 líneas"] --> UT4["UT4 · Capas<br/>HashMap"]
+        UT4 --> UT5["UT5 · Spring Data JPA<br/>0 líneas de repositorio"]
+        UT5 --> UT6["UT6 · WebSockets, GraphQL y OpenAPI<br/>el mismo servicio, otros transportes"]
+    ```
 
-Lo vas a necesitar en la S22 para levantar PostgreSQL. Hasta entonces usaremos H2, que no necesita nada.
+    En la UT6 **no se toca la persistencia**: se añaden un WebSocket, un esquema GraphQL y la documentación OpenAPI, y los tres llaman a los servicios que escribes aquí.

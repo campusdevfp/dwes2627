@@ -107,7 +107,7 @@ Optional: .map() .filter() .orElse() .orElseGet() .orElseThrow() .ifPresent() .i
 
 ---
 
-# RA5 · Capas con Spring Boot
+# RA5 · Spring Boot, capas y REST
 
 ## Estereotipos e inyección
 
@@ -144,29 +144,60 @@ public class ProductoControlador {
 ```
 Mensaje propio: `@NotBlank(message = "El nombre es obligatorio")`
 
+## Excepciones de dominio
+
+```java
+public abstract class FunkoException extends RuntimeException {
+    protected FunkoException(String m) { super(m); }
+}
+
+@ResponseStatus(HttpStatus.NOT_FOUND)
+public class FunkoNotFoundException extends FunkoException {
+    public FunkoNotFoundException(Long id) { super("No existe el funko con id: " + id); }
+}
+@ResponseStatus(HttpStatus.CONFLICT)    public class FunkoConflictException   extends FunkoException { … }
+@ResponseStatus(HttpStatus.BAD_REQUEST) public class FunkoBadRequestException extends FunkoException { … }
+```
+```java
+// En el servicio: lanza, SIN mencionar HTTP
+repositorio.findById(id).orElseThrow(() -> new FunkoNotFoundException(id));
+```
+:material-alert: Con `@ResponseStatus` **no hace falta handler**: Spring las traduce solas.
+:material-alert: Nunca `ResponseStatusException` en el servicio: mete HTTP en la lógica y no se puede reutilizar desde GraphQL ni WebSocket.
+
 ## Errores centralizados
 
 ```java
 @RestControllerAdvice
-public class ManejadorErrores {
+public class GlobalExceptionHandler {
 
-    @ExceptionHandler(NoEncontradoException.class)
-    public ProblemDetail noEncontrado(NoEncontradoException e) {
-        var pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
-        pd.setTitle("Recurso no encontrado");
-        pd.setType(URI.create("https://ejemplo.es/errores/no-encontrado"));
-        return pd;
-    }
-
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ProblemDetail invalido(MethodArgumentNotValidException e) {
-        var pd = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
-        pd.setProperty("errores", e.getBindingResult().getFieldErrors().stream()
-            .collect(toMap(FieldError::getField, FieldError::getDefaultMessage, (a,b) -> a)));
-        return pd;
+    public Map<String, Object> validacion(MethodArgumentNotValidException ex) {
+        Map<String, String> campos = new LinkedHashMap<>();
+        ex.getBindingResult().getFieldErrors()
+          .forEach(e -> campos.put(e.getField(), e.getDefaultMessage()));
+        return Map.of("status", 400, "error", "Datos inválidos", "campos", campos);
     }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)        // JSON roto
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)    // /funkos/abc
 }
 ```
+
+## Caché
+
+```java
+@Service @CacheConfig(cacheNames = {"funkos"})
+public class S {
+    @Cacheable(key = "#id")        public R findById(Long id) { … }
+    @CacheEvict(allEntries = true) public R save(C dto)       { … }
+    @CachePut(key = "#result.id")  public R update(…)         { … }
+}
+```
+:material-alert: Sin `@EnableCaching` en la clase principal, **no hace nada**.
+:material-alert: Todo método que **escribe** necesita `@CacheEvict(allEntries = true)`.
+:material-alert: Una llamada interna (`this.findById(...)`) **no pasa por la caché**: el proxy solo intercepta lo que entra de fuera.
 
 ## Configuración
 
@@ -181,7 +212,7 @@ app:
 
 ---
 
-# RA6 · JPA
+# RA6 · Spring Data con JPA y SQL
 
 ## Entidad
 
@@ -293,7 +324,7 @@ spring:
 
 ---
 
-# RA7 · Servicios web
+# RA7 · Servicios web: WebSockets, GraphQL y docs
 
 ## Códigos
 
@@ -398,3 +429,135 @@ assertThat(lista).extracting(P::nombre).containsExactly("a","b")
 assertThat(b).isEqualByComparingTo(new BigDecimal("19.99"))   // NO isEqualTo
 assertThatThrownBy(() -> x()).isInstanceOf(MiExcepcion.class).hasMessageContaining("...")
 ```
+
+## WebSockets
+
+```java
+@Component
+public class H extends TextWebSocketHandler {
+    private final Set<WebSocketSession> ses = new CopyOnWriteArraySet<>();   // CONCURRENTE
+
+    @Override public void afterConnectionEstablished(WebSocketSession s) { ses.add(s); }
+    @Override public void afterConnectionClosed(WebSocketSession s, CloseStatus st) { ses.remove(s); }
+    @Override public void handleTransportError(WebSocketSession s, Throwable e)     { ses.remove(s); }
+
+    public void enviarATodos(String m) {
+        for (var s : ses) {
+            try { if (s.isOpen()) s.sendMessage(new TextMessage(m)); else ses.remove(s); }
+            catch (IOException e) { ses.remove(s); }          // ← try DENTRO del bucle
+        }
+    }
+}
+```
+
+```java
+@Configuration @EnableWebSocket
+public class WsConfig implements WebSocketConfigurer {
+    @Override public void registerWebSocketHandlers(WebSocketHandlerRegistry r) {
+        r.addHandler(handler, "/ws/v1/funkos").setAllowedOrigins(origenes);   // NUNCA "*"
+    }
+}
+```
+
+```java
+// En el servicio: 2 líneas
+eventos.publishEvent(new FunkoCambiadoEvent(Tipo.CREATE, respuesta));
+
+// En el notificador
+@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+public void alCambiar(FunkoCambiadoEvent e) { handler.enviarATodos(json(e)); }
+```
+
+:material-alert: Sin `AFTER_COMMIT`, un `rollback` deja el mensaje enviado: los clientes ven algo que no existe.
+:material-alert: Se manda el **DTO**: fuera de la transacción, la entidad lanza `LazyInitializationException`.
+:material-alert: Los WebSockets **no** están sujetos a la política del mismo origen → `setAllowedOrigins` es la única protección.
+
+`101 Switching Protocols` · *polling* < **SSE** (reconexión automática) < **WebSocket** (bidireccional)
+
+## GraphQL
+
+```graphql
+type Funko { id: ID!  nombre: String!  categoria: Categoria! }
+input FunkoInput { nombre: String!  precio: Float!  categoria: String! }
+type Query    { funkos(filtro: FunkoFiltro): [Funko!]!   funkoById(id: ID!): Funko }
+type Mutation { crearFunko(input: FunkoInput!): Funko! }
+type Subscription { funkoCambiado: Notificacion! }
+```
+
+`String` nulo · `String!` no nulo · `[String!]!` **ni lista ni elementos nulos** ← lo correcto
+
+```java
+@Controller
+public class C {
+    @QueryMapping    public List<R> funkos(@Argument Optional<F> filtro) { … }
+    @MutationMapping public R crearFunko(@Argument("input") @Valid Req in) { … }
+    @SchemaMapping(typeName = "Matricula", field = "aprobada")
+                     public Boolean aprobada(MatriculaResponse m) { … }
+    @BatchMapping(typeName = "Funko")     // ← evita el N+1: recibe la lista ENTERA
+                     public Map<R, CR> categoria(List<R> funkos) { … }
+    @SubscriptionMapping public Flux<N> funkoCambiado() { return emisor.asFlux(); }
+}
+```
+
+```java
+@Component
+public class GqlErrors extends DataFetcherExceptionResolverAdapter {
+    @Override protected GraphQLError resolveToSingleError(Throwable ex, DataFetchingEnvironment env) {
+        return switch (ex) {
+            case FunkoNotFoundException e -> error(env, ErrorType.NOT_FOUND, e);
+            case FunkoConflictException e -> error(env, ErrorType.BAD_REQUEST, e);
+            default -> null;
+        };
+    }
+}
+```
+
+```properties
+spring.graphql.graphiql.enabled=true                 # /graphiql — SOLO dev
+spring.graphql.schema.introspection.enabled=false    # false en PROD
+```
+
+:material-alert: **GraphQL devuelve 200 casi siempre.** Los errores van en `errors`, no en el código.
+:material-alert: El **N+1** es su problema característico, y **no** se arregla con `JOIN FETCH`: hace falta `@BatchMapping`.
+:material-alert: Todo por **`POST` a `/graphql`** → la caché HTTP no funciona.
+:material-alert: Sin `MaxQueryDepthInstrumentation`, **el cliente decide el coste** de tu consulta.
+
+## CORS
+
+```java
+registry.addMapping("/api/**")
+        .allowedOrigins(origenes)                 // de application-{perfil}.properties
+        .allowedMethods("GET","POST","PUT","PATCH","DELETE","OPTIONS")
+        .allowedHeaders("*")
+        .exposedHeaders("Location")               // sin esto el JS no lee el 201
+        .allowCredentials(true)
+        .maxAge(3600);
+```
+
+:material-alert: **Bloquea el NAVEGADOR, no tu servidor**: la petición llega, se procesa y se responde 200. Por eso funciona con `curl`.
+:material-alert: El *preflight* (`OPTIONS`) lo dispara ya `Content-Type: application/json`.
+:material-alert: `allowedOrigins("*")` + `allowCredentials(true)` → **el navegador lo rechaza**. Usa `allowedOriginPatterns`.
+:material-alert: Sin `exposedHeaders`, el JS solo lee seis cabeceras, y `Location` no está entre ellas.
+
+## OpenAPI
+
+```java
+@Operation(summary = "…", description = "…")
+@ApiResponses({
+  @ApiResponse(responseCode = "201", description = "Creado, con cabecera Location"),
+  @ApiResponse(responseCode = "400", description = "Datos inválidos", content = @Content),
+  @ApiResponse(responseCode = "409", description = "Nombre repetido",  content = @Content)
+})
+@Parameter(description = "Id del funko", example = "1", required = true)
+@Schema(description = "Nombre", example = "Mickey Mouse")
+```
+
+```properties
+springdoc.api-docs.enabled=false        # PROD
+springdoc.swagger-ui.enabled=false      # PROD
+```
+
+`/v3/api-docs` (el JSON) · `/swagger-ui/index.html` (la interfaz, **con botón de disparar**)
+
+:material-alert: `springdoc` deduce rutas, tipos y obligatoriedad. **No puede deducir los 409 de negocio**, que es justo lo que necesita quien consume tu API.
+:material-alert: Swagger UI es un **cliente HTTP completo**: en producción, apagado.

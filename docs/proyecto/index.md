@@ -45,7 +45,7 @@ flowchart LR
 | **MariaDB** | Un sistema heredado que ya existe y hay que leer sin poder cambiarlo | Es el caso real: nadie empieza de cero |
 
 !!! info "El montaje ya está explicado"
-    El `compose.yaml` con las cuatro, sus `healthcheck` y el arranque por orden están en [UT5 · De H2 a producción](../ut5/06-produccion.md) y en la [chuleta de la UT9](../ut9/chuleta.md). Aquí solo se usa.
+    El `compose.yaml` con las cuatro, sus `healthcheck` y el arranque por orden están en [UT5 · Proyecto completo](../ut5/03-proyecto-completo.md) y en la [chuleta de la UT9](../ut9/chuleta.md). Aquí solo se usa.
 
 ## Los seis retos
 

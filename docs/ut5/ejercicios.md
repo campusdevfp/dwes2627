@@ -1,737 +1,705 @@
 # Batería de ejercicios — UT5
 
-**Dominio: una escuela de música.** Distinto del de clase (la tienda) a propósito.
+**26 ejercicios con solución**, en el orden de los temas y de menos a más dentro de cada bloque.
 
-**30 ejercicios agrupados por tema**, con solución. Los marcados con :material-file-sign: son del tipo que cae en el examen.
+| | |
+|:-:|---|
+| ● | Cinco minutos, con el tema delante |
+| ●● | Hay que juntar dos ideas |
+| ●●● | Se escribe, se ejecuta y se mira el log |
 
-| Tema | Ejercicios | Sesiones |
-|---|---|:-:|
-| 1 · Qué hace JPA por debajo | E1–E5 | S1–S3 |
-| 2 · Entidades y mapeo | E6–E10 | S4–S6 |
-| 3 · Spring Data JPA | E11–E15 | S7–S11 |
-| 4 · Relaciones | E16–E21 | S12–S16 |
-| 5 · Transacciones e integridad | E22–E26 | S17–S20 |
-| 6 · De H2 a producción | E27–E30 | S21–S23 |
+!!! tip "Ten `show-sql=true` puesto todo el rato"
+    La mitad de los ejercicios de esta unidad se contestan **leyendo el SQL que genera Hibernate**. Es la única forma de ver un N+1, y es lo que se mira en la defensa.
+
+    ```properties
+    spring.jpa.show-sql=true
+    spring.jpa.properties.hibernate.format_sql=true
+    ```
 
 ---
 
-# Tema 1 · Qué hace JPA por debajo
+# Bloque 1 · Configuración y entidades
 
-### E1 ● — Las cuatro siglas
+> Tema [1. Spring Data con JPA y SQL](01-spring-data-jpa-sql.md) §1.1–1.3
 
-Coloca cada una en su sitio: JDBC, JPA, Hibernate, Spring Data JPA. ¿Cuál se puede sustituir sin tocar tu código?
+## E1 ● — `ddl-auto`
 
-??? success "Solución"
-
-    ```
-    Tu código  →  Spring Data JPA  →  JPA (especificación)  →  Hibernate  →  JDBC  →  BD
-    ```
-
-    - **JDBC**: la API estándar de acceso a bases de datos. Lo más bajo.
-    - **JPA**: una **especificación**, solo interfaces y anotaciones.
-    - **Hibernate**: la **implementación** de esa especificación.
-    - **Spring Data JPA**: genera los repositorios a partir de interfaces.
-
-    Se puede cambiar **Hibernate** por EclipseLink sin tocar tu código, porque programas contra JPA. Esa es toda la gracia de que exista una especificación.
-
-
-### E2 ●● — JDBC a pelo
-
-Escribe `findByGenero` con `PreparedStatement`, sin JPA. Cuenta las líneas.
+¿Qué hace cada valor y cuál va en cada entorno?
 
 ??? success "Solución"
 
-    ```java
-    public List<Curso> porGenero(String genero) {
-        var sql = "select id, nombre, genero, precio from curso where genero = ?";
-        var cursos = new ArrayList<Curso>();
-        try (var con = dataSource.getConnection();
-             var ps = con.prepareStatement(sql)) {
-            ps.setString(1, genero);
-            try (var rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    cursos.add(new Curso(rs.getLong("id"), rs.getString("nombre"),
-                                         rs.getString("genero"), rs.getBigDecimal("precio")));
-                }
-            }
-        } catch (SQLException e) {
-            throw new AccesoDatosException(e);
-        }
-        return cursos;
-    }
-    ```
-    Unas 18 líneas. Con Spring Data: `List<Curso> findByGenero(String genero);` — **una**.
+    | Valor | Qué hace | Dónde |
+    |---|---|---|
+    | `none` | Nada | Producción con migraciones |
+    | `validate` | Comprueba el esquema; si no cuadra, **no arranca** | **Producción** |
+    | `update` | Añade lo que falta, nunca borra ni modifica | En ningún sitio serio |
+    | `create` | Borra y crea al arrancar | Tests |
+    | `create-drop` | Borra y crea al arrancar, y borra al parar | **Desarrollo** |
 
-    Que hagan las dos y comparen. Y que se fijen en cuántos sitios hay donde equivocarse: el nombre de columna, el tipo, cerrar recursos, el mapeo.
+    **`create-drop` en producción borra la base de datos en cada reinicio.**
 
+    Y `update` es el que engaña: parece prudente, pero adivina, no sabe renombrar (crea una columna nueva y deja la vieja con los datos dentro) y no tiene vuelta atrás.
 
-### E3 ●●● — La inyección SQL, en directo
+## E2 ● — `Table "FUNKOS" not found`
 
-Escribe la misma consulta concatenando y provoca el ataque.
+Pones un `data.sql` y la aplicación falla al arrancar.
 
 ??? success "Solución"
 
-    ```java
-    var sql = "select * from curso where genero = '" + genero + "'";   // MAL 
+    Spring ejecuta `data.sql` **antes** de que Hibernate cree las tablas.
+
+    ```properties
+    spring.jpa.defer-datasource-initialization=true
+    spring.sql.init.mode=always
     ```
-    ```java
-    repositorio.porGenero("' OR '1'='1");
-    ```
-    Devuelve **la tabla entera**. Y con `"'; drop table curso; --"` en un motor que permita varias sentencias, se pierde la tabla.
 
-    Con `PreparedStatement`, la cadena viaja **como dato**, nunca como código, y el ataque devuelve cero filas.
+    La primera línea retrasa la inicialización de datos hasta después del DDL. Es el error número uno de este bloque, y el mensaje no da ninguna pista de la causa.
 
-    Vale la pena hacerlo en clase: se recuerda toda la vida.
+## E3 ● — Por qué una entidad no puede ser un `record`
 
+??? success "Solución"
 
-### E4 ●● — Los cuatro estados
+    Porque JPA construye las entidades **por reflexión** y necesita:
 
-Identifica en qué estado está el objeto en cada línea.
+    1. Un **constructor sin argumentos** (al menos `protected`).
+    2. Poder **asignar los campos** después de construir el objeto.
+    3. Que la clase **no sea `final`**, porque Hibernate crea subclases proxy para el *lazy loading*.
+
+    Un `record` es `final` y sus campos son inmutables, así que falla en las tres.
+
+    **Los DTOs sí son `record`**: esos nunca pasan por JPA. Es la razón técnica de la separación entidad/DTO, además de las de diseño.
+
+## E4 ●● — `@Enumerated`
 
 ```java
-var c = new Curso("Piano B1", …);      // (1)
-repo.save(c);                          // (2)
-c.setPrecio(new BigDecimal("200"));    // (3) dentro de @Transactional
-                                       // (4) al salir del método
+@Enumerated
+private Categoria categoria;
+```
+
+¿Qué está mal?
+
+??? success "Solución"
+
+    Por defecto es **`EnumType.ORDINAL`**, que guarda **la posición** del valor: `DISNEY`=0, `MARVEL`=1, `ANIME`=2.
+
+    El día que alguien añada un valor en medio o reordene el `enum`, **todos los registros cambian de significado en silencio**. Los funkos de Disney pasan a ser de Marvel. No hay error, no hay log, no hay forma de detectarlo mirando el programa.
+
+    ```java
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private Categoria categoria;
+    ```
+
+    Ocupa más y es inmune. **Siempre `STRING`.**
+
+## E5 ●● — `nullable = false` y `@NotBlank`
+
+¿Son lo mismo? ¿Hay que poner los dos?
+
+??? success "Solución"
+
+    **No son lo mismo, y se ponen los dos.**
+
+    | | Dónde actúa | Cuándo falla | Qué ve el cliente |
+    |---|---|---|---|
+    | `@NotBlank` | En el **DTO** | Al validar la petición | **400** con el campo señalado |
+    | `nullable = false` | En la **columna** | Al hacer `INSERT` | **500** con un mensaje de Hibernate |
+
+    El primero da el error limpio; el segundo es la red de seguridad para cuando el dato llega por otra vía (un `data.sql`, un script, otro servicio).
+
+    Solo el del DTO → un camino que no pase por el controlador mete `null` en la tabla.
+    Solo el de JPA → el cliente recibe un 500 ilegible.
+
+## E6 ●● — Marcas temporales sin repetirlas
+
+Tienes tres entidades, todas con `createdAt` y `updatedAt`. ¿Cómo lo haces una vez?
+
+??? success "Solución"
+
+    ```java
+    @MappedSuperclass
+    public abstract class Auditable {
+
+        @Column(name = "created_at", updatable = false)
+        private LocalDateTime createdAt = LocalDateTime.now();
+
+        @Column(name = "updated_at")
+        private LocalDateTime updatedAt = LocalDateTime.now();
+
+        @PreUpdate
+        void alActualizar() { this.updatedAt = LocalDateTime.now(); }
+
+        public LocalDateTime getCreatedAt() { return createdAt; }
+        public LocalDateTime getUpdatedAt() { return updatedAt; }
+    }
+
+    @Entity @Table(name = "funkos")
+    public class Funko extends Auditable { … }
+    ```
+
+    **`@MappedSuperclass` no crea tabla**: sus columnas se añaden a las de cada hija.
+
+    Y el `updatable = false` en `createdAt` no es decoración: impide que un `setter` llamado por error cambie la fecha de creación.
+
+---
+
+# Bloque 2 · Relaciones
+
+> Tema [1. Spring Data con JPA y SQL](01-spring-data-jpa-sql.md) §1.4
+
+## E7 ● — Dónde va la clave ajena
+
+Una categoría tiene muchos funkos. ¿En qué tabla está la clave ajena y quién es el lado dueño?
+
+??? success "Solución"
+
+    En la tabla **`funkos`**, porque cada funko tiene **una** categoría. Así que el **lado dueño es el `@ManyToOne`**:
+
+    ```java
+    // En Funko — DUEÑO
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "categoria_id", nullable = false)
+    private Categoria categoria;
+
+    // En Categoria — INVERSO
+    @OneToMany(mappedBy = "categoria", fetch = FetchType.LAZY)
+    private List<Funko> funkos = new ArrayList<>();
+    ```
+
+    **La regla:** en una 1:N, la clave ajena está siempre en el lado **muchos**, y ese es el dueño.
+
+## E8 ● — El `mappedBy` olvidado
+
+```java
+@OneToMany
+private List<Funko> funkos;
 ```
 
 ??? success "Solución"
 
-    1. **Transitoria** (*transient*): objeto normal, JPA no lo conoce.
-    2. **Gestionada** (*managed*): está en el contexto de persistencia.
-    3. Sigue **gestionada**, y el cambio queda anotado.
-    4. Al confirmar, el *dirty checking* detecta el cambio y **lanza el `UPDATE` solo**. Después, **separada** (*detached*).
+    Sin `mappedBy`, Hibernate **no sabe** que la relación ya está mapeada desde el otro lado, así que crea **una tabla intermedia** `categorias_funkos` con dos columnas.
 
-    El punto 3-4 es el que sorprende: **no hace falta llamar a `save`**. Y el que rompe cosas: fuera de la transacción, ese `setPrecio` no llega a la base de datos.
-
-
-### E5 ●●● — Demuestra el *dirty checking*
-
-Escribe un test que modifique una entidad sin llamar a `save` y compruebe que el cambio se guarda.
-
-??? success "Solución"
+    Resultado: tienes la clave ajena en `funkos` **y** una tabla de unión, los datos se guardan en una y se leen de la otra, y las consultas devuelven listas vacías sin ningún error.
 
     ```java
-    @Test @Transactional
-    void elCambioSeGuardaSinLlamarASave() {
-        var curso = repo.save(new Curso("Piano B1", new BigDecimal("150")));
-        var id = curso.getId();
-
-        var recuperado = repo.findById(id).orElseThrow();
-        recuperado.setPrecio(new BigDecimal("200"));      // sin save
-
-        em.flush(); em.clear();
-        assertThat(repo.findById(id).orElseThrow().getPrecio())
-            .isEqualByComparingTo("200");
-    }
+    @OneToMany(mappedBy = "categoria", fetch = FetchType.LAZY)
+    private List<Funko> funkos = new ArrayList<>();
     ```
-    El `flush()` fuerza el volcado y el `clear()` vacía el contexto, para que el `findById` siguiente vaya de verdad a la base de datos y no devuelva el objeto en memoria. Sin ese `clear`, el test pasa aunque nada se haya guardado.
 
+    `mappedBy = "categoria"` dice: «el dueño es el campo `categoria` de `Funko`».
 
----
+## E9 ●● — `LAZY` o `EAGER`
 
-# Tema 2 · Entidades y mapeo
-
-### E6 ● — Mapea `Clase`
-
-Convierte en entidad: id generado, nombre obligatorio de 100, precio con dos decimales, fecha y nivel.
+¿Cuál es el valor por defecto de cada relación y cuál deberías poner?
 
 ??? success "Solución"
+
+    | Relación | Por defecto | Lo correcto |
+    |---|---|---|
+    | `@OneToOne` | **`EAGER`** | `LAZY` |
+    | `@ManyToOne` | **`EAGER`** | `LAZY` |
+    | `@OneToMany` | `LAZY` | `LAZY` |
+    | `@ManyToMany` | `LAZY` | `LAZY` |
+
+    **Los dos por defecto están mal**, y es el problema de rendimiento número uno de JPA.
+
+    Con `@ManyToOne` en `EAGER`, un `findAll()` de 100 funkos trae 100 categorías. Y si `Categoria` tuviera un `@ManyToOne Proveedor` también en `EAGER`, 100 proveedores más.
+
+    Siempre `LAZY`, y cuando sí necesitas la relación, la pides explícitamente (E11).
+
+## E10 ●● — `cascade = ALL`
+
+```java
+@OneToMany(mappedBy = "categoria", cascade = CascadeType.ALL)
+private List<Funko> funkos;
+```
+
+¿Qué pasa al borrar la categoría `DISNEY`?
+
+??? success "Solución"
+
+    **Se borran todos los funkos de Disney**, sin preguntar y sin error.
+
+    Casi nunca es lo que quieres. Lo que quieres suele ser **que no se pueda borrar**:
+
+    ```java
+    long funkos = funkosRepository.countByCategoriaIdAndDeletedFalse(id);
+    if (funkos > 0)
+        throw new CategoriaConflictException(
+                "No se puede borrar: tiene %d funkos asociados".formatted(funkos));
+    ```
+
+    **409 Conflict**, y sin cascada.
+
+    `CascadeType.ALL` + `orphanRemoval` tiene sentido en una **composición** real: un `Pedido` y sus `LineaPedido`, donde una línea no existe sin su pedido. Ahí sí.
+
+## E11 ●●● — El N+1
+
+Listas 20 funkos con la categoría en `LAZY` y el log muestra 21 consultas.
+
+??? success "Solución"
+
+    Una consulta para la lista y **una por cada funko** cuando el mapeador toca `getCategoria()`. Es el problema **N+1**.
+
+    No se arregla con `EAGER` (eso lo convierte en N+1 **siempre**, también donde no hace falta). Se arregla pidiendo el `JOIN`:
+
+    ```java
+    @Query(value      = "SELECT f FROM Funko f JOIN FETCH f.categoria WHERE f.deleted = false",
+           countQuery = "SELECT count(f) FROM Funko f WHERE f.deleted = false")
+    Page<Funko> findAllConCategoria(Pageable pageable);
+    ```
+
+    O más limpio:
+
+    ```java
+    @EntityGraph(attributePaths = {"categoria"})
+    Page<Funko> findByDeletedFalse(Pageable pageable);
+    ```
+
+    **El `countQuery` es obligatorio** con `JOIN FETCH` + `Pageable`. Sin él, Hibernate avisa:
+
+    ```
+    HHH90003004: firstResult/maxResults specified with collection fetch;
+    applying in memory
+    ```
+
+    Es decir: **trae la tabla entera y pagina en memoria**, que es exactamente lo que querías evitar.
+
+## E12 ●●● — `LazyInitializationException`
+
+```java
+@GetMapping("/{id}")
+public Funko uno(@PathVariable Long id) {
+    return repositorio.findById(id).orElseThrow();
+}
+```
+
+??? success "Solución"
+
+    ```
+    org.hibernate.LazyInitializationException: could not initialize proxy - no Session
+    ```
+
+    La transacción se cierra al salir del repositorio. Cuando Jackson serializa y toca `categoria`, el proxy perezoso ya no tiene sesión.
+
+    **Tres formas de "arreglarlo", y solo una es buena:**
+
+    | | Qué hace | Veredicto |
+    |---|---|---|
+    | `fetch = EAGER` | Carga siempre | Mal: N+1 garantizado |
+    | `open-in-view=true` | Mantiene la sesión durante la serialización | Mal: esconde el problema y lanza consultas desde el serializador |
+    | **Devolver un DTO** | El mapeador lee lo que hace falta **dentro** de la transacción | **Bien** |
+
+    ```java
+    @GetMapping("/{id}")
+    public ResponseEntity<FunkoResponse> uno(@PathVariable Long id) {
+        return ResponseEntity.ok(servicio.findById(id));
+    }
+    ```
+
+    Y por eso `spring.jpa.open-in-view=false` va puesto desde el primer día: para que el error **salte en desarrollo**.
+
+## E13 ●●● — La recursión infinita
+
+`Funko` tiene `@ManyToOne Categoria` y `Categoria` tiene `@OneToMany List<Funko>`. Devuelves la entidad. Tres soluciones y cuál es la buena.
+
+??? success "Solución"
+
+    ```
+    com.fasterxml.jackson.databind.JsonMappingException:
+    Infinite recursion (StackOverflowError)
+    ```
+
+    1. **DTOs** — `FunkoResponse` lleva `String categoria`, no el objeto. **El bucle no existe.**
+    2. `@JsonManagedReference` / `@JsonBackReference` — marca un lado como «no serialices la vuelta». Funciona, pero mete anotaciones de la capa web en la entidad.
+    3. `@JsonIgnore` en el lado inverso — lo mismo y más tosco: ese campo desaparece para **todas** las respuestas.
+
+    **La (1).** Las otras dos ponen decisiones de presentación dentro del modelo de datos, que es justo lo que la UT4 separó. Y la (1) resuelve a la vez el E12.
+
+## E14 ●● — `@ManyToMany` o entidad intermedia
+
+Un alumno cursa varios módulos y cada matrícula tiene **nota y fecha**. ¿`@ManyToMany`?
+
+??? success "Solución"
+
+    **No.** En cuanto la relación tiene **datos propios**, deja de ser un `@ManyToMany` y pasa a ser una **entidad**:
 
     ```java
     @Entity
-    public class Clase {
+    @Table(name = "matriculas",
+           uniqueConstraints = @UniqueConstraint(
+                   columnNames = {"alumno_id", "modulo_id", "curso"}))
+    public class Matricula {
         @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
         private Long id;
 
-        @Column(nullable = false, length = 100)
-        private String nombre;
-
-        @Column(nullable = false, precision = 10, scale = 2)
-        private BigDecimal precio;
-
-        private LocalDate fecha;
-
-        @Enumerated(EnumType.STRING)
-        private Nivel nivel;
-
-        protected Clase() { }
-        public Clase(String nombre, BigDecimal precio, Nivel nivel) { … }
-    }
-    ```
-    El constructor `protected` sin argumentos **no es opcional**: sin él, `No default constructor for entity`.
-
-
-### E7 ●● — Por qué no puede ser un `record`
-
-Intenta anotar un `record` con `@Entity` y explica el error.
-
-??? success "Solución"
-
-    ```java
-    @Entity
-    public record Clase(@Id Long id, String nombre) { }   // MAL 
-    ```
-    Falla al arrancar. Dos razones:
-
-    1. Un `record` es **final** y JPA necesita generar una subclase para el *proxy* de carga perezosa.
-    2. Es **inmutable** y no tiene constructor sin argumentos: JPA crea el objeto vacío y lo rellena por reflexión.
-
-    Es la misma familia de problema que en la UT8 con los formularios, pero por un mecanismo distinto: allí es el enlace de datos, aquí el proveedor de persistencia. Los DTO **sí** siguen siendo `record`.
-
-
-### E8 ●●● — El enumerado traicionero
-
-Mapea `Nivel` con `ORDINAL`, guarda datos, añade un valor en medio y observa el desastre.
-
-??? success "Solución"
-
-    ```java
-    enum Nivel { INICIACION, MEDIO, AVANZADO }        // ORDINAL: 0, 1, 2
-    ```
-    Guardas «Piano MEDIO» → en la base de datos hay un `1`.
-
-    Meses después:
-    ```java
-    enum Nivel { INICIACION, BASICO, MEDIO, AVANZADO }   // ahora MEDIO es 2
-    ```
-    Todos los cursos que eran `MEDIO` **pasan a ser `BASICO`**. Sin error, sin aviso, sin rastro.
-
-    ```java
-    @Enumerated(EnumType.STRING)     // guarda "MEDIO"
-    ```
-    Ocupa unos bytes más y es inmune a reordenaciones. No hay ningún caso en el que compense `ORDINAL`.
-
-
-### E9 ●●● — `equals` y el `HashSet`
-
-Implementa `equals`/`hashCode` solo con el `id` y demuestra que rompe un `HashSet`.
-
-??? success "Solución"
-
-    ```java
-    @Test void unaEntidadNuevaSePierdeEnUnSet() {
-        var c = new Clase("Piano B1", …);
-        Set<Clase> set = new HashSet<>();
-        set.add(c);                       // hashCode con id == null
-        repo.save(c);                     // ahora id = 1 → cambia el hashCode
-        assertThat(set.contains(c)).isFalse();   // está dentro y no lo encuentra
-    }
-    ```
-
-    Solución aceptada:
-    ```java
-    @Override public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Clase c)) return false;
-        return id != null && id.equals(c.id);
-    }
-    @Override public int hashCode() { return getClass().hashCode(); }   // constante
-    ```
-    Un `hashCode` constante degrada el `HashSet` a lista, pero **es correcto**, que es lo que importa. La alternativa buena es usar una clave de negocio estable.
-
-
-### E10 ●● — Tipos que se eligen mal
-
-Corrige esta entidad: cinco decisiones de tipo son incorrectas.
-
-```java
-@Entity class Alumno {
-    @Id Long id;
-    String dni;
-    double cuotaMensual;
-    Date fechaAlta;
-    String nivel;
-    String observaciones;
-}
-```
-
-??? success "Solución"
-
-    | Campo | Problema | Corrección |
-    |---|---|---|
-    | `id` | Sin `@GeneratedValue` | Añadirlo |
-    | `dni` | Sin restricción de unicidad | `@Column(unique = true, nullable = false, length = 9)` |
-    | `cuotaMensual` | `double` para dinero | `BigDecimal` con `precision`/`scale` |
-    | `fechaAlta` | `java.util.Date`, obsoleto | `LocalDate` |
-    | `nivel` | Texto libre donde hay valores cerrados | `@Enumerated(STRING)` sobre un `enum` |
-    | `observaciones` | Puede ser muy largo | `@Lob` o `@Column(length = 2000)` |
-
-    El `double` es el que más se cuela y el que peor se ve: `0.1 + 0.2` no es `0.3`, y en una cuota mensual eso acaba en una reclamación.
-
-
----
-
-# Tema 3 · Spring Data JPA
-
-### E11 ● — El repositorio que no se escribe
-
-Crea `ClaseRepositorio` y comprueba qué métodos tienes sin escribir ninguno.
-
-??? success "Solución"
-
-    ```java
-    public interface ClaseRepositorio extends JpaRepository<Clase, Long> { }
-    ```
-    Ya tienes `save`, `saveAll`, `findById`, `findAll`, `findAllById`, `count`, `existsById`, `delete`, `deleteById`, `deleteAll`, `flush`, `saveAndFlush`, y las versiones con `Pageable` y `Sort`.
-
-    No hace falta `@Repository`: Spring Data registra el bean solo. Y **nadie implementa esa interfaz**: se genera un *proxy* en tiempo de ejecución.
-
-
-### E12 ●● — Seis consultas derivadas
-
-Escribe: por nivel, por nombre parcial sin distinguir mayúsculas, más baratas que X ordenadas, entre dos fechas, activas de un profesor, y comprobar si existe un nombre.
-
-??? success "Solución"
-
-    ```java
-    List<Clase> findByNivel(Nivel nivel);
-    List<Clase> findByNombreContainingIgnoreCase(String texto);
-    List<Clase> findByPrecioLessThanOrderByPrecioAsc(BigDecimal max);
-    List<Clase> findByFechaBetween(LocalDate desde, LocalDate hasta);
-    List<Clase> findByProfesorIdAndActivaTrue(Long profesorId);
-    boolean existsByNombre(String nombre);
-    ```
-    La última es la que más se falla: para saber si existe, `existsBy` hace un `count` y devuelve un booleano. `findByNombre(...) != null` se trae la fila entera para nada.
-
-
-### E13 ●●● — Cuando el nombre ya no cabe
-
-`findByNivelAndActivaTrueAndPrecioLessThanOrderByFechaDesc` funciona pero es ilegible. Reescríbelo.
-
-??? success "Solución"
-
-    ```java
-    @Query("""
-           select c from Clase c
-           where c.nivel = :nivel and c.activa = true and c.precio < :max
-           order by c.fecha desc
-           """)
-    List<Clase> buscar(@Param("nivel") Nivel nivel, @Param("max") BigDecimal max);
-    ```
-    El criterio práctico: **si el nombre del método pasa de unas 60 letras o necesita agregación, `@Query`**. Los nombres derivados son cómodos hasta que dejan de leerse.
-
-
-### E14 ●● — Filtros opcionales
-
-Un buscador con tres filtros que pueden venir o no venir.
-
-??? success "Solución"
-
-    ```java
-    @Query("""
-           select c from Clase c
-           where (:nivel    is null or c.nivel = :nivel)
-             and (:profesor is null or c.profesor.id = :profesor)
-             and (:texto    is null or lower(c.nombre) like lower(concat('%', :texto, '%')))
-           """)
-    Page<Clase> buscar(@Param("nivel") Nivel nivel, @Param("profesor") Long profesor,
-                       @Param("texto") String texto, Pageable pageable);
-    ```
-    El patrón `:param is null or condición` es la forma sencilla. Para muchos filtros, `Specification` o QueryDSL; pero con tres o cuatro esto es más legible y no hay que aprender otra API.
-
-
-### E15 ●●● — Proyección y agregado
-
-Devuelve, por nivel: cuántas clases hay, el precio medio y el máximo. **Sin cargar entidades.**
-
-??? success "Solución"
-
-    ```java
-    public interface ResumenNivel {
-        Nivel getNivel();
-        Long getTotal();
-        BigDecimal getMedia();
-        BigDecimal getMaximo();
-    }
-
-    @Query("""
-           select c.nivel as nivel, count(c) as total,
-                  avg(c.precio) as media, max(c.precio) as maximo
-           from Clase c group by c.nivel order by count(c) desc
-           """)
-    List<ResumenNivel> resumenPorNivel();
-    ```
-    Los alias del `select` **tienen que coincidir** con los nombres de los *getters* sin el `get`. Si escribes `count(c) as cuenta` y el método es `getTotal()`, no funciona y el mensaje no lo dice claro.
-
-
----
-
-# Tema 4 · Relaciones
-
-### E16 ●● — La primera relación
-
-`Profesor` 1—N `Clase`, con el lado dueño correcto.
-
-??? success "Solución"
-
-    ```java
-    @Entity public class Profesor {
-        @OneToMany(mappedBy = "profesor")
-        private List<Clase> clases = new ArrayList<>();
-    }
-
-    @Entity public class Clase {
         @ManyToOne(fetch = FetchType.LAZY, optional = false)
-        @JoinColumn(name = "profesor_id")
-        private Profesor profesor;
+        @JoinColumn(name = "alumno_id") private Alumno alumno;
+
+        @ManyToOne(fetch = FetchType.LAZY, optional = false)
+        @JoinColumn(name = "modulo_id") private Modulo modulo;
+
+        @Column(nullable = false, length = 9) private String curso;
+        @Column(precision = 4, scale = 2)     private BigDecimal nota;
     }
     ```
-    El **lado dueño** es `Clase`, porque tiene la clave ajena. `mappedBy = "profesor"` dice: *«la relación la gestiona el campo `profesor` de la otra clase»*.
 
-    El `fetch = LAZY` en el `@ManyToOne` es deliberado: por defecto es `EAGER` y arrastra el profesor en cada consulta de clase, la necesites o no.
+    Una tabla de unión que Hibernate gestiona **no puede tener columnas extra**, no se puede consultar y no se puede paginar.
 
-
-### E17 ●●● — Los dos lados desincronizados
-
-Añade una clase a la lista del profesor sin asignar el profesor a la clase. Observa qué se guarda.
-
-??? success "Solución"
-
-    ```java
-    profesor.getClases().add(clase);      // solo el lado inverso
-    repo.save(profesor);
-    ```
-    La clase se guarda con `profesor_id` **a null**. El lado inverso no manda.
-
-    ```java
-    public void anadir(Clase c) { clases.add(c); c.setProfesor(this); }
-    public void quitar(Clase c) { clases.remove(c); c.setProfesor(null); }
-    ```
-    Estos métodos no son cosmética: son la única forma de que el objeto en memoria y la base de datos digan lo mismo. Que lo comprueben quitándolos.
-
-
-### E18 ●● — Cascada y huérfanos
-
-`Matricula` colgando de `Alumno`: al borrar el alumno se borran sus matrículas, y al quitar una de la lista también.
-
-??? success "Solución"
-
-    ```java
-    @OneToMany(mappedBy = "alumno", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Matricula> matriculas = new ArrayList<>();
-    ```
-    Son **dos cosas distintas**, y se confunden siempre:
-
-    - `cascade = ALL` propaga las operaciones del padre a los hijos: borrar el alumno borra sus matrículas.
-    - `orphanRemoval = true` borra el hijo **cuando se saca de la colección**, aunque el padre siga vivo.
-
-    Sin `orphanRemoval`, `alumno.getMatriculas().remove(m)` no borra nada: deja la fila con la clave ajena colgando.
-
-
-### E19 ●●● — Cuenta las consultas del N+1
-
-Lista 50 clases con el nombre de su profesor, cuenta las consultas y arréglalo de dos formas.
-
-??? success "Solución"
-
-    ```yaml
-    logging.level.org.hibernate.SQL: DEBUG
-    ```
-    Salen **51**: una del listado y una por cada profesor.
-
-    ```java
-    // A · JPQL explícito
-    @Query("select c from Clase c join fetch c.profesor")
-    List<Clase> todasConProfesor();
-
-    // B · declarativo, reutiliza la consulta derivada
-    @EntityGraph(attributePaths = "profesor")
-    List<Clase> findByNivel(Nivel nivel);
-    ```
-    Después: **1**.
-
-    Es el ejercicio más rentable de la unidad. Que peguen en la entrega el recuento antes y después.
-
-
-### E20 ●●● — `join fetch` con paginación
-
-Intenta paginar un `join fetch` de una colección y explica el aviso.
-
-??? success "Solución"
-
-    ```java
-    @Query("select p from Profesor p join fetch p.clases")
-    Page<Profesor> todos(Pageable pageable);          // OJO HHH000104
-    ```
-    El aviso dice: *«firstResult/maxResults specified with collection fetch; applying in memory»*. Traducción: **se trae la tabla entera y pagina en memoria**. Con 100.000 filas, se acabó.
-
-    La solución en dos pasos:
-    ```java
-    @Query("select p.id from Profesor p")
-    Page<Long> idsPaginados(Pageable pageable);
-
-    @Query("select p from Profesor p join fetch p.clases where p.id in :ids")
-    List<Profesor> conClases(@Param("ids") List<Long> ids);
-    ```
-    Se pagina sobre los identificadores y después se cargan las relaciones. Es el patrón estándar y conviene conocerlo.
-
-
-### E21 ●●● — Cuando `@ManyToMany` deja de valer
-
-Modela alumnos y clases con `@ManyToMany`. Después aparece el requisito «guardar la fecha de matrícula y la nota». Rehazlo.
-
-??? success "Solución"
-
-    ```java
-    @Entity
-    public class Matricula {
-        @EmbeddedId private MatriculaId id;
-        @ManyToOne @MapsId("alumnoId") private Alumno alumno;
-        @ManyToOne @MapsId("claseId")  private Clase clase;
-        private LocalDate fecha;
-        private BigDecimal nota;
-    }
-
-    @Embeddable
-    public record MatriculaId(Long alumnoId, Long claseId) implements Serializable {}
-    ```
-    La moraleja, dicha en voz alta: **una relación N—M pura casi nunca sobrevive al segundo *sprint***, porque el negocio siempre acaba queriendo guardar algo sobre la relación. Modelarla desde el principio como entidad ahorra una migración.
-
+    El `@ManyToMany` puro vale para etiquetas: «este artículo tiene estas etiquetas», y nada más.
 
 ---
 
-# Tema 5 · Transacciones e integridad
+# Bloque 3 · Repositorios y consultas
 
-### E22 ●● — La operación que no puede quedar a medias
+> Tema [1. Spring Data con JPA y SQL](01-spring-data-jpa-sql.md) §1.5–1.6
 
-`matricular(alumnoId, claseId)`: comprueba plazas, crea la matrícula, descuenta la plaza y registra el movimiento.
+## E15 ● — Lo que ya viene hecho
+
+¿Qué métodos tienes al extender `JpaRepository<Funko, Long>`?
+
+??? success "Solución"
+
+    `findAll()` · `findAll(Pageable)` · `findAll(Sort)` · `findById(id)` → **`Optional`** · `findAllById` · `save` · `saveAll` · `saveAndFlush` · `deleteById` · `delete` · `deleteAll` · `existsById` · `count` · `flush` · `getReferenceById`
+
+    **Y nada de esto lo escribes tú.** Spring Data crea un proxy en el arranque.
+
+    `findById` devuelve `Optional` desde el primer día, que es por lo que la UT2 insistía tanto.
+
+## E16 ●● — Consultas derivadas
+
+Escribe la firma para: (a) por categoría ordenados por precio descendente · (b) precio entre dos valores · (c) nombre que contenga un texto, sin distinguir mayúsculas · (d) contar los de una categoría · (e) los 5 más caros no borrados
 
 ??? success "Solución"
 
     ```java
-    @Transactional
-    public MatriculaDto matricular(Long alumnoId, Long claseId) {
-        var clase = claseRepo.findById(claseId).orElseThrow(ClaseNoEncontrada::new);
-        if (clase.getPlazasLibres() <= 0) throw new SinPlazasException(claseId);
-
-        clase.setPlazasLibres(clase.getPlazasLibres() - 1);   // dirty checking
-        var m = matriculaRepo.save(new Matricula(alumnoId, claseId, LocalDate.now()));
-        movimientoRepo.save(new Movimiento(alumnoId, "MATRICULA", claseId));
-        return mapper.aDto(m);
-    }
+    List<Funko> findByCategoriaOrderByPrecioDesc(String categoria);
+    List<Funko> findByPrecioBetween(BigDecimal min, BigDecimal max);
+    List<Funko> findByNombreContainingIgnoreCase(String texto);
+    long        countByCategoria(String categoria);
+    List<Funko> findTop5ByDeletedFalseOrderByPrecioDesc();
     ```
-    Prueba obligatoria: forzar el fallo del tercer paso y comprobar que la plaza **no** quedó descontada.
 
-    Dos preguntas que separan el aprobado del notable: ¿por qué no hace falta `save(clase)`? ¿Y qué pasa si `SinPlazasException` extiende `Exception` en vez de `RuntimeException`?
+    Y la ventaja grande: si escribes mal un campo, **la aplicación no arranca**:
 
+    ```
+    PropertyReferenceException: No property 'categoría' found for type 'Funko'
+    ```
 
-### E23 ●●● — La transacción que no se aplica
+    Mucho mejor que un error en producción tres semanas después.
 
-Este código no revierte nada. Explica por qué.
+## E17 ●● — Navegar por la relación
 
-```java
-@Service
-public class MatriculaServicio {
-    public void matricularVarias(List<Long> ids) {
-        ids.forEach(this::matricularUna);      // OJO
-    }
-    @Transactional
-    public void matricularUna(Long id) { … }
-}
-```
-
-??? success "Solución"
-
-    **Autoinvocación.** La llamada `this::matricularUna` no pasa por el *proxy* de Spring, así que `@Transactional` **no hace nada**.
-
-    Tres soluciones, de mejor a peor:
-
-    1. Poner `@Transactional` en `matricularVarias` (que además es lo correcto: la operación de negocio es matricular todas).
-    2. Extraer `matricularUna` a otro bean e inyectarlo.
-    3. Autoinyectarse el propio servicio. Funciona y es feo.
-
-    Es el fallo más silencioso de todo el módulo: no da error, simplemente no protege nada.
-
-
-### E24 ●●● — La edición que se pierde
-
-Demuestra con un test que dos ediciones simultáneas pierden una, y arréglalo.
+Quieres los funkos cuya **categoría se llame** `ANIME`, sin distinguir mayúsculas. Sin escribir SQL.
 
 ??? success "Solución"
 
     ```java
-    @Version private Long version;
+    List<Funko> findByCategoriaNombreIgnoreCaseAndDeletedFalse(String nombre);
     ```
-    ```java
-    @Test void dosEdicionesConcurrentesNoSePisan() {
-        var a = repo.findById(1L).orElseThrow();
-        var b = repo.findById(1L).orElseThrow();      // otra copia, misma versión
-        a.setPrecio(new BigDecimal("200")); repo.saveAndFlush(a);
-        b.setPrecio(new BigDecimal("300"));
-        assertThatThrownBy(() -> repo.saveAndFlush(b))
-            .isInstanceOf(ObjectOptimisticLockingFailureException.class);
-    }
-    ```
-    Sin `@Version` el test falla porque **no salta nada**: el precio queda en 300 y el cambio a 200 desaparece sin rastro. Ese silencio es el problema.
-
-    Ampliación: capturarla en el controlador y devolver `409 Conflict` pidiendo al cliente que recargue.
-
-
-### E25 ●● — La integridad va en la base de datos
-
-Impide dos matrículas del mismo alumno en la misma clase, y explica por qué no basta con comprobarlo en Java.
-
-??? success "Solución"
-
-    ```java
-    @Table(name = "matricula",
-           uniqueConstraints = @UniqueConstraint(columnNames = {"alumno_id", "clase_id"}))
-    ```
-    ```java
-    catch (DataIntegrityViolationException e) {
-        throw new MatriculaDuplicadaException(alumnoId, claseId);   // → 409
-    }
-    ```
-    Entre el `existsBy...` y el `save` cabe otra petición. La comprobación en Java sirve para dar un mensaje decente; **la garantía la da la base de datos**.
-
-    Es el mismo razonamiento que en la UT8 con la unicidad de los formularios.
-
-
-### E26 ●●● — La baja que no borra
-
-Cancelar una matrícula no la elimina: la marca, guarda quién y cuándo, y libera la plaza.
-
-??? success "Solución"
-
-    ```java
-    @Entity public class Matricula {
-        @Enumerated(STRING) private Estado estado;      // ACTIVA, CANCELADA
-        private Instant canceladaEn;
-        private String canceladaPor;
-    }
-    ```
-    ```java
-    @Transactional
-    public void cancelar(Long id, String usuario) {
-        var m = repo.findById(id).orElseThrow(MatriculaNoEncontrada::new);
-        if (m.getEstado() == Estado.CANCELADA) throw new YaCanceladaException(id);
-        m.cancelar(usuario, Instant.now());
-        m.getClase().setPlazasLibres(m.getClase().getPlazasLibres() + 1);
-    }
-    ```
-    ```java
-    List<Matricula> findByClaseIdAndEstado(Long claseId, Estado estado);
-    ```
-    El borrado lógico conserva el histórico, que es lo que pide cualquier auditoría. Y obliga a que **todas** las consultas filtren por estado: si una se olvida, aparecen matrículas fantasma.
-
-
----
-
-# Tema 6 · De H2 a producción
-
-### E27 ●● — `ddl-auto` no sabe migrar
-
-Añade una columna obligatoria a una tabla con datos usando `update`, y después hazlo bien.
-
-??? success "Solución"
-
-    Con `ddl-auto: update`, añadir `@Column(nullable = false) private Integer plazasMinimas;` **falla al arrancar**: la columna se crea, las filas existentes quedan a `null` y la restricción no se puede aplicar.
 
     ```sql
-    -- V2__anadir_plazas_minimas.sql
-    alter table clase add column plazas_minimas integer;
-    update clase set plazas_minimas = 3 where plazas_minimas is null;
-    alter table clase alter column plazas_minimas set not null;
+    select f1_0.* from funkos f1_0
+      join categorias c1_0 on c1_0.id = f1_0.categoria_id
+     where upper(c1_0.nombre) = upper(?) and f1_0.is_deleted = false
     ```
-    Esas tres líneas son la lección entera: `update` habría hecho la primera y **jamás** las otras dos, ni sabría que hacen falta.
 
+    **Spring Data ha escrito el `JOIN`** leyendo el nombre del método: `Categoria` → `Nombre`.
 
-### E28 ●● — Flyway desde cero
+    Y cuando el nombre se hace ilegible (`findByCategoriaNombreIgnoreCaseAndPrecioBetweenAndDeletedFalseOrderByPrecioDesc`), es la señal de que toca `@Query` o `Specification`.
 
-Pasa el proyecto a migraciones versionadas con `validate`.
+## E18 ●● — JPQL o SQL nativo
+
+¿Cuándo cada uno?
 
 ??? success "Solución"
 
-    ``` { .text .sinajuste }
-    src/main/resources/db/migration/
-    ├── V1__esquema_inicial.sql
-    └── V2__anadir_plazas_minimas.sql
+    ```java
+    // JPQL: entidades y campos Java
+    @Query("SELECT f FROM Funko f WHERE f.categoria.nombre = :cat AND f.cantidad > 0")
+    List<Funko> conStock(@Param("cat") String cat);
+
+    // Nativo: tablas y columnas
+    @Query(value = "SELECT * FROM funkos WHERE categoria_id = :id", nativeQuery = true)
+    List<Funko> porCategoriaNativo(@Param("id") Long id);
     ```
-    ```yaml
-    spring:
-      jpa.hibernate.ddl-auto: validate
-      flyway.enabled: true
-    ```
-    Flyway crea `flyway_schema_history` con la suma de verificación de cada fichero. **Modificar una migración ya aplicada rompe el arranque**, y es deliberado: los entornos que ya la ejecutaron no la volverían a pasar.
 
+    | | JPQL | Nativo |
+    |---|---|---|
+    | Habla de | Entidades | Tablas |
+    | Portable | **Sí** | No |
+    | Se valida al arrancar | **Sí** | No: falla al ejecutar |
+    | Funciones propias del motor | No | Sí |
 
-### E29 ●● — PostgreSQL con Docker
+    **JPQL por defecto.** Nativo solo para lo que JPQL no expresa: una función del motor, una ventana (`OVER`), un `UPSERT`, una búsqueda de texto completo.
 
-Levanta PostgreSQL, arranca la aplicación contra él y comprueba que las migraciones se aplican.
+    Y en los dos: **nunca concatenes**. Los `:param` son parámetros preparados; concatenar es la inyección SQL de la [UT3, E22](../ut3/ejercicios.md).
+
+## E19 ●● — `@Modifying`
+
+```java
+@Query("UPDATE Funko f SET f.deleted = true WHERE f.id = :id")
+int borradoLogico(@Param("id") Long id);
+```
+
+¿Qué falta?
 
 ??? success "Solución"
 
-    ```yaml
-    # compose.yaml
-    services:
-      db:
-        image: postgres:17-alpine
-        environment:
-          POSTGRES_DB: escuela
-          POSTGRES_PASSWORD: ${DB_PASSWORD}
-        ports: ["5432:5432"]
-        volumes: ["datos:/var/lib/postgresql/data"]
-    volumes: { datos: }
+    **`@Modifying`**, o salta:
+
     ```
-    ```yaml
-    # application-prod.yml
-    spring.datasource:
-      url: jdbc:postgresql://localhost:5432/escuela
-      username: postgres
-      password: ${DB_PASSWORD}
+    org.hibernate.query.IllegalMutationQueryException:
+    Not supported for DML operations
     ```
-    El `volumes` es lo que hace que los datos sobrevivan a `docker compose down`. Sin él, cada reinicio empieza de cero — que está bien en desarrollo y es una catástrofe en producción.
 
+    Y **`@Transactional`** en quien lo llama, o salta `TransactionRequiredException`.
 
-### E30 ●●● — Tests con `@DataJpaTest`
+    ```java
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Funko f SET f.deleted = true, f.updatedAt = CURRENT_TIMESTAMP WHERE f.id = :id")
+    int borradoLogico(@Param("id") Long id);
+    ```
 
-Tres tests: una consulta derivada, una relación cargada sin N+1 y una restricción que debe fallar.
+    El `clearAutomatically` es el detalle fino: un `UPDATE` por JPQL **no pasa por la caché de primer nivel**, así que si en la misma transacción tenías el funko cargado, ese objeto sigue con `deleted = false` en memoria.
+
+## E20 ●●● — `Specification` para filtros combinables
+
+`?categoria=&precioMin=&precioMax=&nombre=`, todos opcionales. ¿Con `if` o con `Specification`?
+
+??? success "Solución"
+
+    Con cuatro filtros opcionales hay **16 combinaciones**. Un método por cada una es inviable.
+
+    ```java
+    public interface FunkosRepository
+            extends JpaRepository<Funko, Long>, JpaSpecificationExecutor<Funko> { }
+    ```
+
+    ```java
+    Specification<Funko> spec = (root, q, cb) -> cb.isFalse(root.get("deleted"));
+
+    spec = categoria.map(c -> spec.and((root, q, cb) ->
+            cb.equal(cb.upper(root.get("categoria").get("nombre")), c.toUpperCase())))
+            .orElse(spec);
+
+    spec = precioMin.map(p -> spec.and((root, q, cb) ->
+            cb.greaterThanOrEqualTo(root.get("precio"), p))).orElse(spec);
+
+    spec = precioMax.map(p -> spec.and((root, q, cb) ->
+            cb.lessThanOrEqualTo(root.get("precio"), p))).orElse(spec);
+
+    spec = nombre.map(n -> spec.and((root, q, cb) ->
+            cb.like(cb.lower(root.get("nombre")), "%" + n.toLowerCase() + "%")))
+            .orElse(spec);
+
+    return repositorio.findAll(spec, pageable).map(mapper::toResponse);
+    ```
+
+    Cada filtro **se añade solo si viene**, y el SQL final solo lleva las condiciones presentes. Los `Optional` son los de la UT2.
+
+    Y el `.map(mapper::toResponse)` del final: `Page` tiene `map`, así que la paginación se conserva y salen DTOs.
+
+## E21 ●●● — `@DataJpaTest`
+
+Escribe un test que compruebe que los borrados lógicamente no aparecen.
 
 ??? success "Solución"
 
     ```java
     @DataJpaTest
-    class ClaseRepositorioTest {
+    @ActiveProfiles("test")
+    class FunkosRepositoryTest {
 
-        @Autowired ClaseRepositorio repo;
+        @Autowired FunkosRepository repositorio;
         @Autowired TestEntityManager em;
 
-        @Test void buscaPorNivel() {
-            em.persist(new Clase("Piano B1", Nivel.MEDIO, …));
-            em.persist(new Clase("Violín A1", Nivel.INICIACION, …));
-            assertThat(repo.findByNivel(Nivel.MEDIO)).hasSize(1);
-        }
+        @Test
+        void noDevuelveLosBorradosLogicamente() {
+            var categoria = em.persistAndFlush(new Categoria("ANIME"));
+            em.persistAndFlush(funko("Goku",   categoria, false));
+            em.persistAndFlush(funko("Naruto", categoria, true));
 
-        @Test void cargaElProfesorEnUnaSolaConsulta() {
-            // … con @EntityGraph; se comprueba con statistics o contando en el log
-            assertThat(repo.todasConProfesor()).allSatisfy(
-                c -> assertThat(c.getProfesor().getNombre()).isNotNull());
-        }
+            var resultado = repositorio.findByDeletedFalse();
 
-        @Test void elDniDuplicadoFalla() {
-            em.persist(new Alumno("12345678Z", "Ana"));
-            assertThatThrownBy(() -> em.persistAndFlush(new Alumno("12345678Z", "Luis")))
-                .isInstanceOf(PersistenceException.class);
+            assertThat(resultado).extracting(Funko::getNombre)
+                                 .containsExactly("Goku");
         }
     }
     ```
-    `@DataJpaTest` levanta **solo** la capa de datos y **revierte al terminar**, así que los tests no se contaminan entre sí. El `persistAndFlush` es necesario en el tercero: sin `flush`, la restricción no se comprueba hasta el final.
 
+    **`@DataJpaTest` hace tres cosas:**
+
+    1. Levanta **solo** la capa JPA: ni controladores ni servicios. Menos de un segundo.
+    2. Usa la base de datos en memoria del perfil de test.
+    3. Cada test va en **una transacción que se deshace al acabar**: no hay que limpiar nada.
+
+    Y el `persistAndFlush`: sin el `flush`, el `INSERT` se queda en la caché de primer nivel y la consulta del repositorio no lo ve.
 
 ---
 
-## Cómo usarlos en clase
+# Bloque 4 · Paginación, transacciones y producción
 
-| Momento | Ejercicios |
-|---|---|
-| Para arrancar la sesión, 10 min | E1 · E6 · E11 · E16 · E22 · E27 |
-| Taller de la sesión, 25-30 min | E2 · E10 · E12 · E18 · E25 · E29 |
-| Los que hay que hacer sí o sí | **E8 · E9 · E17 · E19 · E23** |
-| Para quien va sobrado | E5 · E20 · E21 · E24 · E26 · E30 |
-| Repaso antes del examen | E17 · E19 · E22 · E23 · E25 |
+> Tema [2. Resultados avanzados](02-resultados-avanzados.md) y [3. Proyecto](03-proyecto-completo.md)
 
-!!! tip "Los tres que hay que hacer aunque no dé tiempo a nada más"
-    **E19** (contar el N+1), **E23** (la transacción que no se aplica) y **E8** (el enumerado traicionero).
+## E22 ● — `Page`, `Slice` o `List`
 
-    Los tres comparten una característica: **el código funciona y está mal**. No hay excepción, no hay aviso, no hay pista. Solo se ven si sabes qué mirar, y eso es exactamente lo que distingue a alguien que sabe JPA de alguien que ha copiado anotaciones.
+¿Qué devuelve cada uno y cuál cuesta más?
+
+??? success "Solución"
+
+    | | Qué trae | Consultas |
+    |---|---|:-:|
+    | `List<T>` | Solo los elementos | **1** |
+    | `Slice<T>` | Elementos + «¿hay más?» | **1** (pide `size+1`) |
+    | `Page<T>` | Elementos + `totalElements` + `totalPages` | **2** |
+
+    **`Page` lanza un `SELECT count(*)` extra**, y sobre una tabla grande no es gratis.
+
+    Si la interfaz tiene «página 3 de 47», necesitas `Page`. Si es un *scroll* infinito con «cargar más», `Slice` basta y cuesta la mitad.
+
+## E23 ●● — Los dos peligros de `?sort=` y `?size=`
+
+??? success "Solución"
+
+    **`?size=1000000`** carga la tabla entera: has escrito la paginación para nada.
+
+    ```properties
+    spring.data.web.pageable.max-page-size=100
+    spring.data.web.pageable.default-page-size=20
+    ```
+
+    **`?sort=cualquierCampo`** permite ordenar por **cualquier propiedad de la entidad**, incluidas las que no publicas. Con `?sort=passwordHash`, no recibes el hash pero sí **el orden relativo** de los hashes.
+
+    Y `?sort=inventado` provoca un `PropertyReferenceException` → **500**, cuando debería ser 400.
+
+    ```java
+    private Pageable sanear(Pageable p) {
+        var ok = Set.of("id", "nombre", "precio", "cantidad", "createdAt");
+        var orden = p.getSort().stream()
+                     .filter(o -> ok.contains(o.getProperty())).toList();
+        return PageRequest.of(p.getPageNumber(),
+                              Math.min(p.getPageSize(), 100),
+                              orden.isEmpty() ? Sort.by("id") : Sort.by(orden));
+    }
+    ```
+
+    **Lista blanca, no negra**: un campo nuevo en la entidad no debe quedar ordenable por omisión.
+
+## E24 ●● — `@Transactional` que no revierte
+
+```java
+@Transactional
+public void procesar() {
+    try {
+        repositorio.save(algo);
+        otroServicio.fallar();
+    } catch (Exception e) {
+        log.error("ups", e);
+    }
+}
+```
+
+??? success "Solución"
+
+    **La transacción se confirma**, con `algo` guardado y el resto del trabajo sin hacer.
+
+    Dos razones, y las dos hay que saberlas:
+
+    1. **La excepción se captura dentro.** Para que haya *rollback*, tiene que **salir** del método transaccional.
+    2. **Por defecto solo revierte con `RuntimeException`.** Si `fallar()` lanzara una `IOException` y no la capturaras, la transacción **también se confirmaría**. Para eso: `@Transactional(rollbackFor = Exception.class)`.
+
+    Y la tercera trampa, que no está en este código: `@Transactional` funciona **por proxy**, así que `this.procesar()` llamado desde otro método del mismo bean **no abre transacción**. Igual que `@Cacheable` en la UT4.
+
+## E25 ●● — `@Version`
+
+¿Para qué sirve y qué excepción lanza?
+
+??? success "Solución"
+
+    ```java
+    @Version
+    private Long version;
+    ```
+
+    Hibernate añade `AND version = ?` a cada `UPDATE` e incrementa el número. Si otro ya lo había cambiado, el `UPDATE` afecta a **0 filas** y lanza:
+
+    ```
+    org.springframework.orm.ObjectOptimisticLockingFailureException
+    ```
+
+    **Sin esto, el último en guardar pisa los cambios del primero** y nadie se entera. Se llama *lost update* y es el bug silencioso clásico de un panel con dos personas trabajando.
+
+    Se traduce a un **409 Conflict** con un «alguien ha modificado este registro, recarga y vuelve a intentarlo».
+
+## E26 ●●● — De H2 a MySQL
+
+Tu proyecto funciona con H2. Pásalo a MySQL en Docker. ¿Qué tocas?
+
+??? success "Solución"
+
+    **El perfil y el `compose.yaml`. Ni una línea de código.**
+
+    ```properties title="application-prod.properties"
+    spring.datasource.url=${DB_URL}
+    spring.datasource.username=${DB_USER}
+    spring.datasource.password=${DB_PASSWORD}
+    spring.jpa.hibernate.ddl-auto=validate
+    ```
+
+    ```yaml title="compose.yaml"
+    services:
+      api:
+        environment:
+          SPRING_PROFILES_ACTIVE: prod
+          DB_URL: jdbc:mysql://db:3306/funkos     # ← "db", no localhost
+        depends_on:
+          db: { condition: service_healthy }      # ← sin esto, falla al arrancar
+      db:
+        image: mysql:8.4
+        healthcheck:
+          test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+          interval: 5s
+          retries: 10
+    ```
+
+    **Los dos errores de este paso:**
+
+    1. **`localhost` en vez de `db`.** Dentro de la red de Compose, la API ve la base de datos por el **nombre del servicio**. `localhost` desde el contenedor de la API es el propio contenedor de la API.
+    2. **Sin `condition: service_healthy`**, `depends_on` solo espera a que el contenedor arranque, no a que MySQL acepte conexiones. Resultado: `Communications link failure`.
+
+    Es el mismo aviso de la [UT3, E25](../ut3/ejercicios.md).
+
+    Y la comprobación de que la unidad ha servido para algo:
+
+    ```bash
+    curl -X POST … -d '{"nombre":"Pikachu",…}'
+    docker compose restart api && sleep 15
+    curl -s "localhost:8080/api/v1/funkos?nombre=pika" | jq '.totalElements'
+    # 1   ← en la UT4 esto era 0
+    ```
+
+---
+
+## Reparto sugerido
+
+| Sesión | Bloque | Ejercicios |
+|:-:|---|---|
+| **S1** | 1 · Configuración | E1 – E2 |
+| **S2** | 1 · Entidades | E3 – E6 |
+| **S3** | 2 · Relaciones | E7 – E8 |
+| **S4** | 2 · `LAZY` y cascada | E9 – E10 |
+| **S5** | 2 · N+1, *lazy* y recursión | E11 – E14 |
+| **S6** | 3 · Repositorios y consultas | E15 – E20 |
+| **S7** | 3 · Testing | E21 |
+| **S8** | 4 · Paginación | E22 – E23 |
+| **S9** | 4 · Transacciones y producción | E24 – E26 |
+| **S14–S19** | — | [Retos](retos.md) |
+| **S20** | — | Examen práctico |
+
+!!! success "Si vas justo de tiempo"
+    El mínimo: **E1, E4, E7, E9, E11, E12, E15, E19, E23, E24**.
+
+    Y los cuatro que separan un 5 de un 9, porque son los que **no fallan hasta que hay volumen**: **E11** (el N+1), **E12** (`LazyInitializationException`), **E10** (la cascada que borra) y **E24** (la transacción que no revierte).
+
+    Los cuatro compilan, arrancan y pasan cualquier prueba manual.

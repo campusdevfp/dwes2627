@@ -1,479 +1,519 @@
-# Retos — UT5
+# Retos de la UT5
 
-Tres retos. **Los dos primeros vienen resueltos**; **el tercero se entrega**, y es del mismo tamaño y la misma forma que el examen práctico de la unidad.
+Tres proyectos con Spring Data JPA. **Los dos primeros se construyen en clase; el tercero se entrega y es el más completo de la unidad.**
 
-| | Reto | Sesiones | |
-|:-:|---|:-:|---|
-| **R1** | Ponerle una base de datos debajo, sin romper nada | S1–S11 | :material-check-circle: Resuelto |
-| **R2** | Las relaciones y el N+1 | S12–S20 | :material-check-circle: Resuelto |
-| **R3** | El catálogo de la biblioteca | S21–S23 | :material-pencil: **A entregar** |
+| | Reto | Formato | Sesiones |
+|:-:|---|---|:-:|
+| **1** | :material-check-circle: **Videoclub** — resuelto en clase | Guiado, dos entidades 1:N | S7–S8 |
+| **2** | :material-check-circle: **Instituto** — resuelto en clase | Guiado con huecos, N:M | S9 |
+| **3** | :material-upload: **El que entregas** — a elegir entre tres | Autónomo, tres entidades | S10–S11 |
 
-!!! info "Con el SQL a la vista, siempre"
-    En toda esta unidad se trabaja con `spring.jpa.show-sql: true` y el formateo activado. **Lo que se aprende aquí es a mirar qué SQL genera JPA**, no a memorizar anotaciones.
+!!! info "La diferencia con los retos de la UT4"
+    Allí el repositorio era un `HashMap` y el reto estaba en las capas. Aquí las capas ya las sabes, y el reto está en **el modelo de datos**: qué relación es cada una, dónde va la clave ajena, qué se borra en cascada y qué no, y cómo evitar el N+1.
 
-    ```yaml
-    spring:
-      jpa:
-        show-sql: true
-        properties.hibernate.format_sql: true
-    ```
+    Son los errores que no se ven hasta que la tabla tiene 10.000 filas, y por eso están en la rúbrica.
 
 ---
 
-# R1 · Ponerle una base de datos debajo
+## Reto 1 · Videoclub :material-check-circle:
 
-**Sesiones S1–S11** · Resuelto
+> **API REST de un videoclub.** Dos entidades con una relación **1:N**, borrado lógico, paginación y una operación de negocio con reglas.
 
-## La situación
+### El modelo
 
-La API de la UT4 funciona perfectamente… hasta que la reinicias. Entonces el inventario vuelve a estar vacío, porque todo vivía en un `ConcurrentHashMap`.
+```java
+@Entity @Table(name = "generos")
+public class Genero {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    @Column(nullable = false, unique = true, length = 40)
+    private String nombre;
+    @Column(name = "is_deleted", nullable = false)
+    private boolean deleted = false;
 
-## La pregunta
+    @OneToMany(mappedBy = "genero", fetch = FetchType.LAZY)
+    private List<Pelicula> peliculas = new ArrayList<>();
+}
 
-> **Haced que los datos sobrevivan al reinicio sin que el servicio, el controlador ni los tests se enteren de que ha cambiado nada.**
+@Entity @Table(name = "peliculas",
+        indexes = @Index(name = "idx_peli_titulo", columnList = "titulo"))
+public class Pelicula {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    @Column(nullable = false, length = 200) private String titulo;
+    @Column(nullable = false)               private String director;
+    @Column(nullable = false)               private Integer anio;
+    @Column(nullable = false, precision = 6, scale = 2) private BigDecimal precioAlquiler;
+    @Column(nullable = false) private Integer copias;      // cuántas hay
+    @Column(nullable = false) private Integer alquiladas;  // cuántas están fuera
 
-## Restricciones
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "genero_id", nullable = false,
+                foreignKey = @ForeignKey(name = "fk_peli_genero"))
+    private Genero genero;
 
-- El **servicio no se toca**. Si te ves modificándolo, el acceso a datos estaba filtrado hacia arriba.
-- Los tests del controlador **siguen en verde sin tocarlos**.
-- Se mira el SQL generado. Toda consulta que no entiendas, se mira.
-- Nada de `ddl-auto: create-drop` fuera de los tests.
+    @Column(name = "is_deleted", nullable = false) private boolean deleted = false;
+}
+```
 
-## Criterios de aceptación
+### Lo que hay que construir
 
-- [ ] Los datos siguen ahí después de parar y arrancar.
-- [ ] `ProductoRepositorio extends JpaRepository` y **la implementación en memoria ha desaparecido** de producción.
-- [ ] El servicio está **igual** que antes, salvo los nombres de los métodos del repositorio.
-- [ ] Hay al menos una consulta derivada del nombre del método y una `@Query`.
+```
+GET    /api/v1/peliculas        ?page= &size= &sort= &genero= &anioMin= &anioMax= &titulo= &disponible=
+GET    /api/v1/peliculas/{id}
+POST   /api/v1/peliculas
+PUT    /api/v1/peliculas/{id}
+PATCH  /api/v1/peliculas/{id}
+DELETE /api/v1/peliculas/{id}        ← lógico
 
-??? success "Solución · de `record` a entidad"
+POST   /api/v1/peliculas/{id}/alquiler
+POST   /api/v1/peliculas/{id}/devolucion
+GET    /api/v1/peliculas/estadisticas
+
+GET    /api/v1/generos               CRUD completo
+GET    /api/v1/generos/{id}/peliculas
+```
+
+### Las reglas
+
+| Regla | Código |
+|---|:-:|
+| El título no se repite dentro del mismo género | **409** |
+| `alquiladas` nunca supera `copias` | **409** |
+| No se puede devolver si `alquiladas == 0` | **409** |
+| No se puede borrar una película con copias alquiladas | **409** |
+| No se puede borrar un género con películas | **409** |
+| `anio` entre 1895 y el año actual | 400 |
+| `copias` mínimo 1 | 400 |
+| La película debe pertenecer a un género **que exista** | 400 |
+
+!!! reto "Las tres decisiones que se discuten en clase"
+    **1. ¿Dónde va la clave ajena?** En `peliculas`, porque una película tiene **un** género y un género tiene **muchas** películas. Así que el lado dueño es el `@ManyToOne` y el `@OneToMany` lleva `mappedBy`. Sin ese `mappedBy`, Hibernate crea una tabla intermedia `generos_peliculas` que no quieres.
+
+    **2. ¿`cascade = ALL` en el `@OneToMany`?** **No.** Borrar el género `TERROR` borraría todas las películas de terror. Lo que queremos es lo contrario: que **no se pueda** borrar un género con películas, y eso es un 409 comprobado en el servicio.
+
+    **3. ¿`POST /peliculas/{id}/alquiler` o `PATCH` con `{"alquiladas": 3}`?** La primera. Un alquiler **no es editar un campo**: tiene reglas propias. Si lo expones como PATCH de `alquiladas`, un cliente puede poner `alquiladas: 999`.
+
+### El índice compuesto que hay que ver
+
+```java
+@Table(name = "peliculas",
+       uniqueConstraints = @UniqueConstraint(
+               name = "uk_peli_titulo_genero",
+               columnNames = {"titulo", "genero_id"}))
+```
+
+!!! success "Unicidad compuesta: por qué la pone la base de datos"
+    «El título no se repite dentro del mismo género» significa que puede haber dos *Drácula*, una en TERROR y otra en COMEDIA. Eso es una clave única **de dos columnas**.
+
+    Y la comprobación va en la base de datos, no solo en el servicio: entre tu `existsBy...` y tu `save` cabe otra petición haciendo lo mismo. Es el E23 de la UT3, otra vez.
+
+    El servicio comprueba **y** captura:
 
     ```java
-    @Entity
-    @Table(name = "producto",
-           uniqueConstraints = @UniqueConstraint(columnNames = "etiqueta"))
-    public class Producto {
-
-        @Id
-        @GeneratedValue(strategy = GenerationType.IDENTITY)          // (1)
-        private Long id;
-
-        @Column(nullable = false, unique = true, length = 20)
-        private String etiqueta;
-
-        @Column(nullable = false, length = 60)
-        private String nombre;
-
-        @Enumerated(EnumType.STRING)                                 // (2)
-        @Column(nullable = false, length = 20)
-        private Categoria categoria;
-
-        @Column(nullable = false, precision = 10, scale = 2)         // (3)
-        private BigDecimal precio;
-
-        @Column(nullable = false)
-        private int stock;
-
-        protected Producto() { }                                     // (4)
-
-        public Producto(String etiqueta, String nombre,
-                        Categoria categoria, BigDecimal precio, int stock) { … }
-
-        // getters; setters solo de lo que de verdad cambia
+    try {
+        return mapper.toResponse(repositorio.save(peli));
+    } catch (DataIntegrityViolationException e) {
+        throw new PeliculaConflictException("Ya existe esa película en ese género");
     }
     ```
 
-    1.  `IDENTITY` delega el identificador en la base de datos (`AUTO_INCREMENT`, `SERIAL`). Es lo normal con MySQL/MariaDB y PostgreSQL. `SEQUENCE` permite a Hibernate agrupar inserciones, y es mejor cuando insertas en lotes.
-    2.  **`EnumType.STRING`, siempre.** Con `ORDINAL` se guarda la **posición** del valor en el `enum`: el día que alguien añada un valor en medio, todos los registros antiguos pasan a significar otra cosa. Es corrupción silenciosa de datos y no hay forma de deshacerla.
-    3.  **`BigDecimal` para dinero**, con `precision` y `scale`. `double` arrastra errores de redondeo que en una factura acaban en una reclamación.
-    4.  Constructor sin argumentos **`protected`**: JPA lo necesita para instanciar por reflexión, y `protected` impide que lo use tu código por error.
+### Entrega
 
-    **Y por qué ya no es un `record`.** Un `record` es inmutable y final: JPA necesita poder crear el objeto vacío y rellenarlo, y necesita poder extenderlo para los *proxies* de carga perezosa. Los records siguen siendo perfectos para los DTO — de hecho es donde deben estar.
-
-??? success "Solución · el repositorio desaparece"
-
-    ```java
-    public interface ProductoRepositorio extends JpaRepository<Producto, Long> {
-
-        Optional<Producto> findByEtiqueta(String etiqueta);          // (1)
-
-        List<Producto> findByCategoriaAndStockGreaterThan(Categoria c, int stock);
-
-        boolean existsByEtiqueta(String etiqueta);
-
-        @Query("""
-               select p from Producto p
-               where p.stock < :minimo
-               order by p.stock asc
-               """)                                                   // (2)
-        List<Producto> conStockBajo(@Param("minimo") int minimo);
-
-        @Query(value = "select * from producto where stock = 0",
-               nativeQuery = true)                                    // (3)
-        List<Producto> agotados();
-    }
-    ```
-
-    1.  **No escribes la implementación.** Spring Data la genera leyendo el nombre del método: `findBy` + campo + operador. Si te equivocas en el nombre de un campo, **falla al arrancar**, no en producción.
-    2.  JPQL: habla de **clases y atributos** (`Producto`, `p.stock`), no de tablas y columnas. Es portable entre bases de datos.
-    3.  SQL nativo: rápido y **atado al motor**. Solo cuando JPQL no llega.
-
-    La implementación en memoria **se borra de producción** y se queda como doble de test. Ese es su papel a partir de ahora.
-
-    Los nombres que hay que reconocer en el examen:
-
-    | Nombre del método | SQL que genera |
-    |---|---|
-    | `findByNombre` | `where nombre = ?` |
-    | `findByNombreContainingIgnoreCase` | `where lower(nombre) like lower('%?%')` |
-    | `findByPrecioBetween` | `where precio between ? and ?` |
-    | `findByCategoriaOrderByPrecioDesc` | `where categoria = ? order by precio desc` |
-    | `existsByEtiqueta` | `select count(*) > 0 …` |
-    | `deleteByStock` | `delete from …` (necesita `@Transactional`) |
-
-??? success "Solución · qué cambia en el servicio (casi nada)"
-
-    ```java
-    @Service
-    public class ProductoServicio {
-
-        private final ProductoRepositorio repositorio;
-
-        public ProductoServicio(ProductoRepositorio repositorio) {   // (1)
-            this.repositorio = repositorio;
-        }
-
-        public Producto obtener(Long id) {
-            return repositorio.findById(id)                          // (2)
-                    .orElseThrow(() -> new ProductoNoEncontradoException(id));
-        }
-
-        @Transactional                                               // (3)
-        public Producto ajustarStock(Long id, int unidades) {
-            var producto = obtener(id);
-            if (producto.getStock() + unidades < 0) {
-                throw new StockInsuficienteException(id, producto.getStock());
-            }
-            producto.setStock(producto.getStock() + unidades);
-            return producto;                                         // (4)
-        }
-    }
-    ```
-
-    1.  **Exactamente igual que antes.** El servicio no sabe que debajo hay una base de datos.
-    2.  Lo único que cambia: `buscarPorId` pasa a llamarse `findById`, que es el nombre de `JpaRepository`.
-    3.  `@Transactional` porque se modifica.
-    4.  **Y aquí está lo que más sorprende: no hay `save`.** Dentro de una transacción, la entidad está *gestionada*: Hibernate detecta el cambio y lanza el `UPDATE` al cerrar. Se llama *dirty checking*.
-
-        Poner `repositorio.save(producto)` tampoco está mal —es explícito y muchos equipos lo prefieren—, pero hay que saber que **no hace falta**.
-
-    Y la prueba de que todo estaba bien montado:
-
-    ```bash
-    curl -X POST localhost:8080/api/v1/productos -H "Content-Type: application/json" \
-         -d '{"etiqueta":"PC-042","nombre":"Portátil","categoria":"INFORMATICA","precio":649.99,"stock":10}'
-
-    # Ctrl+C y volver a arrancar
-    curl -s localhost:8080/api/v1/productos | jq length      # sigue ahí
-    mvn test                                                 # sigue en verde
-    ```
-
-    **Si `mvn test` falla, mira qué test.** Si es uno del controlador, el acceso a datos se había filtrado hasta arriba y ese es el verdadero hallazgo del reto.
+Nada: se construye en clase y queda como material de estudio.
 
 ---
 
-# R2 · Las relaciones y el N+1
+## Reto 2 · Instituto :material-check-circle:
 
-**Sesiones S12–S20** · Resuelto
+> Se te da el proyecto **con las entidades escritas y el resto en huecos**. El reto es la relación **N:M** y lo que trae de cola.
 
-## La situación
-
-Hay pedidos, y cada pedido tiene líneas. Listar veinte pedidos con sus líneas empieza a tardar, y en el log aparecen esto:
+### Lo que se te da
 
 ```
-Hibernate: select p.* from pedido p
-Hibernate: select l.* from linea l where l.pedido_id = ?
-Hibernate: select l.* from linea l where l.pedido_id = ?
-Hibernate: select l.* from linea l where l.pedido_id = ?
-... (17 más)
+instituto-base/
+├── pom.xml                                      ✅
+├── compose.yaml                                 ✅
+├── .env.example                                 ✅
+├── src/main/resources/
+│   ├── application.properties                   ✅
+│   ├── application-dev.properties               ✅
+│   ├── application-prod.properties              ⬜ TODO
+│   └── data.sql                                 ✅
+└── src/main/java/es/iesx/instituto/
+    ├── alumnos/models/Alumno.java               ✅
+    ├── modulos/models/Modulo.java               ✅
+    ├── matriculas/models/Matricula.java          ✅
+    ├── */dto/*.java                              ✅
+    ├── */repositories/*.java                     ⬜ TODO
+    ├── */mappers/*.java                          ⬜ TODO
+    ├── */services/*Impl.java                     ⬜ TODO
+    ├── */controllers/*.java                      ⬜ TODO
+    └── common/GlobalExceptionHandler.java        ⬜ TODO
 ```
 
-## La pregunta
+### La relación N:M con datos propios
 
-> **Averiguad por qué una sola consulta se ha convertido en veintiuna, y arregladlo sin cambiar de `LAZY` a `EAGER`.**
+```java
+// Un alumno cursa varios módulos; un módulo tiene varios alumnos.
+// Pero la MATRÍCULA tiene datos propios: la nota y la fecha.
+// Por eso NO es un @ManyToMany: es una entidad intermedia.
 
-## Restricciones
+@Entity @Table(name = "matriculas",
+       uniqueConstraints = @UniqueConstraint(
+               name = "uk_matricula",
+               columnNames = {"alumno_id", "modulo_id", "curso"}))
+public class Matricula {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-- **`EAGER` no es la solución.** Quita el síntoma de este caso y lo empeora en todos los demás.
-- El número de consultas hay que **contarlo**, no estimarlo.
-- Las relaciones bidireccionales tienen **un solo dueño**.
-- Nada de `CascadeType.ALL` sin pensar qué implica el borrado.
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "alumno_id", nullable = false)
+    private Alumno alumno;
 
-## Criterios de aceptación
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "modulo_id", nullable = false)
+    private Modulo modulo;
 
-- [ ] Está contado el número de consultas antes y después.
-- [ ] Listar N pedidos con sus líneas hace **una** consulta, no N+1.
-- [ ] `@OneToMany` con `mappedBy` en el lado correcto.
-- [ ] Añadir una línea a un pedido lo guarda en cascada; borrar el pedido borra sus líneas.
-- [ ] Existe un test que falla si vuelve el N+1.
+    @Column(nullable = false, length = 9) private String curso;    // "2025-2026"
+    @Column(precision = 4, scale = 2)     private BigDecimal nota; // puede ser null
+    @Column(name = "fecha_matricula", nullable = false)
+    private LocalDate fechaMatricula = LocalDate.now();
+}
+```
 
-??? success "Solución · el mapeo, con el dueño donde toca"
+!!! danger "La decisión más importante del reto: `@ManyToMany` o entidad intermedia"
+    | | `@ManyToMany` | Entidad intermedia |
+    |---|---|---|
+    | La tabla de unión | La crea Hibernate | La defines tú |
+    | Datos propios en la relación | **Imposible** | Sí: nota, fecha, estado |
+    | Consultar la relación | No se puede | Es un repositorio más |
+    | Complejidad | Menos | Más |
+
+    **En cuanto la relación tiene un dato propio, deja de ser un `@ManyToMany`.** Y casi todas los tienen: una matrícula tiene nota, un pedido tiene cantidad, una inscripción tiene fecha.
+
+    El `@ManyToMany` puro vale para etiquetas: «este artículo tiene estas etiquetas», y nada más.
+
+### Lo que hay que construir
+
+```
+GET    /api/v1/alumnos               ?page= &size= &sort= &nombre= &curso=
+GET    /api/v1/alumnos/{id}
+GET    /api/v1/alumnos/{id}/matriculas      ← con el módulo y la nota
+GET    /api/v1/alumnos/{id}/expediente      ← media, aprobados, suspensos
+POST   /api/v1/alumnos        · PUT · PATCH · DELETE (lógico)
+
+GET    /api/v1/modulos               CRUD completo
+GET    /api/v1/modulos/{id}/alumnos  ?curso=2025-2026
+
+POST   /api/v1/matriculas            ← matricular
+PATCH  /api/v1/matriculas/{id}/nota  ← poner la nota
+DELETE /api/v1/matriculas/{id}       ← desmatricular
+GET    /api/v1/matriculas/estadisticas
+```
+
+### Las reglas, y una que obliga a pensar
+
+| Regla | Código |
+|---|:-:|
+| Un alumno no se matricula dos veces del mismo módulo en el mismo curso | **409** |
+| La nota entre 0 y 10, con dos decimales | 400 |
+| **No se puede matricular de un módulo de 2.º sin tener aprobados sus prerrequisitos de 1.º** | **409** |
+| No se puede poner nota a una matrícula de un curso cerrado | 409 |
+| No se puede borrar un módulo con matrículas | 409 |
+| El DNI del alumno se valida con expresión regular y con la letra correcta | 400 |
+| El curso tiene formato `AAAA-AAAA` y los años consecutivos | 400 |
+
+!!! reto "La regla de los prerrequisitos es el reto de verdad"
+    `Modulo` tiene una relación **consigo mismo**:
 
     ```java
-    @Entity
-    public class Pedido {
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "modulo_prerrequisitos",
+               joinColumns        = @JoinColumn(name = "modulo_id"),
+               inverseJoinColumns = @JoinColumn(name = "prerrequisito_id"))
+    private Set<Modulo> prerrequisitos = new HashSet<>();
+    ```
 
-        @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-        private Long id;
+    Y la comprobación:
 
-        @Column(nullable = false)
-        private LocalDateTime creado;
+    ```java
+    private void comprobarPrerrequisitos(Alumno alumno, Modulo modulo) {
+        var aprobados = matriculasRepository
+                .findByAlumnoIdAndNotaGreaterThanEqual(alumno.getId(), new BigDecimal("5.00"))
+                .stream().map(m -> m.getModulo().getId()).collect(Collectors.toSet());
 
-        @OneToMany(mappedBy = "pedido",                              // (1)
-                   cascade = CascadeType.ALL,                        // (2)
-                   orphanRemoval = true)                             // (3)
-        private List<LineaPedido> lineas = new ArrayList<>();
+        var faltan = modulo.getPrerrequisitos().stream()
+                .filter(p -> !aprobados.contains(p.getId()))
+                .map(Modulo::getNombre)
+                .toList();
 
-        public void anadir(LineaPedido linea) {                      // (4)
-            lineas.add(linea);
-            linea.setPedido(this);
-        }
+        if (!faltan.isEmpty())
+            throw new MatriculaConflictException(
+                    "Faltan prerrequisitos: " + String.join(", ", faltan));
     }
     ```
 
-    ```java
-    @Entity
-    public class LineaPedido {
-
-        @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-        private Long id;
-
-        @ManyToOne(fetch = FetchType.LAZY, optional = false)         // (5)
-        @JoinColumn(name = "pedido_id")                              // (6)
-        private Pedido pedido;
-
-        @ManyToOne(fetch = FetchType.LAZY, optional = false)
-        @JoinColumn(name = "producto_id")
-        private Producto producto;
-
-        private int unidades;
-        private BigDecimal precioUnitario;
-    }
-    ```
-
-    1.  `mappedBy` dice **quién es el dueño**: el lado que tiene la clave ajena, o sea `LineaPedido`. Sin él, Hibernate crea una tabla intermedia que nadie ha pedido.
-    2.  Guardar el pedido guarda sus líneas. Sin cascada hay que guardarlas a mano, una a una.
-    3.  **`orphanRemoval`**: sacar una línea de la lista la borra de la base de datos. Sin esto, se queda huérfana con `pedido_id = null`.
-    4.  **El método que sincroniza los dos lados.** Es el error más común de las relaciones bidireccionales: añadir a la lista y olvidar el `setPedido`. En memoria parece correcto y al recargar de la base de datos la línea no está en el pedido.
-    5.  **`LAZY` en todos los `@ManyToOne`.** El valor por defecto de `@ManyToOne` es `EAGER`, y es una mala decisión heredada: cargar una línea trae el pedido y el producto aunque no los mires.
-    6.  `@JoinColumn` da nombre a la clave ajena. Sin él, Hibernate inventa uno y tu esquema queda a merced de la versión.
-
-??? success "Solución · contar las consultas y matar el N+1"
-
-    **Primero, contarlas.** Estimar no vale:
-
-    ```yaml
-    logging.level.org.hibernate.SQL: DEBUG
-    spring.jpa.properties.hibernate.generate_statistics: true
-    ```
-
-    Con eso el log dice al final de cada transacción cuántas sentencias se han ejecutado.
-
-    **Por qué pasa.** `pedidoRepositorio.findAll()` trae los pedidos. Después, al tocar `pedido.getLineas()` de cada uno, la colección perezosa se carga: **una consulta por pedido**. Veinte pedidos, veintiuna consultas.
-
-    **Lo que no vale:**
+    **Y aquí aparece el N+1 de manual:** ese `m.getModulo().getId()` dentro del `stream` lanza una consulta por cada matrícula. Con 40 matrículas, 41 consultas. Parte del reto es verlo en el log con `show-sql=true` y arreglarlo:
 
     ```java
-    @OneToMany(fetch = FetchType.EAGER)   // NO
-    ```
-
-    Arregla este caso y estropea todos los demás: ahora *cualquier* consulta de pedidos arrastra las líneas, aunque solo quieras la fecha. Y con dos colecciones `EAGER` obtienes un `MultipleBagFetchException` y un producto cartesiano.
-
-    **Lo que sí vale**, por orden de utilidad:
-
-    ```java
-    // 1 · JOIN FETCH: una consulta, con las líneas ya dentro
     @Query("""
-           select distinct p from Pedido p
-           join fetch p.lineas
-           where p.creado >= :desde
+           SELECT m.modulo.id FROM Matricula m
+           WHERE m.alumno.id = :alumnoId AND m.nota >= 5.00
            """)
-    List<Pedido> conLineasDesde(@Param("desde") LocalDateTime desde);
+    Set<Long> idsModulosAprobados(@Param("alumnoId") Long alumnoId);
     ```
 
+    **Una consulta, y no trae ni una entidad entera**: solo los ids, que es lo único que se usa. De 41 consultas a 1.
+
+### `GET /alumnos/{id}/expediente`
+
+```json
+{
+  "alumno": "Ana Pérez",
+  "curso": "2025-2026",
+  "matriculados": 8,
+  "calificados": 6,
+  "aprobados": 5,
+  "suspensos": 1,
+  "pendientes": 2,
+  "media": 6.83,
+  "porModulo": {
+    "Bases de Datos": 7.50,
+    "DWES": 8.00,
+    "Despliegue": null
+  }
+}
+```
+
+!!! tip "Esto es la UT2 con datos de la base de datos"
     ```java
-    // 2 · @EntityGraph: lo mismo, sin escribir JPQL
-    @EntityGraph(attributePaths = "lineas")
-    List<Pedido> findByCreadoAfter(LocalDateTime desde);
+    var matriculas = matriculasRepository.findByAlumnoIdAndCurso(id, curso);
+
+    return new ExpedienteResponse(
+        alumno.getNombre(), curso,
+        matriculas.size(),
+        matriculas.stream().filter(m -> m.getNota() != null).count(),
+        matriculas.stream().filter(m -> m.getNota() != null
+                && m.getNota().compareTo(APROBADO) >= 0).count(),
+        matriculas.stream().filter(m -> m.getNota() != null
+                && m.getNota().compareTo(APROBADO) < 0).count(),
+        matriculas.stream().filter(m -> m.getNota() == null).count(),
+        matriculas.stream().filter(m -> m.getNota() != null)
+                .map(Matricula::getNota)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(calificados), 2, RoundingMode.HALF_UP),
+        matriculas.stream().collect(Collectors.toMap(
+                m -> m.getModulo().getNombre(),
+                Matricula::getNota,
+                (a, b) -> a, TreeMap::new)));
     ```
 
-    ```yaml
-    # 3 · por lotes: no elimina el N+1, lo reduce a N/10
-    spring.jpa.properties.hibernate.default_batch_fetch_size: 20
-    ```
+    Dos detalles que importan:
 
-    El `distinct` del JPQL hace falta porque el `join` devuelve una fila por línea y el pedido saldría repetido.
+    - **La media con `BigDecimal` y `RoundingMode.HALF_UP`**, no con `average()` de `double`. Son notas: el redondeo tiene consecuencias.
+    - **`Collectors.toMap` con función de mezcla y `TreeMap::new`**: la función de mezcla evita el `IllegalStateException` si hay claves repetidas (el E26 del banco de la UT2), y el `TreeMap` hace que el JSON salga siempre igual.
 
-    **Y el test que impide que vuelva:**
+### Entrega
 
-    ```java
-    @DataJpaTest
-    class PedidoRepositorioTest {
-
-        @Autowired PedidoRepositorio repositorio;
-        @Autowired EntityManager em;
-
-        @Test
-        void traeLasLineasEnUnaSolaConsulta() {
-            var stats = em.getEntityManagerFactory()
-                          .unwrap(SessionFactory.class).getStatistics();
-            stats.clear();
-
-            var pedidos = repositorio.conLineasDesde(LocalDateTime.now().minusDays(30));
-            pedidos.forEach(p -> p.getLineas().size());     // fuerza el acceso
-
-            assertThat(stats.getPrepareStatementCount()).isEqualTo(1);
-        }
-    }
-    ```
-
-    Este test es el que convierte «lo arreglé» en «no puede volver a pasar».
-
-??? success "Solución · transacciones e integridad"
-
-    ```java
-    @Service
-    public class PedidoServicio {
-
-        @Transactional                                               // (1)
-        public Pedido crear(CrearPedidoDto dto) {
-            var pedido = new Pedido(LocalDateTime.now());
-
-            for (var l : dto.lineas()) {
-                var producto = productoRepositorio.findById(l.productoId())
-                        .orElseThrow(() -> new ProductoNoEncontradoException(l.productoId()));
-
-                if (producto.getStock() < l.unidades()) {
-                    throw new StockInsuficienteException(              // (2)
-                            producto.getId(), producto.getStock());
-                }
-                producto.setStock(producto.getStock() - l.unidades());
-                pedido.anadir(new LineaPedido(producto, l.unidades(), producto.getPrecio()));
-            }
-            return pedidoRepositorio.save(pedido);
-        }
-
-        @Transactional(readOnly = true)                              // (3)
-        public List<Pedido> listar() { … }
-    }
-    ```
-
-    1.  **Toda la creación en una transacción.** Si la tercera línea falla, las dos primeras no pueden haber descontado stock.
-    2.  Excepción **no comprobada** (`RuntimeException`). Y esto importa: Spring hace *rollback* automático con `RuntimeException` y `Error`, pero **no** con excepciones comprobadas. Si lanzas una `Exception` normal, la transacción **se confirma igualmente** salvo que pongas `@Transactional(rollbackFor = ...)`.
-    3.  `readOnly = true` en las lecturas: Hibernate se salta el *dirty checking* y algunos motores lo aprovechan.
-
-    **Las tres trampas de `@Transactional`, que caen en el examen:**
-
-    | Trampa | Qué pasa |
-    |---|---|
-    | Llamada **interna** (`this.otroMetodo()`) | La anotación **no se aplica**: el proxy solo intercepta llamadas desde fuera |
-    | Método `private` o `final` | No se puede hacer proxy. La anotación no hace nada |
-    | Excepción **comprobada** | No hay *rollback* salvo `rollbackFor` |
-
-    Y **`@Version`** para las modificaciones concurrentes:
-
-    ```java
-    @Version
-    private Long version;
-    ```
-
-    Con eso, si dos usuarios cargan el mismo producto y los dos lo guardan, el segundo recibe `OptimisticLockingFailureException` en vez de pisar silenciosamente el cambio del primero. El controlador lo traduce a **`409 Conflict`**.
+Nada, pero **se exige que los tests pasen** y que el log no muestre N+1 al pedir un expediente. El reto 3 se construye encima.
 
 ---
 
-# R3 · El catálogo de la biblioteca
+## Reto 3 · El que entregas :material-upload:
 
-**Sesiones S21–S23** · :material-pencil: **A entregar**
+> **El proyecto más completo del trimestre.** Tres entidades relacionadas, paginación, criterios combinables, borrado lógico, reglas de negocio y los tres niveles de test. En pareja.
 
-!!! reto "Este no lleva solución"
-    Mismo tamaño y mismos criterios que el **examen práctico de la UT5**.
+Se entrega en la **S11** y es el **40 % de la nota de la UT5**.
 
-## La situación
+=== "A · Biblioteca con préstamos"
 
-La biblioteca del centro lleva los préstamos en un cuaderno. Quieren un sistema que sepa, en cualquier momento, qué ejemplares están prestados y a quién, y que no deje prestar dos veces el mismo ejemplar.
+    **Tres entidades:** `Autor` (1:N) `Libro` (1:N) `Prestamo`, y `Socio` (1:N) `Prestamo`.
 
-## La pregunta
+    ```java
+    @Entity class Autor    { Long id; String nombre; String nacionalidad;
+                             LocalDate nacimiento; boolean deleted;
+                             @OneToMany(mappedBy="autor") List<Libro> libros; }
 
-> **Modelad libros, ejemplares, socios y préstamos con JPA, y haced que el listado de préstamos con su libro y su socio se resuelva en una sola consulta.**
+    @Entity class Libro    { Long id; String isbn; String titulo; Genero genero;
+                             Integer ejemplares; Integer prestados; LocalDate publicacion;
+                             @ManyToOne Autor autor; boolean deleted; }
 
-## El modelo mínimo
+    @Entity class Socio    { Long id; String numeroSocio; String nombre; String email;
+                             LocalDate alta; boolean activo; boolean deleted; }
+
+    @Entity class Prestamo { Long id; @ManyToOne Libro libro; @ManyToOne Socio socio;
+                             LocalDate fecha; LocalDate vencimiento; LocalDate devolucion;
+                             EstadoPrestamo estado; }
+    ```
+
+    **Las reglas:**
+
+    - El ISBN es único y se valida con los **13 dígitos y su dígito de control**.
+    - `prestados` nunca supera `ejemplares` → 409.
+    - **Un socio no puede tener más de 3 préstamos activos** → 409.
+    - **Un socio con un préstamo vencido no puede pedir otro** → 409.
+    - El vencimiento son 15 días naturales desde el préstamo, calculado por el servidor.
+    - No se puede borrar un autor con libros, ni un libro con préstamos activos → 409.
+    - `GET /prestamos?vencidos=true`: los que pasaron de la fecha y siguen sin devolver.
+    - `GET /socios/{id}/historial` paginado, y `GET /libros/mas-prestados`.
+
+    **La dificultad:** las dos reglas del socio obligan a consultar el estado de **otras** filas antes de insertar, y `GET /libros/mas-prestados` es un `GROUP BY` con `ORDER BY count(*) DESC` que hay que escribir en JPQL y paginar.
+
+=== "B · Tienda con pedidos"
+
+    **Tres entidades:** `Categoria` (1:N) `Producto`, `Cliente` (1:N) `Pedido`, y `Pedido` (1:N) `LineaPedido` (N:1) `Producto`.
+
+    ```java
+    @Entity class Categoria   { Long id; String nombre; boolean deleted;
+                                @OneToMany(mappedBy="categoria") List<Producto> productos; }
+
+    @Entity class Producto    { Long id; String sku; String nombre; BigDecimal precio;
+                                Integer stock; @ManyToOne Categoria categoria; boolean deleted; }
+
+    @Entity class Cliente     { Long id; String nif; String nombre; String email;
+                                @Embedded Direccion direccion; boolean deleted; }
+
+    @Entity class Pedido      { Long id; String codigo; @ManyToOne Cliente cliente;
+                                EstadoPedido estado; BigDecimal total;
+                                LocalDateTime fecha;
+                                @OneToMany(mappedBy="pedido",
+                                           cascade=CascadeType.ALL, orphanRemoval=true)
+                                List<LineaPedido> lineas; }
+
+    @Entity class LineaPedido { Long id; @ManyToOne Pedido pedido; @ManyToOne Producto producto;
+                                Integer cantidad; BigDecimal precioUnitario; }
+    ```
+
+    **Las reglas:**
+
+    - El `codigo` del pedido lo genera el servidor: `PED-2026-000123`, correlativo por año.
+    - **Crear un pedido descuenta el stock de cada producto, y si falta en alguno falla el pedido entero** → 409, sin descontar nada.
+    - `precioUnitario` se **copia** del producto al crear la línea: si el precio sube mañana, el pedido histórico no cambia.
+    - El `total` lo calcula el servidor; **nunca** se acepta del cliente.
+    - Transiciones de estado: `PENDIENTE → PAGADO → ENVIADO → ENTREGADO`, y `PENDIENTE → CANCELADO`. Cancelar **devuelve el stock**.
+    - No se puede modificar un pedido que no esté `PENDIENTE` → 409.
+    - `GET /clientes/{id}/pedidos` paginado, `GET /pedidos/estadisticas`.
+
+    **La dificultad está en la atomicidad.** Crear un pedido de cinco líneas toca cinco productos: o se descuentan los cinco o ninguno. Eso es `@Transactional` haciendo su trabajo de verdad, y el único reto donde un `rollback` es la respuesta correcta. Y es donde se usa `cascade = ALL` + `orphanRemoval` **bien**, porque una línea no existe sin su pedido.
+
+=== "C · Gestión de incidencias"
+
+    **Tres entidades:** `Departamento` (1:N) `Tecnico`, `Tecnico` (1:N) `Incidencia`, y `Incidencia` (1:N) `Comentario`.
+
+    ```java
+    @Entity class Departamento { Long id; String nombre; String ubicacion; boolean deleted;
+                                 @OneToMany(mappedBy="departamento") List<Tecnico> tecnicos; }
+
+    @Entity class Tecnico      { Long id; String nombre; String email; boolean disponible;
+                                 @ManyToOne Departamento departamento; boolean deleted;
+                                 @ElementCollection Set<String> especialidades; }
+
+    @Entity class Incidencia   { Long id; String codigo; String titulo; String descripcion;
+                                 String aula; Prioridad prioridad; EstadoTicket estado;
+                                 @ManyToOne Tecnico tecnico;
+                                 LocalDateTime apertura; LocalDateTime cierre;
+                                 Integer reaperturas; @Version Long version;
+                                 @OneToMany(mappedBy="incidencia",
+                                            cascade=CascadeType.ALL) List<Comentario> comentarios; }
+
+    @Entity class Comentario   { Long id; @ManyToOne Incidencia incidencia;
+                                 String autor; String texto; LocalDateTime fecha; }
+    ```
+
+    **Las reglas:**
+
+    - El `codigo` lo genera el servidor: `INC-2026-0001`, correlativo por año.
+    - **Solo se asigna a un técnico del departamento adecuado y con la especialidad requerida** → 409.
+    - **Un técnico no puede tener más de 5 incidencias abiertas** → 409.
+    - Transiciones: `ABIERTO → ASIGNADO → RESUELTO → CERRADO`, y `CERRADO → REABIERTO` con **máximo 3 reaperturas** → 409.
+    - Las `CRITICA` se asignan en menos de 1 hora: `GET /incidencias/sla-incumplido`.
+    - `@Version` para bloqueo optimista: dos técnicos editando a la vez → **409**.
+    - `GET /incidencias?prioridad=&estado=&aula=&tecnico=&desde=&hasta=` — **seis filtros combinables**.
+    - `GET /tecnicos/{id}/estadisticas`: resueltas, tiempo medio de resolución, reaperturas.
+
+    **La dificultad:** los seis filtros combinables son 64 combinaciones, así que `Specification` no es opcional. Y el `@Version` es el único reto donde se trabaja la concurrencia: hay que provocar el conflicto a propósito con dos peticiones y traducir la `ObjectOptimisticLockingFailureException` a un 409 con un mensaje útil.
+
+### Lo que se entrega, en los tres casos
+
+```
+apellido1-apellido2-ut5/
+├── README.md                       ← arrancar en 10 líneas + diagrama del modelo
+├── pom.xml
+├── Dockerfile
+├── compose.yaml
+├── .gitignore                      ← con .env dentro
+├── .env.example
+├── sql/esquema.sql                 ← DDL para MySQL
+├── postman/coleccion.json
+└── src/
+    ├── main/java/…
+    ├── main/resources/
+    │   ├── application.properties
+    │   ├── application-dev.properties
+    │   ├── application-prod.properties
+    │   └── data.sql
+    └── test/java/…
+```
+
+!!! success "Rúbrica — la misma del examen práctico"
+    | | Criterio | Puntos |
+    |---|---|:-:|
+    | **1** | **Modelo de datos correcto**: las tres relaciones bien, clave ajena en el lado que toca, `mappedBy`, índices y claves únicas | **2,0** |
+    | **2** | **`LAZY` en todas las relaciones** y sin N+1 en los listados (se comprueba con `show-sql`) | **1,5** |
+    | **3** | **Repositorios**: consultas derivadas, al menos una `@Query` con JPQL y `Specification` para los criterios | **1,5** |
+    | **4** | **Las reglas de negocio del enunciado**, en el servicio, con `@Transactional` y 409 donde toca | **1,5** |
+    | **5** | **Paginación y ordenación** con tope de tamaño y lista blanca de campos ordenables | **1,0** |
+    | **6** | **Borrado lógico** consistente: ningún listado devuelve borrados | **0,5** |
+    | **7** | **DTOs**: ninguna entidad sale por el controlador, ningún `LazyInitializationException` | **1,0** |
+    | **8** | **Tests**: `@DataJpaTest` del repositorio, Mockito del servicio, `@SpringBootTest` de integración | **1,0** |
+    | **9** | **Perfiles y Docker**: H2 en dev, MySQL en prod, `.env` ignorado, los datos sobreviven al reinicio | **0,5** |
+    | | | **10,0** |
+
+!!! danger "Lo que resta puntos aunque funcione"
+    | | |
+    |---|---|
+    | Una relación sin `fetch = FetchType.LAZY` | −1,0 (criterio 2) |
+    | N+1 visible en el log al listar | −1,0 (criterio 2) |
+    | `@OneToMany` sin `mappedBy` (tabla intermedia fantasma) | −1,0 (criterio 1) |
+    | `cascade = ALL` donde debería haber un 409 | −1,0 (criterio 1) |
+    | Devolver una entidad en el controlador | −1,0 (criterio 7) |
+    | `LazyInitializationException` en cualquier endpoint | −1,0 (criterio 7) |
+    | `?size=` sin tope | −0,5 (criterio 5) |
+    | `?sort=` sin lista blanca | −0,5 (criterio 5) |
+    | Un listado que devuelve registros borrados | −0,5 (criterio 6) |
+    | `ddl-auto=create-drop` en el perfil `prod` | **−1,0** (criterio 9) |
+    | Dinero con `double` en vez de `BigDecimal` | −0,5 (criterio 1) |
+    | `@Enumerated` sin `EnumType.STRING` | −0,5 (criterio 1) |
+    | `.env` con valores reales en el repositorio | **−1,0 y se avisa** |
+
+    **Todos estos errores compilan y arrancan.** Varios solo se manifiestan con volumen o con dos usuarios a la vez, y es exactamente por eso que están aquí: en un ejercicio de clase nunca se notarían.
+
+!!! info "Cómo se defiende"
+    Quince minutos por pareja en la S11:
+
+    1. Arrancar con `docker compose up`, crear un registro, **reiniciar** y comprobar que sigue ahí.
+    2. Enseñar tres errores: un 404, un 400 con los campos y un **409 de una regla de negocio**.
+    3. Enseñar el log de un listado con `show-sql=true` y **contar las consultas**.
+    4. Ejecutar los tests.
+    5. Responder a una pregunta sobre el modelo de datos.
+
+    La pregunta habitual: *«¿por qué la clave ajena está en esta tabla y no en la otra?»*. La segunda: *«¿qué pasa si borro este registro?»*.
+
+---
+
+## Qué llevas de aquí a la UT6
 
 ```mermaid
-erDiagram
-    LIBRO ||--o{ EJEMPLAR : "tiene"
-    EJEMPLAR ||--o{ PRESTAMO : "se presta en"
-    SOCIO ||--o{ PRESTAMO : "realiza"
+graph LR
+    UT4["UT4 · Capas<br/>HashMap"] --> UT5["UT5 · JPA<br/>la misma API, con BD"]
+    UT5 --> UT6["UT6 · WebSockets, GraphQL y OpenAPI<br/>el mismo servicio, otros transportes"]
 ```
 
-| Entidad | Campos |
-|---|---|
-| **Libro** | isbn (único), título, autor, año |
-| **Ejemplar** | código (único), libro, estado (`DISPONIBLE`, `PRESTADO`, `BAJA`) |
-| **Socio** | número (único), nombre, correo, alta |
-| **Préstamo** | ejemplar, socio, fecha de salida, fecha de devolución prevista, fecha real |
+En la UT6 **no se toca la persistencia**. Lo que se añade es:
 
-## Restricciones
+- Un **WebSocket** que avisa a los clientes conectados cada vez que cambia algo. Llama a tu servicio.
+- Un esquema **GraphQL** que consulta lo mismo con una sola petición. Llama a tu servicio.
+- **OpenAPI**, que documenta la API REST que ya tienes a partir de tus propias anotaciones.
 
-- **`EnumType.STRING`** en todos los `enum`.
-- **`BigDecimal`** si aparece cualquier importe (una sanción, por ejemplo).
-- Todos los `@ManyToOne` en **`LAZY`**.
-- Las relaciones bidireccionales, con `mappedBy` y método de sincronización.
-- **Nada de `EAGER`** para resolver el N+1.
-- `spring.jpa.show-sql: true` mientras trabajas.
-
-## Criterios de aceptación
-
-| # | Qué | Peso |
-|:-:|---|:-:|
-| **1** | Las cuatro entidades mapeadas con tipos, restricciones y unicidad correctos | 1,5 |
-| **2** | Las relaciones con su dueño, `mappedBy`, cascada y `orphanRemoval` donde toque | 2,0 |
-| **3** | Repositorios con **dos consultas derivadas** y **una `@Query`** con JPQL | 1,5 |
-| **4** | Listar préstamos con libro y socio **en una sola consulta**, demostrado contando | 2,0 |
-| **5** | Prestar un ejemplar ya prestado devuelve **`409`**; todo dentro de una transacción | 1,5 |
-| **6** | Al menos **tres tests** con `@DataJpaTest`, uno de ellos contando consultas | 1,5 |
-
-## Cómo sabrás que está bien
-
-```bash
-# 1 · prestar
-curl -i -X POST localhost:8080/api/v1/prestamos \
-     -H "Content-Type: application/json" \
-     -d '{"codigoEjemplar":"EJ-0007","numeroSocio":"S-118","dias":15}'
-# → 201 + Location
-
-# 2 · prestar el mismo ejemplar otra vez
-curl -i -X POST localhost:8080/api/v1/prestamos \
-     -H "Content-Type: application/json" \
-     -d '{"codigoEjemplar":"EJ-0007","numeroSocio":"S-204","dias":15}'
-# → 409
-
-# 3 · el listado, mirando el log
-curl -s localhost:8080/api/v1/prestamos | jq length
-# → en el log: UNA consulta, no una por préstamo
-```
-
-!!! tip "Las tres trampas"
-    **El N+1 se cuela por donde no miras.** Aunque uses `join fetch` en el listado, el DTO de respuesta puede tocar `prestamo.getEjemplar().getLibro().getTitulo()` y disparar otra cadena. Cuenta las consultas **después** de serializar, no antes.
-
-    **`orphanRemoval` y `CascadeType.REMOVE` no son lo mismo.** Borrar un libro con `cascade = ALL` borra sus ejemplares… y si alguno tiene préstamos históricos, revienta por la clave ajena. Decide qué quieres que pase y escríbelo.
-
-    **El estado del ejemplar y el préstamo activo dicen lo mismo dos veces.** Si guardas las dos cosas, se van a desincronizar. Elige una fuente de verdad y deriva la otra.
-
-## Cómo se entrega
-
-Un `.zip` sin `target`, o el repositorio de Classroom. Antes de entregar:
-
-- [ ] `mvn test` en verde. **Si no compila, es un cero.**
-- [ ] Las tres órdenes de arriba dan lo que dicen.
-- [ ] En el log del listado hay **una** consulta.
-- [ ] `grep -rn "EAGER" src/main` no devuelve nada.
+Si tu reto 3 tiene las reglas en el servicio y no en el controlador, los tres son clases nuevas y cero refactor. Si el controlador tiene la lógica, hay que copiarla tres veces.

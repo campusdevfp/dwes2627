@@ -1,727 +1,743 @@
 # Batería de ejercicios — UT6
 
-**Dominio: una biblioteca.** El mismo de la UT4 y la UT5, ahora expuesto como API profesional.
+**24 ejercicios con solución**, en el orden de los temas y de menos a más dentro de cada bloque.
 
-**32 ejercicios agrupados por tema**, con solución. Los marcados con :material-file-sign: son del tipo que cae en el examen.
+| | |
+|:-:|---|
+| ● | Cinco minutos, con el tema delante |
+| ●● | Hay que juntar dos ideas |
+| ●●● | Se escribe, se ejecuta y se mide |
 
-| Tema | Ejercicios | Sesiones |
-|---|---|:-:|
-| 1 · Diseño de APIs REST | E1–E4 | S1–S2 |
-| 2 · Respuestas y errores | E5–E8 | S3–S5 |
-| 3 · Paginación y búsqueda | E9–E12 | S6–S8 |
-| 4 · Documentación OpenAPI | E13–E16 | S9–S10 |
-| 5 · GraphQL | E17–E20 | S11–S14 |
-| 6 · WebSockets y tiempo real | E21–E24 | S15–S17 |
-| 7 · Testing de APIs | E25–E28 | S18–S19 |
-| 8 · Consumir APIs | E29–E32 | S20 |
+!!! tip "Dos ventanas abiertas todo el rato"
+    Una con `show-sql=true` para contar consultas, y otra con la página de prueba del WebSocket. La mitad de los ejercicios de esta unidad se contestan **mirando** lo que pasa, no razonando.
 
 ---
 
-# Tema 1 · Diseño de APIs REST
+# Bloque 1 · WebSockets
 
-### E1 ● — Rediseña estas rutas
+> Tema [1. WebSockets](01-websockets.md)
 
+## E1 ● — WebSocket, SSE o *polling*
+
+(a) un panel de stock · (b) un chat · (c) el progreso de un informe de 2 minutos · (d) el precio de unas acciones
+
+??? success "Solución"
+
+    | | Qué usar | Por qué |
+    |---|---|---|
+    | (a) Panel de stock | WebSocket o **SSE** | Muchos cambios, solo bajada |
+    | (b) Chat | **WebSocket** | Hace falta bidireccional |
+    | (c) Progreso | **SSE** | Solo bajada, y acaba |
+    | (d) Precio de acciones | **WebSocket** | Alta frecuencia |
+
+    | | Dirección | Reconexión | Complejidad |
+    |---|---|:-:|---|
+    | *Polling* | Cliente pregunta | — | Mínima, muy ineficiente |
+    | **SSE** | Servidor → cliente | **Automática, del navegador** | Baja |
+    | **WebSocket** | Bidireccional | La haces tú | Media |
+
+    **SSE está infravalorado:** para notificaciones de servidor a cliente —el 80 % de los casos— es más simple, va sobre HTTP normal y el navegador reconecta solo. WebSocket solo hace falta cuando el cliente **también** manda.
+
+## E2 ● — El `101`
+
+¿Qué significa `HTTP/1.1 101 Switching Protocols` y qué consecuencia práctica tiene?
+
+??? success "Solución"
+
+    Que el servidor acepta **cambiar de protocolo** en esa misma conexión TCP: deja de ser HTTP petición-respuesta y pasa a ser un canal abierto en los dos sentidos.
+
+    Dos consecuencias:
+
+    1. **Va por el puerto 80 o 443**, así que atraviesa cortafuegos y *proxies* como tráfico web normal. No hace falta abrir nada.
+    2. **La conexión no se cierra**, así que el servidor mantiene recursos por cada cliente. Diez mil conexiones son diez mil sesiones en memoria.
+
+    Es el único código `1xx` que vas a ver en tu vida.
+
+## E3 ●● — La colección de sesiones
+
+```java
+private final List<WebSocketSession> sesiones = new ArrayList<>();
 ```
-GET  /getLibros
-POST /crearLibro
-GET  /libro/borrar/5
-POST /api/prestarLibro?id=5
-GET  /obtenerLibrosDeAutor/3
+
+??? success "Solución"
+
+    **`ArrayList` no es seguro con varios hilos**, y aquí hay varios garantizados: cada conexión entra por un hilo distinto y el *broadcast* recorre la lista mientras alguien se conecta o se desconecta.
+
+    Resultado: `ConcurrentModificationException` (el de la [UT2, E18](../ut2/ejercicios.md)) o corrupción silenciosa.
+
+    ```java
+    private final Set<WebSocketSession> sesiones = new CopyOnWriteArraySet<>();
+    ```
+
+    `CopyOnWriteArraySet` copia el array en cada escritura, así que recorrerlo es seguro siempre. Para **pocas escrituras y muchas lecturas** —exactamente este caso— es la elección correcta.
+
+## E4 ●● — El cliente que se fue
+
+```java
+for (var s : sesiones) {
+    s.sendMessage(new TextMessage(json));
+}
 ```
 
 ??? success "Solución"
 
     ```
-    GET    /api/v1/libros
-    POST   /api/v1/libros
-    DELETE /api/v1/libros/5
-    POST   /api/v1/libros/5/prestamos
-    GET    /api/v1/autores/3/libros
+    java.lang.IllegalStateException: The WebSocket session has been closed
     ```
-    Cuatro reglas: **el verbo lo pone HTTP**, los recursos van en **plural**, las jerarquías se expresan con **subrecursos**, y la versión va al principio.
 
-    La cuarta es la más interesante: prestar no es «una acción sobre el libro», es **crear un préstamo**. Convertir acciones en recursos resuelve casi todas las dudas de diseño.
-
-
-### E2 ●● — Idempotencia en vivo
-
-Demuestra con `curl` cuáles de tus endpoints son idempotentes.
-
-??? success "Solución"
-
-    ```bash
-    for i in 1 2 3; do curl -s -o /dev/null -w "%{http_code} " -X POST /api/v1/libros \
-        -d '{...}'; done
-    # 201 201 201  → tres libros creados: NO idempotente
-
-    for i in 1 2 3; do curl -s -o /dev/null -w "%{http_code} " -X PUT /api/v1/libros/1 \
-        -d '{...}'; done
-    # 200 200 200  → mismo estado final: idempotente
-
-    for i in 1 2 3; do curl -s -o /dev/null -w "%{http_code} " \
-        -X DELETE /api/v1/libros/1; done
-    # 204 404 404  → códigos distintos, pero el estado final es el mismo: idempotente
-    ```
-    El `DELETE` es el que confunde: idempotente **no** significa «misma respuesta», significa «mismo estado final del servidor».
-
-
-### E3 ●● — Versionado
-
-Añade un campo al DTO sin romper a los clientes que ya consumen la API.
-
-??? success "Solución"
-
-    **Añadir** un campo opcional no rompe nada: los clientes antiguos lo ignoran. Eso es un cambio compatible y **no** exige versión nueva.
-
-    Lo que sí rompe: quitar un campo, renombrarlo, cambiar su tipo o volver obligatorio algo que no lo era. Ahí sí toca `/api/v2`.
+    Y lo peor: la excepción **corta el bucle**, así que los clientes que vienen después **no reciben nada**. Un cliente desconectado deja sin notificación a todos los demás.
 
     ```java
-    @RequestMapping("/api/v1/libros")     // versión en la ruta: la más legible
+    for (var s : sesiones) {
+        try {
+            if (s.isOpen()) s.sendMessage(new TextMessage(json));
+            else sesiones.remove(s);
+        } catch (IOException e) {
+            log.warn("No se pudo enviar a {}: {}", s.getId(), e.getMessage());
+            sesiones.remove(s);
+        }
+    }
     ```
-    Alternativas: cabecera `Accept: application/vnd.biblioteca.v2+json` o parámetro `?version=2`. La de la ruta gana en claridad y en cacheabilidad, que es lo que suele decidir.
 
+    **`isOpen()` no basta**: entre la comprobación y el envío la conexión puede caerse. Hacen falta las dos cosas.
 
-### E4 ●●● — Diseña la API entera
+## E5 ●● — Notificar antes de confirmar
 
-Diseña todos los endpoints de la biblioteca: libros, autores, socios, préstamos y reservas. Con códigos.
+```java
+@Transactional
+public FunkoResponse save(FunkoCreateRequest r) {
+    var guardado = repositorio.save(mapper.toModel(r));
+    notificador.notificar("CREATE", guardado);
+    return mapper.toResponse(guardado);
+}
+```
 
 ??? success "Solución"
 
-    ```
-    GET    /api/v1/libros                     200
-    GET    /api/v1/libros/{id}                200 · 404
-    POST   /api/v1/libros                     201+Location · 400 · 409
-    PUT    /api/v1/libros/{id}                200 · 400 · 404
-    DELETE /api/v1/libros/{id}                204 · 404 · 409(prestado)
-    GET    /api/v1/libros/{id}/prestamos      200 · 404
-    POST   /api/v1/prestamos                  201+Location · 400 · 404 · 409
-    PATCH  /api/v1/prestamos/{id}/devolucion  200 · 404 · 409
-    GET    /api/v1/socios/{id}/prestamos      200 · 404
-    GET    /api/v1/autores/{id}/libros        200 · 404
-    ```
-    Dos decisiones que se evalúan: el préstamo es **recurso propio** (tiene ciclo de vida), y la devolución es un `PATCH` sobre él, no un `POST /devolverLibro`.
+    Si algo falla después del `notificar` pero antes de confirmar, el `rollback` deshace el `INSERT` y **el mensaje ya está enviado**. Los clientes ven un funko que no existe.
 
-    Y el 409 del `DELETE`: no se borra un libro prestado. Un código bien elegido comunica una regla de negocio sin documentación.
+    ```java
+    // en el servicio
+    eventos.publishEvent(new FunkoCambiadoEvent(Tipo.CREATE, respuesta));
 
+    // en el notificador
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void alCambiar(FunkoCambiadoEvent e) { notificar(e); }
+    ```
+
+    `AFTER_COMMIT` significa exactamente eso: **se ejecuta solo si la transacción se ha confirmado**.
+
+    Y hay un segundo motivo para los eventos: el servicio deja de conocer al notificador. Mañana puedes añadir un oyente de auditoría sin tocar el servicio.
+
+    **Cómo comprobarlo:** manda un POST con el nombre repetido (409). Si llega notificación, falta el `AFTER_COMMIT`.
+
+## E6 ●● — La entidad en el notificador
+
+¿Por qué se manda el `FunkoResponse` y no el `Funko`?
+
+??? success "Solución"
+
+    Dos razones, y las dos son de la UT5:
+
+    1. **La entidad expone campos** que no quieres publicar.
+    2. **Estamos fuera de toda transacción.** Una relación `LAZY` serializada aquí lanza `LazyInitializationException` **dentro del notificador**, donde además es más difícil de diagnosticar: no hay petición HTTP que correlacionar.
+
+    El DTO ya está materializado: son datos planos.
+
+## E7 ●●● — El notificador completo
+
+Escribe el `handler`, la configuración y el notificador.
+
+??? success "Solución"
+
+    ```java title="FunkosWebSocketHandler.java"
+    @Component
+    public class FunkosWebSocketHandler extends TextWebSocketHandler {
+
+        private static final Logger log = LoggerFactory.getLogger(FunkosWebSocketHandler.class);
+        private final Set<WebSocketSession> sesiones = new CopyOnWriteArraySet<>();
+
+        @Override
+        public void afterConnectionEstablished(WebSocketSession s) {
+            sesiones.add(s);
+            log.info("WS conectado {} · total: {}", s.getId(), sesiones.size());
+        }
+
+        @Override
+        public void afterConnectionClosed(WebSocketSession s, CloseStatus st) {
+            sesiones.remove(s);
+        }
+
+        @Override
+        public void handleTransportError(WebSocketSession s, Throwable e) {
+            sesiones.remove(s);
+        }
+
+        public void enviarATodos(String mensaje) {
+            for (var s : sesiones) {
+                try {
+                    if (s.isOpen()) s.sendMessage(new TextMessage(mensaje));
+                    else sesiones.remove(s);
+                } catch (IOException e) { sesiones.remove(s); }
+            }
+        }
+    }
+    ```
+
+    ```java title="WebSocketConfig.java"
+    @Configuration
+    @EnableWebSocket
+    public class WebSocketConfig implements WebSocketConfigurer {
+
+        private final FunkosWebSocketHandler handler;
+        private final String[] origenes;
+
+        public WebSocketConfig(FunkosWebSocketHandler handler,
+                               @Value("${cors.origenes-permitidos}") String[] origenes) {
+            this.handler = handler;
+            this.origenes = origenes;
+        }
+
+        @Override
+        public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+            registry.addHandler(handler, "/ws/v1/funkos").setAllowedOrigins(origenes);
+        }
+    }
+    ```
+
+    ```java title="FunkosNotificador.java"
+    @Component
+    public class FunkosNotificador {
+
+        private final FunkosWebSocketHandler handler;
+        private final ObjectMapper mapper;
+
+        public FunkosNotificador(FunkosWebSocketHandler handler, ObjectMapper mapper) {
+            this.handler = handler; this.mapper = mapper;
+        }
+
+        @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+        public void alCambiar(FunkoCambiadoEvent e) throws JsonProcessingException {
+            handler.enviarATodos(mapper.writeValueAsString(new Notificacion(
+                    "FUNKO", e.tipo().name(), e.funko(), LocalDateTime.now().toString())));
+        }
+
+        public record Notificacion(String entidad, String tipo,
+                                   FunkoResponse datos, String fecha) {}
+    }
+    ```
+
+    **`setAllowedOrigins` no es opcional:** los WebSockets **no están sujetos a la política del mismo origen**, así que es la única protección contra que cualquier web del mundo se conecte a escuchar.
 
 ---
 
-# Tema 2 · Respuestas y errores
+# Bloque 2 · GraphQL
 
-### E5 ● — `Location` y seguirlo
+> Tema [2. GraphQL](02-graphql.md)
 
-Que el POST devuelva 201 con la cabecera, y sigue esa URL.
+## E8 ● — GraphQL frente a REST
+
+Completa la tabla con las siete filas que importan.
+
+??? success "Solución"
+
+    | | REST | GraphQL |
+    |---|---|---|
+    | Endpoints | Uno por recurso | **Uno**: `/graphql` |
+    | Qué datos llegan | Los que decide el servidor | **Los que pide el cliente** |
+    | Varios recursos | Varias peticiones | **Una** |
+    | Verbos | GET/POST/PUT/PATCH/DELETE | `query` y `mutation`, todo por POST |
+    | Códigos de estado | 200/201/400/404/409 | **200 casi siempre** |
+    | Caché HTTP | **Nativa** (`ETag`, `Cache-Control`) | Hay que montarla |
+    | Coste de una petición | Conocido y fijo | **Lo decide el cliente** |
+
+    **Las dos que deciden en la práctica:** la caché (gratis en REST) y los códigos de estado (la mitad del contrato en REST).
+
+    GraphQL gana cuando el cliente es una app con muchas pantallas distintas sobre los mismos datos. REST gana cuando el consumo es homogéneo y la caché importa.
+
+## E9 ● — Los símbolos del esquema
+
+`String`, `String!`, `[String]`, `[String!]!`
+
+??? success "Solución"
+
+    | | Significa |
+    |---|---|
+    | `String` | Puede ser `null` |
+    | `String!` | No puede ser `null` |
+    | `[String]` | La lista puede ser `null`, y sus elementos también |
+    | `[String]!` | La lista no es `null`; los elementos sí pueden serlo |
+    | `[String!]!` | **Ni la lista ni los elementos** |
+
+    **`[Funko!]!` es lo correcto para un listado:** una lista vacía es `[]`, nunca `null`, y nunca hay un `null` dentro.
+
+    Y el detalle fino: si un campo es `!` y el resolutor devuelve `null`, **GraphQL anula el objeto padre entero** y lo reporta como error. La no-nulabilidad se propaga hacia arriba.
+
+## E10 ●● — `query`, `mutation`, `subscription`
+
+¿Qué hace cada una, con qué se corresponde en REST y en qué se comportan distinto?
+
+??? success "Solución"
+
+    | | GraphQL | REST |
+    |---|---|---|
+    | Leer | `query` | `GET` |
+    | Escribir | `mutation` | `POST`/`PUT`/`PATCH`/`DELETE` |
+    | Tiempo real | `subscription` | WebSocket o SSE |
+
+    Dos diferencias de comportamiento:
+
+    - **Las `query` se ejecutan en paralelo**; las `mutation`, **en serie y en orden**. Dos mutaciones en una petición: la segunda ve el efecto de la primera.
+    - **Todas van por `POST`** a `/graphql`, también las lecturas. Por eso la caché HTTP no sirve de serie.
+
+    Y `subscription` por debajo va sobre un WebSocket: es el bloque 1 otra vez.
+
+## E11 ●● — El 200 que es un error
+
+Tu monitorización avisa de los 4xx y 5xx. Con GraphQL no avisa nunca.
+
+??? success "Solución"
+
+    Porque **GraphQL devuelve 200 casi siempre**, incluso con una consulta inválida o una excepción en el servicio. Los errores van en el cuerpo:
+
+    ```json
+    { "data": { "funkoById": null },
+      "errors": [{ "message": "No existe el funko 99",
+                   "extensions": { "classification": "NOT_FOUND" } }] }
+    ```
+
+    Los 4xx solo salen cuando el fallo es **anterior** a GraphQL: JSON mal formado (400) o autenticación (401).
+
+    **Lo que hay que hacer:** monitorizar **la presencia del campo `errors`**, no el código de estado.
+
+    Y una respuesta GraphQL puede traer **datos y errores a la vez**: lo que se pudo resolver, resuelto.
+
+## E12 ●● — Traducir las excepciones
+
+Haz que tu `FunkoNotFoundException` salga como `NOT_FOUND` en GraphQL.
 
 ??? success "Solución"
 
     ```java
-    @PostMapping
-    public ResponseEntity<LibroDto> crear(@Valid @RequestBody CrearLibroDto dto) {
-        var creado = servicio.crear(dto);
-        return ResponseEntity
-            .created(URI.create("/api/v1/libros/" + creado.id()))
-            .body(creado);
+    @Component
+    public class GraphQlExceptionHandler extends DataFetcherExceptionResolverAdapter {
+
+        @Override
+        protected GraphQLError resolveToSingleError(Throwable ex, DataFetchingEnvironment env) {
+            return switch (ex) {
+                case FunkoNotFoundException e -> error(env, ErrorType.NOT_FOUND, e);
+                case FunkoConflictException e -> error(env, ErrorType.BAD_REQUEST, e);
+                case FunkoBadRequestException e -> error(env, ErrorType.BAD_REQUEST, e);
+                default -> null;                 // que lo trate el por defecto
+            };
+        }
+
+        private GraphQLError error(DataFetchingEnvironment env, ErrorType t, Throwable e) {
+            return GraphqlErrorBuilder.newError(env)
+                    .errorType(t).message(e.getMessage()).build();
+        }
     }
     ```
-    ```bash
-    L=$(curl -si -X POST … | grep -i ^location | tr -d '\r' | cut -d' ' -f2)
-    curl -s "localhost:8080$L" | jq
-    ```
-    Devolver 200 en vez de 201, o no poner `Location`, son dos criterios distintos de la rúbrica.
 
+    **Y aquí se ve la decisión de la UT4 cobrando intereses:** la misma excepción, sin tocarla, da un **404** en REST (por su `@ResponseStatus`) y un `NOT_FOUND` en GraphQL.
 
-### E6 ●● — El catálogo de códigos
+    Si el servicio lanzara `ResponseStatusException` con `HttpStatus`, aquí no habría nada que traducir: en GraphQL un código HTTP no significa nada.
 
-Provoca desde `curl` un 200, 201, 204, 400, 404, 409 y 405.
+    El `switch` con patrones es Java 25, el de la UT2.
 
-??? success "Solución"
+## E13 ●●● — El N+1 de GraphQL
 
-    ```bash
-    curl -i localhost:8080/api/v1/libros                          # 200
-    curl -i -X POST … -d '{válido}'                               # 201
-    curl -i -X DELETE localhost:8080/api/v1/libros/1              # 204
-    curl -i -X POST … -d '{"titulo":""}'                          # 400
-    curl -i localhost:8080/api/v1/libros/9999                     # 404
-    curl -i -X POST … -d '{isbn ya existente}'                    # 409
-    curl -i -X DELETE localhost:8080/api/v1/libros                # 405
-    ```
-    El **405** sale solo: Spring sabe que la colección no admite `DELETE`. Si te devuelve 404, es que has mapeado la ruta mal.
+```graphql
+{ funkos { contenido { nombre categoria { nombre } } } }
+```
 
-
-### E7 ●● — Problem Details con campo extra
-
-Que el 409 incluya qué libro y quién lo tiene.
+Con 100 funkos, ¿cuántas consultas y cómo se arregla?
 
 ??? success "Solución"
+
+    **101.** Una para los funkos y una por cada funko para su categoría.
+
+    Es el problema característico de GraphQL, y es **peor que en REST** porque el cliente decide cuándo ocurre: tú no controlas qué campos piden.
 
     ```java
-    @ExceptionHandler(LibroYaPrestadoException.class)
-    public ProblemDetail yaPrestado(LibroYaPrestadoException e) {
-        var pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
-        pd.setTitle("Libro no disponible");
-        pd.setType(URI.create("https://biblioteca.es/errores/ya-prestado"));
-        pd.setProperty("libroId", e.getLibroId());
-        pd.setProperty("devolucionPrevista", e.getFechaPrevista());
-        return pd;
+    @BatchMapping(typeName = "Funko")
+    public Map<FunkoResponse, CategoriaResponse> categoria(List<FunkoResponse> funkos) {
+        var nombres = funkos.stream().map(FunkoResponse::categoria).distinct().toList();
+        var porNombre = categoriasService.findByNombres(nombres).stream()
+                .collect(Collectors.toMap(CategoriaResponse::nombre, c -> c));
+        return funkos.stream().collect(Collectors.toMap(f -> f,
+                                       f -> porNombre.get(f.categoria())));
     }
     ```
-    Reflexión que se espera: incluir **quién** lo tiene sería una fuga de datos personales. La fecha prevista de devolución es útil y no identifica a nadie.
 
+    **`@BatchMapping` recibe la lista entera de golpe** y hace una sola consulta con todos los nombres. De 101 a **2**.
 
-### E8 ●●● — Negociación de contenido
+    Y la diferencia con el [E11 de la UT5](../ut5/ejercicios.md): allí se arreglaba con un `JOIN FETCH` fijo. **Aquí no se puede**, porque la consulta depende de lo que pida el cliente. Hace falta el agrupamiento.
 
-El mismo endpoint devuelve JSON o CSV según lo que pida el cliente.
+    **Cómo medirlo:** `show-sql=true`, pedir la consulta y contar. Es lo que se mira en la defensa.
 
-??? success "Solución"
+## E14 ●●● — La consulta que tumba el servidor
 
-    ```java
-    @GetMapping(value = "/export", produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<LibroDto> exportJson() { … }
-
-    @GetMapping(value = "/export", produces = "text/csv")
-    public ResponseEntity<byte[]> exportCsv() {
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=libros.csv")
-            .contentType(MediaType.parseMediaType("text/csv"))
-            .body(csv.getBytes(StandardCharsets.UTF_8));
-    }
-    ```
-    ```bash
-    curl -H "Accept: text/csv" localhost:8080/api/v1/libros/export
-    ```
-    El `Content-Disposition: attachment` es lo que hace que el navegador **descargue** en vez de mostrar. Sin él, el CSV sale como texto en pantalla.
-
-
----
-
-# Tema 3 · Paginación y búsqueda
-
-### E9 ●● — De lista a página
-
-Convierte un listado completo en paginado y demuestra que el `limit` lo hace la base de datos.
+```graphql
+{ funkos { contenido { categoria { funkos { categoria { funkos { nombre } } } } } } }
+```
 
 ??? success "Solución"
 
-    ```java
-    @GetMapping
-    public Page<LibroDto> listar(@PageableDefault(size = 20, sort = "titulo") Pageable p) {
-        return servicio.listar(p);
-    }
-    ```
-    En el log tiene que aparecer `limit ? offset ?`. La prueba que delata al que pagina en memoria: pedir `size=5` con 1.000 filas y ver si el SQL trae las 1.000.
-
-
-### E10 ●●● — La lista blanca de ordenación
-
-Solo se puede ordenar por `titulo`, `anio` y `autor`. Cualquier otro campo, 400.
-
-??? success "Solución"
-
-    ```java
-    private static final Set<String> ORDENABLES = Set.of("titulo", "anio", "autor");
-
-    private void validarOrden(Pageable p) {
-        p.getSort().forEach(o -> {
-            if (!ORDENABLES.contains(o.getProperty()))
-                throw new OrdenNoPermitidoException(o.getProperty(), ORDENABLES);
-        });
-    }
-    ```
-    No es una manía: `?sort=passwordHash` ordenaría por un campo interno y, peor, **revela que existe**. La lista blanca es una medida de seguridad, no de estilo.
-
-
-### E11 ●● — Filtros combinables
-
-Cuatro filtros opcionales que funcionen juntos o por separado.
-
-??? success "Solución"
-
-    ```java
-    @Query("""
-           select l from Libro l
-           where (:genero is null or l.genero = :genero)
-             and (:autor  is null or l.autor.id = :autor)
-             and (:desde  is null or l.anio >= :desde)
-             and (:texto  is null or lower(l.titulo) like lower(concat('%', :texto, '%')))
-           """)
-    Page<Libro> buscar(…, Pageable pageable);
-    ```
-    Comprueba las 16 combinaciones posibles… o al menos las cuatro individuales y la de los cuatro juntos.
-
-
-### E12 ●●● — Buscar sin tildes
-
-Que «bandini» encuentre «Rigoberta Bandini» y «cortazar» encuentre «Cortázar».
-
-??? success "Solución"
-
-    ```java
-    public static String normalizar(String s) {
-        return Normalizer.normalize(s, Normalizer.Form.NFD)
-                         .replaceAll("\\p{M}", "").toLowerCase();
-    }
-    ```
-    Con una columna `titulo_normalizado` que se rellena al guardar, o con `unaccent` en PostgreSQL.
-
-    Lo que **no** funciona: `replace("á","a")` uno a uno. Se olvidan la ü, la ñ y todo lo que no sea castellano.
-
-
----
-
-# Tema 4 · Documentación OpenAPI
-
-### E13 ● — Swagger en tres minutos
-
-Añade springdoc y comprueba que la interfaz sale sola.
-
-??? success "Solución"
-
-    ```xml
-    <dependency>
-        <groupId>org.springdoc</groupId>
-        <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-        <version>2.7.0</version>
-    </dependency>
-    ```
-    `/swagger-ui.html` y `/v3/api-docs`. Sin escribir una línea: se genera de los controladores.
-
-    Lo que sale solo está incompleto, y por eso existen los tres ejercicios siguientes.
-
-
-### E14 ●● — Documenta un controlador
-
-Anota el de libros con descripción y todos sus códigos.
-
-??? success "Solución"
-
-    ```java
-    @Tag(name = "Libros", description = "Catálogo de la biblioteca")
-    @RestController
-    public class LibroControlador {
-
-        @Operation(summary = "Busca un libro por su identificador")
-        @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Encontrado"),
-            @ApiResponse(responseCode = "404", description = "No existe",
-                         content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
-        })
-        @GetMapping("/{id}")
-        public LibroDto porId(@Parameter(description = "Id del libro") @PathVariable Long id) { … }
-    }
-    ```
-    Documentar **los errores** es lo que distingue una API usable: quien la consuma necesita saber qué le puede llegar, no solo el caso bueno.
-
-
-### E15 ●● — Información general
-
-Añade título, versión, contacto y servidores.
-
-??? success "Solución"
+    **Es legal** con un esquema bidireccional, y puede agotar la memoria o el tiempo del servidor. En REST esto no existe: cada endpoint tiene un coste fijo.
 
     ```java
     @Bean
-    public OpenAPI api() {
-        return new OpenAPI()
-            .info(new Info().title("API de la Biblioteca").version("1.0")
-                  .description("Catálogo, préstamos y reservas")
-                  .contact(new Contact().name("2.º DAW").email("dwes@iesejemplo.es"))
-                  .license(new License().name("MIT")))
-            .servers(List.of(new Server().url("http://localhost:8080").description("Desarrollo")));
+    public GraphQlSourceBuilderCustomizer limites() {
+        return builder -> builder.configureGraphQl(graphQl ->
+                graphQl.instrumentation(List.of(
+                        new MaxQueryDepthInstrumentation(10),
+                        new MaxQueryComplexityInstrumentation(200))));
     }
     ```
 
+    ```properties
+    spring.graphql.schema.introspection.enabled=false    # en prod
+    ```
 
-### E16 ●●● — El contrato como fuente de verdad
+    **Las dos cosas hacen falta:**
 
-Descarga `/v3/api-docs`, cambia un DTO y observa qué pasa en el contrato.
+    - **Los límites** impiden la consulta abusiva.
+    - **Apagar la introspección** impide que alguien descargue tu esquema completo —todos los tipos, campos y mutaciones— y se haga un mapa de por dónde entrar.
+
+    Y con los `@BatchMapping` bien puestos, incluso una consulta anidada se resuelve en un número **fijo y pequeño** de consultas SQL, porque cada nivel se agrupa.
+
+## E15 ●●● — El controlador GraphQL
+
+Escribe el esquema y el controlador para consultar y crear funkos, reutilizando el servicio.
 
 ??? success "Solución"
 
-    ```bash
-    curl -s localhost:8080/v3/api-docs | jq > contrato-antes.json
-    # … renombras un campo del DTO …
-    curl -s localhost:8080/v3/api-docs | jq > contrato-despues.json
-    diff contrato-antes.json contrato-despues.json
+    ```graphql title="src/main/resources/graphql/schema.graphqls"
+    type Funko {
+        id: ID!
+        nombre: String!
+        precio: Float!
+        cantidad: Int!
+        categoria: Categoria!
+    }
+
+    type Categoria { id: ID!  nombre: String!  funkos: [Funko!]! }
+
+    input FunkoInput  { nombre: String!  precio: Float!  cantidad: Int!  categoria: String! }
+    input FunkoFiltro { categoria: String  precioMin: Float  nombre: String }
+
+    type Query {
+        funkos(filtro: FunkoFiltro, pagina: Int = 0, tamano: Int = 20): [Funko!]!
+        funkoById(id: ID!): Funko
+    }
+
+    type Mutation {
+        crearFunko(input: FunkoInput!): Funko!
+        borrarFunko(id: ID!): Boolean!
+    }
     ```
-    El `diff` muestra el cambio **incompatible** que acabas de introducir sin darte cuenta.
 
-    En un equipo real esto se automatiza: el contrato se guarda en el repositorio y la CI falla si cambia sin subir la versión. Se llama *contract testing* y es el argumento de peso para documentar con OpenAPI en vez de a mano.
-
-
----
-
-# Tema 5 · GraphQL
-
-### E17 ●● — Tu primera consulta
-
-Esquema, listado y consulta por id, con el *playground* funcionando.
-
-??? success "Solución"
-
-    ```graphql
-    # src/main/resources/graphql/schema.graphqls
-    type Query { libros: [Libro!]!  libro(id: ID!): Libro }
-    type Libro { id: ID!  titulo: String!  anio: Int  autor: Autor }
-    type Autor { id: ID!  nombre: String! }
-    ```
     ```java
     @Controller
-    public class LibroGraphQlControlador {
-        @QueryMapping public List<LibroDto> libros()           { return servicio.listar(); }
-        @QueryMapping public LibroDto libro(@Argument Long id) { return servicio.porId(id); }
-    }
-    ```
-    ```yaml
-    spring.graphql.graphiql.enabled: true      # /graphiql
-    ```
-    **El servicio no se toca.** Es el tercer controlador sobre la misma lógica, después del REST y antes del de vistas de la UT8.
+    public class FunkosGraphQlController {
 
+        private final FunkosService servicio;        // ← EL MISMO que usa REST
 
-### E18 ●●● — El N+1 vuelve
+        public FunkosGraphQlController(FunkosService servicio) { this.servicio = servicio; }
 
-Pide `{ libros { titulo autor { nombre } } }` con 50 libros, cuenta consultas y arréglalo.
-
-??? success "Solución"
-
-    Con `@SchemaMapping`, **51 consultas**. Con `@BatchMapping`, **2**.
-
-    ```java
-    @BatchMapping
-    public Map<Libro, Autor> autor(List<Libro> libros) {
-        var ids = libros.stream().map(Libro::getAutorId).distinct().toList();
-        var autores = autorRepo.findAllById(ids).stream().collect(toMap(Autor::getId, a -> a));
-        return libros.stream().collect(toMap(l -> l, l -> autores.get(l.getAutorId())));
-    }
-    ```
-    La diferencia con la UT5: aquí **no puedes prevenirlo con un `JOIN FETCH` fijo**, porque es el cliente quien decide en cada petición qué relaciones pide. Mismo problema, solución distinta — y esa comparación es lo que se evalúa.
-
-
-### E19 ●● — Mutaciones
-
-Añade el alta de un libro por GraphQL, con validación.
-
-??? success "Solución"
-
-    ```graphql
-    input LibroEntrada { titulo: String!  anio: Int  autorId: ID! }
-    type Mutation { crearLibro(entrada: LibroEntrada!): Libro! }
-    ```
-    ```java
-    @MutationMapping
-    public LibroDto crearLibro(@Argument @Valid LibroEntrada entrada) {
-        return servicio.crear(entrada);
-    }
-    ```
-    GraphQL responde **siempre 200**, incluso con errores: el fallo va en el array `errors` del cuerpo. Es una diferencia importante con REST y una crítica habitual, porque rompe el manejo de errores basado en códigos HTTP.
-
-
-### E20 ●●● — REST o GraphQL, con criterio
-
-Decide para tres casos y justifica: (a) app móvil con conexión mala, (b) integración con Hacienda, (c) panel interno de administración.
-
-??? success "Solución"
-
-    **(a) GraphQL.** Con conexión mala, pedir exactamente los campos necesarios en una sola petición ahorra ancho de banda y latencia.
-
-    **(b) REST.** Los organismos publican contratos REST estables, se cachean por URL y son auditables. Nadie va a aceptar un esquema GraphQL propio.
-
-    **(c) Cualquiera de los dos, probablemente REST.** Pocos usuarios y necesidades cambiantes: gana la simplicidad de operar.
-
-    Lo que se evalúa es que menciones **cacheo HTTP, número de peticiones y estabilidad del contrato**. Responder «GraphQL porque es más moderno» vale cero.
-
-
----
-
-# Tema 6 · WebSockets y tiempo real
-
-### E21 ●● — El panel de préstamos
-
-Cuando alguien presta un libro, todos los bibliotecarios conectados lo ven sin recargar.
-
-??? success "Solución"
-
-    ```java
-    @Configuration @EnableWebSocketMessageBroker
-    class WsConfig implements WebSocketMessageBrokerConfigurer {
-        public void registerStompEndpoints(StompEndpointRegistry r) { r.addEndpoint("/ws").withSockJS(); }
-        public void configureMessageBroker(MessageBrokerRegistry r) {
-            r.enableSimpleBroker("/tema");
-            r.setApplicationDestinationPrefixes("/app");
+        @QueryMapping
+        public List<FunkoResponse> funkos(@Argument Optional<FunkoFiltro> filtro,
+                                          @Argument int pagina, @Argument int tamano) {
+            var f = filtro.orElse(FunkoFiltro.vacio());
+            return servicio.findAll(
+                    Optional.ofNullable(f.categoria()),
+                    Optional.ofNullable(f.precioMin()),
+                    Optional.empty(),
+                    Optional.ofNullable(f.nombre()),
+                    PageRequest.of(pagina, Math.min(tamano, 100))).getContent();
         }
-    }
-    ```
-    ```java
-    @Transactional
-    public PrestamoDto prestar(Long libroId, String socio) {
-        var dto = /* … lógica de siempre … */;
-        ws.convertAndSend("/tema/prestamos", dto);
-        return dto;
-    }
-    ```
-    ```javascript
-    stompClient.subscribe('/tema/prestamos', m => anadirFila(JSON.parse(m.body)));
-    ```
-    La difusión va **después** de la lógica. Avisar antes de confirmar es anunciar un préstamo que puede no existir.
 
+        @QueryMapping
+        public FunkoResponse funkoById(@Argument Long id) { return servicio.findById(id); }
 
-### E22 ●● — SSE, más simple
+        @MutationMapping
+        public FunkoResponse crearFunko(@Argument("input") @Valid FunkoCreateRequest input) {
+            return servicio.save(input);
+        }
 
-El mismo panel, solo de servidor a cliente.
-
-??? success "Solución"
-
-    ```java
-    private final Set<SseEmitter> clientes = new CopyOnWriteArraySet<>();
-
-    @GetMapping(value = "/prestamos/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter suscribirse() {
-        var e = new SseEmitter(Long.MAX_VALUE);
-        clientes.add(e);
-        e.onCompletion(() -> clientes.remove(e));
-        e.onTimeout(()    -> clientes.remove(e));
-        return e;
-    }
-    ```
-    ```javascript
-    new EventSource('/prestamos/stream').onmessage = e => anadirFila(JSON.parse(e.data));
-    ```
-    El `CopyOnWriteArraySet` no es capricho: la lista se modifica mientras se recorre para difundir, y con un `HashSet` normal salta `ConcurrentModificationException`.
-
-
-### E23 ●● — Elegir con criterio
-
-Decide para: (a) chat entre socios, (b) contador de plazas libres, (c) editor colaborativo, (d) avisos de mantenimiento.
-
-??? success "Solución"
-
-    | Caso | Elección | Por qué |
-    |---|---|---|
-    | (a) Chat | **WebSocket** | Los dos extremos escriben |
-    | (b) Contador | **SSE** | Solo baja información |
-    | (c) Editor colaborativo | **WebSocket** | Bidireccional y con mucha frecuencia |
-    | (d) Avisos | **SSE** | Unidireccional y esporádico |
-
-    La regla: **si el cliente no necesita responder por el mismo canal, SSE**. Es HTTP normal, reconecta solo y no da guerra con proxies.
-
-
-### E24 ●●● — Qué pasa con varias instancias
-
-Tu panel funciona. Despliegas dos réplicas y deja de funcionar para la mitad de los usuarios. Explica por qué.
-
-??? success "Solución"
-
-    El *broker* simple de Spring (`enableSimpleBroker`) vive **en memoria de cada instancia**. Si el préstamo lo procesa la réplica A, solo los clientes conectados a A se enteran; los de B no ven nada.
-
-    Soluciones:
-    1. **Broker externo** (RabbitMQ, ActiveMQ) con `enableStompBrokerRelay`.
-    2. **Sesiones pegajosas** en el balanceador — funciona a medias y no escala.
-    3. **Redis pub/sub** para propagar entre instancias.
-
-    No hace falta implementarlo: basta con **saber que el problema existe** y poder nombrar la solución. Es exactamente el tipo de pregunta que separa a alguien que ha hecho un tutorial de alguien que ha pensado en producción.
-
-
----
-
-# Tema 7 · Testing de APIs
-
-### E25 ●● — Test de contrato
-
-Prueba el 200 y el 404 con `@WebMvcTest`.
-
-??? success "Solución"
-
-    ```java
-    @WebMvcTest(LibroControlador.class)
-    class LibroControladorTest {
-        @Autowired MockMvc mvc;
-        @MockitoBean LibroServicio servicio;
-
-        @Test void devuelveElLibro() throws Exception {
-            when(servicio.porId(1L)).thenReturn(new LibroDto(1L, "Rayuela", …));
-            mvc.perform(get("/api/v1/libros/1"))
-               .andExpect(status().isOk())
-               .andExpect(jsonPath("$.titulo").value("Rayuela"));
+        @MutationMapping
+        public Boolean borrarFunko(@Argument Long id) {
+            servicio.deleteById(id);
+            return true;
         }
     }
     ```
 
+    **Lo importante es lo que NO hay: ni una línea de lógica de negocio.** Son cuatro métodos de fontanería que llaman a los mismos métodos del servicio que el `@RestController`.
 
-### E26 ●●● — El test que caza el bug de paginación
+    Eso es lo que compraste con las capas en la UT4: el tercer transporte sale casi gratis.
 
-Comprueba que una página fuera de rango devuelve 200 con lista vacía, no 404.
+---
+
+# Bloque 3 · CORS y documentación
+
+> Tema [3. CORS y documentación de APIs](03-documentacion-apis.md)
+
+## E16 ● — Quién bloquea
+
+Tu API funciona con `curl` y falla desde el navegador con un error de CORS.
+
+??? success "Solución"
+
+    **El navegador**, no tu servidor.
+
+    La petición **sí llega**, se procesa y se responde con un 200. Lo que hace el navegador es **negarle el resultado al JavaScript** porque la respuesta no trae `Access-Control-Allow-Origin` con su origen.
+
+    `curl` no implementa la política del mismo origen, así que no le afecta. Eso explica el *«pero si funciona en Postman»*.
+
+    **Y la consecuencia de fondo:** CORS **no es seguridad del servidor**. No protege tu API de nada: cualquiera puede llamarla desde fuera de un navegador. Protege **al usuario** de que una web maliciosa use su sesión en otro sitio.
+
+## E17 ● — El `OPTIONS`
+
+En el log aparece un `OPTIONS /api/v1/funkos` antes de cada POST.
+
+??? success "Solución"
+
+    Es el ***preflight***: antes de una petición «no simple», el navegador **pregunta primero**.
+
+    Lo disparan:
+
+    - Verbos distintos de `GET`, `HEAD` y `POST`.
+    - **`Content-Type: application/json`** — sí, esto solo ya lo dispara.
+    - Cabeceras propias como `Authorization`.
+
+    Es decir: **casi cualquier petición de una API REST**.
+
+    ```
+    OPTIONS /api/v1/funkos
+    Origin: http://localhost:5173
+    Access-Control-Request-Method: POST
+
+    → 200
+    Access-Control-Allow-Origin: http://localhost:5173
+    Access-Control-Allow-Methods: POST
+    Access-Control-Max-Age: 3600
+    ```
+
+    El **`Max-Age`** es el que importa en rendimiento: sin él, **cada** POST son dos viajes de ida y vuelta.
+
+## E18 ●● — El comodín con credenciales
+
+```java
+.allowedOrigins("*")
+.allowCredentials(true)
+```
+
+??? success "Solución"
+
+    **No funciona.** El navegador rechaza la combinación:
+
+    ```
+    The value of the 'Access-Control-Allow-Origin' header must not be the
+    wildcard '*' when the request's credentials mode is 'include'.
+    ```
+
+    Y está prohibido **a propósito**: `allowCredentials(true)` hace que el navegador mande cookies y cabeceras de autenticación. Con `*`, **cualquier web de internet podría hacer peticiones autenticadas con la sesión de tu usuario**. Es exactamente el ataque CSRF que CORS existe para impedir.
+
+    Si necesitas comodín con credenciales: `allowedOriginPatterns("https://*.miapp.es")`, que Spring resuelve al origen concreto en cada respuesta.
+
+    **La regla:** `allowedOrigins("*")` solo para una API pública **sin autenticación**.
+
+## E19 ●● — La cabecera que el cliente no ve
+
+Tu POST devuelve 201 con `Location`, y el JavaScript del cliente dice que `Location` es `null`.
+
+??? success "Solución"
+
+    Por defecto, el JavaScript **solo puede leer seis cabeceras** de una respuesta con CORS: `Cache-Control`, `Content-Language`, `Content-Type`, `Expires`, `Last-Modified` y `Pragma`.
+
+    `Location` no está entre ellas.
+
+    ```java
+    .exposedHeaders("Location", "X-Total-Count")
+    ```
+
+    **La cabecera sí llega** —se ve en las DevTools, en la pestaña de red— pero el navegador no deja que el código la lea. Es de los errores más desconcertantes de CORS, porque todo *parece* correcto.
+
+## E20 ●● — CORS por perfiles
+
+Frontend en `http://localhost:5173` en desarrollo y en `https://miapp.es` en producción.
 
 ??? success "Solución"
 
     ```java
-    @Test void paginaFueraDeRangoDevuelve200ConListaVacia() throws Exception {
-        mvc.perform(get("/api/v1/libros?page=9999"))
-           .andExpect(status().isOk())
-           .andExpect(jsonPath("$.content").isArray())
-           .andExpect(jsonPath("$.content.length()").value(0))
-           .andExpect(jsonPath("$.totalElements").isNumber());
+    @Configuration
+    public class CorsConfig implements WebMvcConfigurer {
+
+        private final String[] origenes;
+
+        public CorsConfig(@Value("${cors.origenes-permitidos}") String[] origenes) {
+            this.origenes = origenes;
+        }
+
+        @Override
+        public void addCorsMappings(CorsRegistry registry) {
+            registry.addMapping("/api/**")
+                    .allowedOrigins(origenes)
+                    .allowedMethods("GET","POST","PUT","PATCH","DELETE","OPTIONS")
+                    .allowedHeaders("*")
+                    .exposedHeaders("Location")
+                    .allowCredentials(true)
+                    .maxAge(3600);
+        }
     }
     ```
-    !!! danger "El bug del `jsonPath` que hay que conocer"
-        Si por error el endpoint devuelve una **lista** en vez de una `Page`, `$.content.length()` no falla: JSONPath aplica el acceso a cada elemento y devuelve `0`. **El test pasa con la API rota.**
 
-        Por eso está el `totalElements`: obliga a que la respuesta sea realmente paginada.
+    ```properties title="application-dev.properties"
+    cors.origenes-permitidos=http://localhost:5173,http://localhost:3000
+    ```
 
+    ```properties title="application-prod.properties"
+    cors.origenes-permitidos=https://miapp.es
+    ```
 
-### E27 ●● — Tests parametrizados
+    Es el [tema 5 de la UT4](../ut4/05-configuracion.md) aplicado: **el mismo `.jar` sirve en los dos entornos**.
 
-Prueba diez combinaciones de filtros sin escribir diez tests.
+    `@CrossOrigin` en el controlador vale para probar, pero reparte la política por el código y hay que acordarse en cada clase nueva.
+
+## E21 ●● — Qué deduce `springdoc` y qué no
+
+??? success "Solución"
+
+    | Lo deduce de tu código | Hay que escribirlo |
+    |---|---|
+    | Ruta, verbo, parámetros | **Para qué sirve** el endpoint |
+    | Tipos y obligatoriedad (de `@NotBlank`, `@Min`…) | **Qué errores** devuelve y cuándo |
+    | Esquema completo de los DTOs | **Ejemplos** de valores reales |
+    | Los valores de un `enum` | Las **reglas de negocio** |
+
+    La columna de la izquierda sale sola y hace Swagger útil desde el minuto uno. La de la derecha convierte «una lista de endpoints» en **documentación**.
+
+    Y lo que ninguna herramienta podrá deducir: que un POST devuelve **409** si el nombre está repetido. Eso es una regla de negocio y hay que escribirla.
+
+## E22 ●● — Swagger en producción
+
+¿Se puede dejar abierto?
+
+??? success "Solución"
+
+    **No.** Swagger UI **no es un visor: es un cliente HTTP completo** con un botón «Try it out» que manda peticiones de verdad.
+
+    Dejarlo abierto publica:
+
+    - La lista completa de tus endpoints, incluidos los que no documentas en ningún sitio.
+    - El esquema de tus DTOs, que dice qué campos tienes.
+    - Un formulario para llamarlos a todos.
+
+    ```properties title="application-prod.properties"
+    springdoc.api-docs.enabled=false
+    springdoc.swagger-ui.enabled=false
+    ```
+
+    Es el mismo criterio que la consola de H2 de la UT5 y la introspección de GraphQL: **todo lo cómodo en desarrollo se apaga en producción**.
+
+    El **JSON** de la especificación sí puede publicarse si tu API es pública: con él se generan clientes. Lo que no debe quedarse es la interfaz con el botón de disparar.
+
+## E23 ●●● — Documentar un endpoint de verdad
+
+Documenta `POST /funkos` con sus tres respuestas posibles.
 
 ??? success "Solución"
 
     ```java
-    @ParameterizedTest
-    @CsvSource({
-        "genero=NOVELA,      3",
-        "autor=1,            2",
-        "texto=ray,          1",
-        "genero=NOVELA&autor=1, 1",
-        "genero=INEXISTENTE, 0"
+    @Operation(
+        summary = "Crea un funko",
+        description = """
+            Crea un funko nuevo. El id y las fechas los asigna el servidor.
+            La categoría debe existir previamente.
+            """)
+    @ApiResponses({
+        @ApiResponse(responseCode = "201",
+            description = "Creado. Devuelve la cabecera Location con la URL del recurso",
+            content = @Content(schema = @Schema(implementation = FunkoResponse.class))),
+        @ApiResponse(responseCode = "400",
+            description = """
+                Datos inválidos. El cuerpo lleva el detalle por campo.
+                También sale si la categoría indicada no existe.
+                """,
+            content = @Content),
+        @ApiResponse(responseCode = "409",
+            description = "Ya existe un funko con ese nombre",
+            content = @Content)
     })
-    void losFiltrosDevuelvenLoEsperado(String query, int esperados) throws Exception {
-        mvc.perform(get("/api/v1/libros?" + query))
-           .andExpect(status().isOk())
-           .andExpect(jsonPath("$.content.length()").value(esperados));
-    }
+    @PostMapping
+    public ResponseEntity<FunkoResponse> create(
+            @RequestBody(description = "Datos del funko", required = true)
+            @Valid @org.springframework.web.bind.annotation.RequestBody
+            FunkoCreateRequest funko) { … }
     ```
 
+    ```java
+    @Schema(description = "Datos para crear un funko")
+    public record FunkoCreateRequest(
+            @Schema(description = "Nombre, único", example = "Mickey Mouse")
+            @NotBlank @Size(max = 100) String nombre,
+            @Schema(description = "Precio en euros", example = "15.99")
+            @NotNull @PositiveOrZero BigDecimal precio,
+            @Schema(description = "Categoría, debe existir", example = "DISNEY")
+            @NotBlank String categoria) {}
+    ```
 
-### E28 ●●● — Test de extremo a extremo
+    **Los 409 son la parte que importa.** Las rutas y los tipos los deduce la herramienta; «devuelve 409 si el nombre está repetido» es justo el dato que necesita quien va a consumir tu API, y solo lo sabes tú.
 
-Levanta la aplicación con servidor real y prueba el flujo completo de alta y préstamo.
+## E24 ●●● — La prueba definitiva de la documentación
+
+¿Cómo sabes si tu documentación es suficiente?
 
 ??? success "Solución"
 
-    ```java
-    @SpringBootTest(webEnvironment = RANDOM_PORT)
-    class BibliotecaE2ETest {
-        @Autowired TestRestTemplate rest;
+    **Se la das a otra pareja y les pides que hagan cinco operaciones con tu API, incluida una que provoque un 409. Si tienen que preguntarte algo, falta documentación.**
 
-        @Test void altaYPrestamo() {
-            var r = rest.postForEntity("/api/v1/libros", new CrearLibroDto(…), LibroDto.class);
-            assertThat(r.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-            var location = r.getHeaders().getLocation();
+    Es literalmente lo que se hace en la S13: se cruzan los proyectos.
 
-            var p = rest.postForEntity("/api/v1/prestamos",
-                        new CrearPrestamoDto(r.getBody().id(), "ana"), PrestamoDto.class);
-            assertThat(p.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    Lo que siempre falta, en este orden:
 
-            var repetido = rest.postForEntity("/api/v1/prestamos",
-                        new CrearPrestamoDto(r.getBody().id(), "luis"), ProblemDetail.class);
-            assertThat(repetido.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        }
-    }
-    ```
-    `RANDOM_PORT` evita que el test falle si tienes la aplicación arrancada en el 8080, que pasa constantemente.
+    1. **Los códigos de error y en qué caso sale cada uno.** Lo más frecuente con diferencia.
+    2. **Ejemplos con valores reales.** `"string"` y `0` no sirven: hay que saber que la categoría es `DISNEY` y no `disney` o `1`.
+    3. **Las reglas de negocio.** Que no se puede borrar una categoría con funkos no está en ninguna anotación.
+    4. **Qué devuelve exactamente el 400.** Un cliente necesita saber que el cuerpo lleva `campos` con los errores por campo para poder pintarlos.
 
+    Y la comprobación mecánica, antes de entregar:
 
----
-
-# Tema 8 · Consumir APIs
-
-### E29 ●● — `RestClient` con timeouts
-
-Consulta Open Library por ISBN, con tiempos límite.
-
-??? success "Solución"
-
-    ```java
-    @Bean
-    RestClient openLibrary() {
-        var f = new SimpleClientHttpRequestFactory();
-        f.setConnectTimeout(Duration.ofSeconds(3));
-        f.setReadTimeout(Duration.ofSeconds(5));
-        return RestClient.builder()
-            .baseUrl("https://openlibrary.org")
-            .defaultHeader("User-Agent", "BibliotecaIES/1.0 (dwes@iesejemplo.es)")
-            .requestFactory(f).build();
-    }
-    ```
-    Sin `readTimeout`, una API que no responde deja el hilo esperando indefinidamente y, con suficientes usuarios, tumba tu aplicación por culpa de un tercero.
-
-
-### E30 ●● — DTO propio y respuesta vacía
-
-Mapea a tu propio DTO y trata el caso «no existe».
-
-??? success "Solución"
-
-    ```java
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    record RespuestaOpenLibrary(String title, Integer number_of_pages) {}
-
-    public Optional<LibroExterno> porIsbn(String isbn) {
-        try {
-            var r = cliente.get().uri("/isbn/{i}.json", isbn).retrieve()
-                           .body(RespuestaOpenLibrary.class);
-            return (r == null || r.title() == null) ? Optional.empty() : Optional.of(convertir(r));
-        } catch (RestClientException e) {
-            log.warn("Open Library no responde para {}", isbn);
-            return Optional.empty();
-        }
-    }
-    ```
-    Trampa real: Open Library devuelve **`{}` con 200** cuando el ISBN no existe, no un 404. Quien espere el 404 dará por bueno un objeto vacío.
-
-
-### E31 ●●● — Que un fallo ajeno no sea tuyo
-
-La ficha del libro debe mostrarse aunque Open Library esté caído.
-
-??? success "Solución"
-
-    ```java
-    @GetMapping("/{id}")
-    public LibroDetalleDto detalle(@PathVariable Long id) {
-        var libro = servicio.porId(id);
-        var extra = openLibrary.porIsbn(libro.isbn()).orElse(null);
-        return new LibroDetalleDto(libro, extra);
-    }
-    ```
-    Prueba de fuego:
     ```bash
-    sudo sh -c 'echo "127.0.0.1 openlibrary.org" >> /etc/hosts'
+    # Los tres curl del README deben funcionar al copiar y pegar
+    bash -c "$(grep -A2 '```bash' README.md | grep curl)"
     ```
-    La ficha debe seguir cargando, sin el bloque de información adicional. Si sale un 500, una fuente **secundaria** está tumbando tu página, y eso es un error de diseño.
-
-    Recuerda quitar la línea después.
-
-
-### E32 ●● — Caché y cuota
-
-Cachea la respuesta y justifica el tiempo elegido.
-
-??? success "Solución"
-
-    ```java
-    @Cacheable(value = "libros-externos", key = "#isbn")
-    public Optional<LibroExterno> porIsbn(String isbn) { … }
-    ```
-    ```yaml
-    spring.cache.caffeine.spec: maximumSize=2000,expireAfterWrite=7d
-    ```
-    Una semana es defendible: el título y el autor de un libro publicado no cambian. Y el porqué va en el README, que es criterio de rúbrica en la UT9.
-
-    Comprobación: pedir el mismo ISBN diez veces y ver **una** llamada en el log, no diez.
-
 
 ---
 
-## Cómo usarlos en clase
+## Reparto sugerido
 
-| Momento | Ejercicios |
-|---|---|
-| Para arrancar la sesión, 10 min | E1 · E5 · E9 · E13 · E17 · E21 · E25 · E29 |
-| Taller de la sesión, 25-30 min | E4 · E7 · E11 · E14 · E19 · E22 · E27 · E30 |
-| Los que hay que hacer sí o sí | **E1 · E10 · E18 · E26 · E31** |
-| Para quien va sobrado | E8 · E16 · E20 · E24 · E28 |
-| Repaso antes del examen | E4 · E6 · E10 · E12 · E18 |
+| Sesión | Bloque | Ejercicios |
+|:-:|---|---|
+| **S1** | 1 · HTTP frente a WebSocket | E1 – E2 |
+| **S2** | 1 · Sesiones y *broadcast* | E3 – E4 |
+| **S3** | 1 · Eventos y `AFTER_COMMIT` | E5 – E7 |
+| **S6** | 2 · Esquema y comparación | E8 – E9 |
+| **S7** | 2 · Operaciones y errores | E10 – E12 |
+| **S8** | 2 · El N+1 y los límites | E13 – E15 |
+| **S11** | 3 · CORS | E16 – E20 |
+| **S12** | 3 · OpenAPI | E21 – E24 |
+| **S15–S17** | — | [Retos](retos.md) |
+| **S18** | — | Examen práctico |
 
-!!! tip "Los dos que más enseñan"
-    **E18** (el N+1 en GraphQL) y **E26** (el bug del `jsonPath`).
+!!! success "Si vas justo de tiempo"
+    El mínimo: **E1, E3, E5, E8, E11, E13, E16, E19, E22**.
 
-    En los dos, el código funciona y el resultado parece correcto. El primero da la respuesta buena con 51 consultas; el segundo es un test **en verde** sobre una API rota. Aprender a desconfiar de lo que parece bien es la mitad de esta unidad.
+    Y los cuatro que separan un 5 de un 9, porque son los que **no se notan probando a mano**:
+
+    - **E5** — notificar antes de confirmar: solo falla cuando una transacción falla.
+    - **E13** — el N+1 de GraphQL: solo se ve contando consultas en el log.
+    - **E19** — `exposedHeaders`: todo parece correcto y el cliente no lee la cabecera.
+    - **E22** — Swagger en producción: funciona perfectamente, y ahí está el problema.
