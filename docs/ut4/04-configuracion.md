@@ -1,4 +1,4 @@
-# 5. Configuración y variables de entorno
+# 4. Configuración y variables de entorno
 
 Todo lo que cambia entre tu portátil y el servidor —el puerto, la base de datos, las contraseñas— **no se escribe en el código**. Este tema va de dónde se escribe.
 
@@ -12,14 +12,18 @@ Todo lo que cambia entre tu portátil y el servidor —el puerto, la base de dat
 
 ---
 
-## 5.1. Los tres sitios donde vive la configuración
+## 4.1. Los tres sitios donde vive la configuración
 
 ```mermaid
 graph TB
+    A["1 · application.properties<br/>📄 valores por defecto<br/>va a Git"]
+    B["2 · application-{perfil}.properties<br/>🔧 por entorno<br/>va a Git"]
+    C["3 · Variables de entorno<br/>🔐 secretos<br/>NUNCA a Git"]
+
     subgraph "De menos a más prioridad"
-        A["1 · application.properties<br/>📄 valores por defecto<br/>va a Git"]
-        B["2 · application-{perfil}.properties<br/>🔧 por entorno<br/>va a Git"]
-        C["3 · Variables de entorno<br/>🔐 secretos<br/>NUNCA a Git"]
+        A
+        B
+        C
     end
 
     A --> B --> C
@@ -37,7 +41,7 @@ La clave está en la tercera fila: el fichero de producción va a Git **porque n
 
 ---
 
-## 5.2. `application.properties`
+## 4.2. `application.properties`
 
 El fichero vive en `src/main/resources/` y se lee al arrancar.
 
@@ -151,7 +155,7 @@ Spring Boot acepta los dos. Son equivalentes:
 
 ---
 
-## 5.3. Perfiles
+## 4.3. Perfiles
 
 Un perfil es un fichero extra que **se suma** al principal y lo pisa donde coincidan las claves.
 
@@ -292,7 +296,7 @@ public class FunkosConfig {
 
 ---
 
-## 5.4. Variables de entorno
+## 4.4. Variables de entorno
 
 Son la capa de arriba: **pisan a todo lo demás** y no están en ningún fichero del repositorio.
 
@@ -341,7 +345,7 @@ graph TB
 
 ---
 
-## 5.5. El fichero `.env`
+## 4.5. El fichero `.env`
 
 Un `.env` es un fichero de texto con `CLAVE=valor` que **no se sube a Git** y que sirve para tener tus secretos de desarrollo a mano sin escribirlos en el `application.properties`.
 
@@ -387,7 +391,7 @@ target/
 
     Quien clona el repositorio hace `cp .env.example .env`, rellena, y arranca. Y nadie tiene que preguntar por el chat del grupo «¿qué variables hacen falta?», que es cómo las contraseñas acaban en un historial de mensajes.
 
-    En las [rúbricas de la UT4 a la UT6](retos.md) esto se puntúa.
+    En la [rúbrica de los ejercicios prácticos](ejercicios-practicos.md) esto se puntúa.
 
 ### Hacer que Spring Boot lo lea
 
@@ -403,17 +407,90 @@ Spring Boot **no lee `.env` por sí solo**. Tres formas, de menos a más:
 
     Cero dependencias. Para probar algo rápido, sobra.
 
-=== "2 · IntelliJ (lo habitual en clase)"
+=== "2 · IntelliJ IDEA (lo habitual en clase)"
 
-    **Run → Edit Configurations → Environment variables**, y pegas:
+    **Es la forma que usamos en el aula.** Hay dos maneras, y la segunda es la buena.
+
+    **a) A mano, pegando las variables**
+
+    1. Barra superior → el desplegable de configuraciones → **Edit Configurations…**
+    2. Selecciona tu `FunkosApiApplication` (o pulsa **+ → Spring Boot**).
+    3. Si no ves el campo, **Modify options → Environment variables**.
+    4. En **Environment variables**, pega las variables **separadas por `;`**:
 
     ```
-    DB_URL=jdbc:mysql://localhost:3306/funkos;DB_USER=funkouser;DB_PASSWORD=...
+    PORT=8080;SPRING_PROFILES_ACTIVE=dev;DB_URL=jdbc:h2:./datos/funkos;DB_USER=sa;DB_PASSWORD=
     ```
 
-    O mejor, con el plugin **EnvFile** marcas el `.env` y lo carga él.
+    5. **Apply → OK**, y arranca con el botón verde.
 
-    La configuración de ejecución es local: no se sube al repositorio.
+    !!! warning "El separador es `;`, no un salto de línea"
+        Y si un valor contiene `;` —una URL de JDBC con opciones, como `jdbc:h2:mem:funkos;DB_CLOSE_DELAY=-1`— **esto se rompe**: IntelliJ parte por el primer `;` y acabas con `DB_URL=jdbc:h2:mem:funkos` y una variable fantasma llamada `DB_CLOSE_DELAY`.
+
+        Pulsa el icono de la derecha del campo para abrir la tabla **Name / Value** y meter cada variable en su fila. Ahí el `;` del valor no molesta.
+
+    **b) Con el plugin EnvFile, leyendo tu `.env`**
+
+    Es lo recomendable: **la configuración vive en el `.env`** y no hay que repetirla en cada configuración de ejecución ni cada vez que clonas el proyecto.
+
+    1. **Settings → Plugins → Marketplace**, busca **EnvFile** e instálalo. Reinicia.
+    2. **Edit Configurations…** → tu aplicación → **Modify options → Enable EnvFile**.
+    3. Aparece una pestaña **EnvFile**: marca ✅ **Enable EnvFile**.
+    4. **+ → .env file** y elige el `.env` de la raíz del proyecto.
+    5. **Apply → OK**.
+
+    ```bash title=".env  ← en .gitignore"
+    PORT=8080
+    SPRING_PROFILES_ACTIVE=dev
+    DB_URL=jdbc:h2:./datos/funkos
+    DB_USER=sa
+    DB_PASSWORD=
+    ```
+
+    Comprueba que ha funcionado con un endpoint de diagnóstico:
+
+    ```java
+    @RestController
+    public class InfoController {
+        @Value("${server.port}")  private String puerto;
+        @Value("${spring.profiles.active:ninguno}") private String perfil;
+
+        @GetMapping("/info")
+        public Map<String, String> info() {
+            return Map.of("puerto", puerto, "perfil", perfil);
+        }
+    }
+    ```
+
+    ```bash
+    curl -s localhost:8080/info | jq
+    # { "puerto": "8080", "perfil": "dev" }
+    ```
+
+    !!! success "Las tres ventajas de EnvFile sobre pegar las variables"
+        1. **Un solo sitio.** Cambias el `.env` y lo recogen todas las configuraciones de ejecución, incluidos los tests.
+        2. **No se sube nada.** El `.env` está en `.gitignore` y la configuración de ejecución (`.idea/runConfigurations/`) no lleva secretos dentro.
+        3. **Funciona igual que en producción.** En el servidor las variables llegan del entorno o de `env_file:` del Compose; con EnvFile, en tu portátil llegan del mismo sitio conceptual. **El código no distingue.**
+
+    !!! danger "Lo que NO hay que hacer, aunque sea más rápido"
+        Escribir la contraseña en `application-dev.properties` «porque es solo desarrollo». Dos problemas:
+
+        - Ese fichero **sí va a Git**, así que la contraseña queda en el historial.
+        - Y cuando toque desplegar, el proyecto no estará preparado para leer variables, con lo que alguien escribirá la contraseña de producción en el fichero de producción.
+
+        La forma de trabajar se decide ahora, no el día del despliegue.
+
+    **Alternativa sin plugin: un perfil `local` que no se sube**
+
+    ```properties title="src/main/resources/application-local.properties  ← en .gitignore"
+    spring.datasource.password=laQueSeaEnMiPortatil
+    ```
+
+    ```
+    SPRING_PROFILES_ACTIVE=dev,local
+    ```
+
+    Los perfiles se aplican en orden, así que `local` pisa a `dev`. Sirve cuando no puedes instalar plugins, pero obliga a recordar los dos perfiles al arrancar.
 
 === "3 · Docker Compose (como en producción)"
 
@@ -461,7 +538,7 @@ Spring Boot **no lee `.env` por sí solo**. Tres formas, de menos a más:
 
 ---
 
-## 5.6. Leer la configuración desde el código
+## 4.6. Leer la configuración desde el código
 
 ### `@Value` para un valor suelto
 
@@ -553,7 +630,7 @@ public class AlmacenamientoService {
 
 ## Pruébalo ahora (15 min)
 
-Sobre el [proyecto del tema 4](04-proyecto-completo.md):
+Sobre el [proyecto A del tema 5](05-proyectos.md):
 
 1. Arranca con `PORT=9999` y comprueba el puerto.
 2. Crea `application-prod.properties` con `logging.level.root=WARN` y arranca con el perfil `prod`. ¿Se cargan los cuatro funkos de ejemplo?

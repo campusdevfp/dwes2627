@@ -19,13 +19,20 @@
 
 ```mermaid
 graph TB
+    IoC["Inversión de Control<br/>🔄"]
+    AOP["AOP<br/>📐"]
+    BD["Integración BD<br/>💾"]
+    Tx["Transacciones<br/>✅"]
+    MW["Middleware<br/>🔗"]
+    Test["Testing<br/>🧪"]
+
     subgraph "Características de Spring"
-        IoC["Inversión de Control<br/>🔄"]
-        AOP["AOP<br/>📐"]
-        BD["Integración BD<br/>💾"]
-        Tx["Transacciones<br/>✅"]
-        MW["Middleware<br/>🔗"]
-        Test["Testing<br/>🧪"]
+        IoC
+        AOP
+        BD
+        Tx
+        MW
+        Test
     end
 
     Spring["Spring Framework"] --> IoC
@@ -59,13 +66,20 @@ Spring Boot es un proyecto que se basa en el Spring Framework y simplifica el pr
 
 ```mermaid
 graph TB
+    Auto["Autoconfiguración<br/>⚙️"]
+    Standalone["Standalone<br/>🚀"]
+    Opinion["Opinión Predefinida<br/>📋"]
+    Starters["Starters<br/>📦"]
+    Actuator["Actuator<br/>📊"]
+    Test["Testing<br/>🧪"]
+
     subgraph "Características Spring Boot"
-        Auto["Autoconfiguración<br/>⚙️"]
-        Standalone["Standalone<br/>🚀"]
-        Opinion["Opinión Predefinida<br/>📋"]
-        Starters["Starters<br/>📦"]
-        Actuator["Actuator<br/>📊"]
-        Test["Testing<br/>🧪"]
+        Auto
+        Standalone
+        Opinion
+        Starters
+        Actuator
+        Test
     end
 
     SpringBoot["Spring Boot"] --> Auto
@@ -92,11 +106,16 @@ graph TB
 
 ```mermaid
 graph LR
+    Web["spring-boot-starter-web"]
+    Data["spring-boot-starter-data-jpa"]
+    Security["spring-boot-starter-security"]
+    Test["spring-boot-starter-test"]
+
     subgraph "Starters"
-        Web["spring-boot-starter-web"]
-        Data["spring-boot-starter-data-jpa"]
-        Security["spring-boot-starter-security"]
-        Test["spring-boot-starter-test"]
+        Web
+        Data
+        Security
+        Test
     end
 
     Dependencias["Dependencias Maven/Gradle"] --> Web
@@ -119,19 +138,26 @@ graph LR
 
 ```mermaid
 graph TB
+    Core["Spring Core<br/>IoC + DI"]
+    AOP["Spring AOP<br/>Aspectos"]
+    JDBC["Spring JDBC"]
+    ORM["Spring ORM<br/>Hibernate/JPA"]
+    MVC["Spring Web MVC<br/>REST/Web"]
+    WebFlux["Spring WebFlux<br/>Reactivo"]
+
     subgraph "Módulos Core"
-        Core["Spring Core<br/>IoC + DI"]
-        AOP["Spring AOP<br/>Aspectos"]
+        Core
+        AOP
     end
 
     subgraph "Módulos Datos"
-        JDBC["Spring JDBC"]
-        ORM["Spring ORM<br/>Hibernate/JPA"]
+        JDBC
+        ORM
     end
 
     subgraph "Módulos Web"
-        MVC["Spring Web MVC<br/>REST/Web"]
-        WebFlux["Spring WebFlux<br/>Reactivo"]
+        MVC
+        WebFlux
     end
 
     Core --> AOP
@@ -163,13 +189,20 @@ Además de estos módulos, Spring tiene varios proyectos que extienden su funcio
 
 ```mermaid
 graph TB
+    Boot["Spring Boot<br/>Creación apps"]
+    Security["Spring Security<br/>Autenticación"]
+    Data["Spring Data<br/>Persistencia"]
+    Cloud["Spring Cloud<br/>Nube"]
+    Integration["Spring Integration<br/>Mensajería"]
+    Batch["Spring Batch<br/>Procesamiento lotes"]
+
     subgraph "Proyectos Spring"
-        Boot["Spring Boot<br/>Creación apps"]
-        Security["Spring Security<br/>Autenticación"]
-        Data["Spring Data<br/>Persistencia"]
-        Cloud["Spring Cloud<br/>Nube"]
-        Integration["Spring Integration<br/>Mensajería"]
-        Batch["Spring Batch<br/>Procesamiento lotes"]
+        Boot
+        Security
+        Data
+        Cloud
+        Integration
+        Batch
     end
 
     Spring["Spring IO"] --> Boot
@@ -205,11 +238,16 @@ En Spring y Spring Boot, los **Beans** son los objetos fundamentales que forman 
 
 ```mermaid
 graph TB
+    Clase["Clase Java"]
+    Contenedor["Contenedor Spring"]
+    Bean["Bean Gestionado"]
+    Inyeccion["Inyectado"]
+
     subgraph "Ciclo de Vida de un Bean"
-        Clase["Clase Java"]
-        Contenedor["Contenedor Spring"]
-        Bean["Bean Gestionado"]
-        Inyeccion["Inyectado"]
+        Clase
+        Contenedor
+        Bean
+        Inyeccion
     end
 
     Clase --> Contenedor
@@ -286,11 +324,16 @@ Los beans son útiles porque te permiten abstraer la creación y gestión de obj
 
 ```mermaid
 graph TB
+    Singleton["Singleton<br/>🔄 Una instancia"]
+    Prototype["Prototype<br/>🔀 Nueva instancia"]
+    Request["Request<br/>📝 Una por request"]
+    Session["Session<br/>👤 Una por sesión"]
+
     subgraph "Scopes de Beans"
-        Singleton["Singleton<br/>🔄 Una instancia"]
-        Prototype["Prototype<br/>🔀 Nueva instancia"]
-        Request["Request<br/>📝 Una por request"]
-        Session["Session<br/>👤 Una por sesión"]
+        Singleton
+        Prototype
+        Request
+        Session
     end
 
     Contenedor["Contenedor"] --> Singleton
@@ -367,10 +410,14 @@ Investiga sobre proyectos y servicios que conozcas que usen Spring Boot. ¿En qu
 
 ```mermaid
 graph TB
+    P1["¿Qué usan?<br/>🔍"]
+    P2["¿Módulos?<br/>📦"]
+    P3["¿Ventajas?<br/>✅"]
+
     subgraph "Preguntas de Investigación"
-        P1["¿Qué usan?<br/>🔍"]
-        P2["¿Módulos?<br/>📦"]
-        P3["¿Ventajas?<br/>✅"]
+        P1
+        P2
+        P3
     end
 
     Proyecto["Proyecto Real"] --> P1

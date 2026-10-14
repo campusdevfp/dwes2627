@@ -85,13 +85,13 @@ Los **nueve resultados de aprendizaje** no se imparten en el orden en que los nu
     : 1. CSV y JSON · 2. Fechas y validación · 3. CRUD contra base de datos
 
     **UT4 · RA5 · Spring Boot, capas y REST** — 5 temas
-    : 1. Introducción a Spring Boot · 2. Spring Web REST · 3. Servicios, DTOs y caché · 4. Proyecto completo paso a paso · 5. Configuración y variables de entorno
+    : 1. Introducción a Spring Boot · 2. Spring Web REST · 3. Servicios, DTOs y caché · 4. Configuración y variables de entorno · **5. Dos proyectos paso a paso** (funkos y tienda, con H2 por JDBC)
 
     **UT5 · RA6 · Spring Data con JPA y SQL** — 4 temas
-    : 1. Spring Data con JPA y SQL · 2. Resultados avanzados · 3. Proyecto completo paso a paso · 4. Referencia de JPA y validaciones
+    : 1. Spring Data con JPA y SQL · 2. Resultados avanzados · 3. Referencia de JPA y validaciones · **4. Dos proyectos paso a paso** (los dos de la UT4, migrados a JPA)
 
-    **UT6 · RA7 · Servicios web** — 4 temas
-    : 1. WebSockets · 2. GraphQL · 3. CORS y documentación de APIs · 4. Proyecto completo paso a paso
+    **UT6 · RA7 · Servicios web** — 6 temas
+    : 1. WebSockets · 2. GraphQL · 3. CORS y documentación de APIs · **4. Proyecto · WebSockets** · **5. Proyecto · GraphQL** · **6. Proyecto · CORS y OpenAPI**
 
 ??? note "2.º trimestre — desplegar para ver los temas"
 
@@ -283,7 +283,24 @@ Todo el temario está también en **[una única página imprimible](curso-comple
 
 Sale bien aunque estés navegando en modo oscuro: la hoja de impresión fuerza fondo blanco.
 
-## 9. Créditos y licencia del material
+## 9. Las chuletas de examen, en PDF
+
+Los exámenes prácticos de **UT4, UT5 y UT6** se hacen **con la chuleta de la unidad impresa**, y es la única documentación permitida.
+
+| | Unidad | Descarga |
+|:-:|---|---|
+| **RA5** | Spring Boot, capas, REST y JDBC | [:material-file-pdf-box: chuleta-ut4.pdf](pdf/chuleta-ut4.pdf) |
+| **RA6** | Spring Data con JPA y SQL | [:material-file-pdf-box: chuleta-ut5.pdf](pdf/chuleta-ut5.pdf) |
+| **RA7** | WebSockets, GraphQL y documentación | [:material-file-pdf-box: chuleta-ut6.pdf](pdf/chuleta-ut6.pdf) |
+
+Cada una son tres o cuatro caras e incluye, al final, **los errores que más caen en el examen** de esa unidad.
+
+!!! tip "Cómo se usan bien"
+    La chuleta **no sustituye a haber programado**: es una referencia de sintaxis para no perder tiempo recordando el orden de los parámetros de `@Pattern`. Quien llega al examen esperando encontrar ahí la solución, no la encuentra.
+
+    Lo que sí resuelve: las anotaciones exactas, los códigos de estado, las trampas de los valores por defecto y la lista de errores frecuentes.
+
+## 10. Créditos y licencia del material
 
 Casi todo el temario es original de este curso, con una excepción importante que conviene conocer.
 

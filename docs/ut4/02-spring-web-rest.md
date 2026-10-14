@@ -42,11 +42,16 @@ El módulo Spring Web MVC proporciona una gran cantidad de funcionalidades para 
 
 ```mermaid
 graph TB
+    Enlace["Enlace de datos<br/>🔗"]
+    Validacion["Validación<br/>✅"]
+    Formateo["Formateo<br/>📝"]
+    Excepciones["Múltiples formatos<br/>🔄"]
+
     subgraph "Funcionalidades Spring MVC"
-        Enlace["Enlace de datos<br/>🔗"]
-        Validacion["Validación<br/>✅"]
-        Formateo["Formateo<br/>📝"]
-        Excepciones["Múltiples formatos<br/>🔄"]
+        Enlace
+        Validacion
+        Formateo
+        Excepciones
     end
 
     SpringMVC["Spring MVC"] --> Enlace
@@ -104,11 +109,16 @@ En Spring Boot, los "starters" son dependencias preconfiguradas que facilitan la
 
 ```mermaid
 graph TB
+    Starter["Starter<br/>📦"]
+    Deps["Dependencias<br/>🔗"]
+    Config["Configuración<br/>⚙️"]
+    Componentes["Componentes<br/>🔧"]
+
     subgraph "Starters"
-        Starter["Starter<br/>📦"]
-        Deps["Dependencias<br/>🔗"]
-        Config["Configuración<br/>⚙️"]
-        Componentes["Componentes<br/>🔧"]
+        Starter
+        Deps
+        Config
+        Componentes
     end
 
     Starter --> Deps
@@ -221,10 +231,14 @@ La aplicación está parametrizada en el fichero de configuración `application.
 
 ```mermaid
 graph TB
+    App["application.properties<br/>⚙️"]
+    Dev["application-dev.properties<br/>🔧"]
+    Prod["application-prod.properties<br/>🚀"]
+
     subgraph "Ficheros de Configuración"
-        App["application.properties<br/>⚙️"]
-        Dev["application-dev.properties<br/>🔧"]
-        Prod["application-prod.properties<br/>🚀"]
+        App
+        Dev
+        Prod
     end
 
     Perfiles["Perfiles"] --> Dev
@@ -263,8 +277,8 @@ upload.root-location=uploads
 spring.profiles.active=dev
 ```
 
-!!! info "El tema 5 va de esto"
-    La sintaxis `${PORT:3000}` —«coge la variable de entorno `PORT`, y si no existe usa `3000`»— es la clave de todo. Está desarrollada en [5. Configuración y variables de entorno](05-configuracion.md), junto con los `.env`.
+!!! info "El tema 4 va de esto"
+    La sintaxis `${PORT:3000}` —«coge la variable de entorno `PORT`, y si no existe usa `3000`»— es la clave de todo. Está desarrollada en [4. Configuración y variables de entorno](04-configuracion.md), junto con los `.env`.
 
 ---
 
@@ -274,11 +288,16 @@ Spring MVC es el conjunto de librerías que nos permite crear aplicaciones web d
 
 ```mermaid
 graph TB
+    SW["Spring Web<br/>🌐"]
+    MVC["Spring MVC<br/>📐"]
+    WebFlux["Spring WebFlux<br/>⚡"]
+    REST["API REST<br/>🔌"]
+
     subgraph "Spring Web vs Spring MVC"
-        SW["Spring Web<br/>🌐"]
-        MVC["Spring MVC<br/>📐"]
-        WebFlux["Spring WebFlux<br/>⚡"]
-        REST["API REST<br/>🔌"]
+        SW
+        MVC
+        WebFlux
+        REST
     end
 
     SW --> MVC
@@ -299,11 +318,16 @@ Spring Boot nos ofrece una serie de componentes que nos ayudan a crear aplicacio
 
 ```mermaid
 graph TB
+    Controller["@RestController<br/>🎮"]
+    Service["@Service<br/>⚙️"]
+    Repository["@Repository<br/>💾"]
+    Entity["@Entity<br/>📦"]
+
     subgraph "Arquitectura en Capas"
-        Controller["@RestController<br/>🎮"]
-        Service["@Service<br/>⚙️"]
-        Repository["@Repository<br/>💾"]
-        Entity["@Entity<br/>📦"]
+        Controller
+        Service
+        Repository
+        Entity
     end
 
     HTTP["HTTP Request"] --> Controller
@@ -350,11 +374,16 @@ La anotación `@Scope` en Spring Boot se utiliza para definir el alcance de un c
 
 ```mermaid
 graph TB
+    Singleton["Singleton<br/>🔄 Una instancia"]
+    Prototype["Prototype<br/>🔀 Nueva cada vez"]
+    Request["Request<br/>📝 Una por request"]
+    Session["Session<br/>👤 Una por sesión"]
+
     subgraph "Scopes de Spring"
-        Singleton["Singleton<br/>🔄 Una instancia"]
-        Prototype["Prototype<br/>🔀 Nueva cada vez"]
-        Request["Request<br/>📝 Una por request"]
-        Session["Session<br/>👤 Una por sesión"]
+        Singleton
+        Prototype
+        Request
+        Session
     end
 
     Contenedor["Contenedor"] --> Singleton
@@ -397,16 +426,14 @@ Es importante tener en cuenta que el uso adecuado del alcance de los componentes
 La **Inversión de control** (Inversion of Control, IoC) es un principio de diseño de software en el que el flujo de ejecución de un programa se invierte respecto a los métodos de programación tradicionales. En su lugar, en la inversión de control se especifican respuestas deseadas a sucesos o solicitudes de datos concretas, dejando que algún tipo de entidad o arquitectura externa lleve a cabo las acciones de control que se requieran en el orden necesario.
 
 ```mermaid
-graph LR
-    subgraph "Tradicional vs IoC"
-        Tradicional["Tradicional<br/>A crea B"]
-        IoC["IoC/DI<br/>Spring crea B"]
-    end
-
-    Tradicional -->|new B| B1["B"]
-    IoC -->|@Autowired| B2["B"]
-    Spring["Spring"] -->|Inyecta| B2
+flowchart LR
+    A1["Clase A"] -->|"crea con new()"| B1["Clase B"]
+    A2["Clase A"] -.->|"declara que la necesita"| B2["Clase B"]
+    SP["Contenedor<br/>de Spring"] ==>|"crea"| B2
+    SP ==>|"inyecta"| A2
 ```
+
+A la izquierda, lo tradicional: `A` **crea** su dependencia. A la derecha, con IoC/DI: `A` solo **declara** que la necesita, y el contenedor la crea y la inyecta.
 
 La **inyección de dependencias** (Dependency Injection, DI) es un patrón de diseño orientado a objetos en el que se suministran objetos a una clase en lugar de ser la propia clase la que cree dichos objetos. Esos objetos cumplen contratos que necesitan nuestras clases para poder funcionar (de ahí el concepto de dependencia). Nuestras clases no crean los objetos que necesitan, sino que se los suministra otra clase 'contenedora' que inyectará la implementación deseada a nuestro contrato.
 
@@ -467,12 +494,18 @@ Para crear las rutas vamos a usar un controlador de tipo **`@RestController`**. 
 
 ```mermaid
 graph TB
+    Get["@GetMapping<br/>📖"]
+    Post["@PostMapping<br/>➕"]
+    Put["@PutMapping<br/>🔄"]
+    Patch["@PatchMapping<br/>✏️"]
+    Delete["@DeleteMapping<br/>🗑️"]
+
     subgraph "Anotaciones de Rutas"
-        Get["@GetMapping<br/>📖"]
-        Post["@PostMapping<br/>➕"]
-        Put["@PutMapping<br/>🔄"]
-        Patch["@PatchMapping<br/>✏️"]
-        Delete["@DeleteMapping<br/>🗑️"]
+        Get
+        Post
+        Put
+        Patch
+        Delete
     end
 
     Controlador["@RestController"] --> Get
@@ -627,10 +660,14 @@ Es una buena práctica que realicemos el versionado de la API. El versionado de 
 
 ```mermaid
 graph TB
+    URL["URL<br/>/v1/users"]
+    Header["Header<br/>Accept: v1"]
+    Param["Param<br/>/users?version=1"]
+
     subgraph "Estrategias de Versionado"
-        URL["URL<br/>/v1/users"]
-        Header["Header<br/>Accept: v1"]
-        Param["Param<br/>/users?version=1"]
+        URL
+        Header
+        Param
     end
 
     API["API"] --> URL
@@ -706,44 +743,121 @@ Recuerda que los cuerpos en JSON se mandan en **Body → Raw → JSON**.
 
 ---
 
-## 2.6. Práctica de clase: mi primera API REST
+## 2.6. Ejercicio guiado: auditar un controlador
 
-1. Crea un proyecto Spring Boot con las dependencias de Spring Web.
-2. Crea el controlador `FunkosRestController` con las operaciones CRUD (GET, POST, PUT, PATCH, DELETE) que devuelvan un mensaje de texto con cada operación.
-3. Crea el modelo `Funko` con los siguientes atributos: id, nombre, precio, cantidad, imagen, categoría, fecha de creación y fecha de actualización.
-4. Crea el repositorio de Funkos en base a la colección que quieras. Puedes importarla desde un fichero CSV que se lea de properties o desde un fichero JSON, como en ejercicios anteriores.
-5. Inyecta el repositorio en el controlador de Funkos con las siguientes rutas:
-    - `GET /funkos`: Devuelve todos los funkos; si tiene el query `categoria`, los filtra por categoría, por ejemplo `/funkos?categoria=disney` (cuidado con las letras en mayúscula o minúscula).
-    - `GET /funkos/{id}`: Devuelve el funko con el id indicado; si no existe, devuelve un error 404.
-    - `POST /funkos`: Crea un nuevo funko y lo devuelve.
-    - `PUT /funkos/{id}`: Actualiza el funko con el id indicado y lo devuelve; si no existe, devuelve un error 404.
-    - `PATCH /funkos/{id}`: Actualiza el funko con el id indicado y lo devuelve; si no existe, devuelve un error 404.
-    - `DELETE /funkos/{id}`: Borra el funko con el id indicado y devuelve un mensaje de éxito; si no existe, devuelve un error 404.
-6. Prueba las rutas con Postman.
+El proyecto entero lo construirás paso a paso en el [tema 5](05-proyectos.md). Aquí el ejercicio es otro y más útil para este tema: **leer un controlador que funciona y encontrar lo que hace mal**.
 
-```mermaid
-graph TB
-    subgraph "CRUD Funkos"
-        GET["GET /funkos<br/>📖 Listar"]
-        GET1["GET /funkos/id<br/>📖 Uno"]
-        POST["POST /funkos<br/>➕ Crear"]
-        PUT["PUT /funkos/id<br/>🔄 Reemplazar"]
-        PATCH["PATCH /funkos/id<br/>✏️ Modificar"]
-        DELETE["DELETE /funkos/id<br/>🗑️ Eliminar"]
-    end
+Es exactamente el tipo de pregunta que cae en el examen, porque el programa compila, arranca y responde: nada te avisa.
 
-    API["Funkos API"] --> GET
-    API --> GET1
-    API --> POST
-    API --> PUT
-    API --> PATCH
-    API --> DELETE
+```java title="FunkosRestController.java — tiene SIETE problemas"
+@Controller                                                        // (1)
+@RequestMapping("/funkos")                                         // (2)
+public class FunkosRestController {
+
+    @Autowired                                                     // (3)
+    private FunkosRepository repositorio;
+
+    @GetMapping("/todos")                                          // (4)
+    public List<Funko> getAll() {
+        return repositorio.findAll();                              // (5)
+    }
+
+    @GetMapping("/{id}")
+    public Funko getById(@PathVariable Long id) {
+        return repositorio.findById(id).get();                     // (6)
+    }
+
+    @PostMapping("/crear")                                         // (4)
+    public Funko create(@RequestBody Funko funko) {
+        return repositorio.save(funko);                            // (7)
+    }
+
+    @GetMapping("/borrar/{id}")                                    // (8)
+    public String delete(@PathVariable Long id) {
+        repositorio.deleteById(id);
+        return "borrado";                                          // (9)
+    }
+}
 ```
 
-!!! reto "Esta práctica es el micro-reto de la sesión"
-    El CSV de lectura lo tienes ya resuelto de la [UT3](../ut3/01-csv-y-json.md): el repositorio carga el fichero al arrancar con un `CommandLineRunner` y guarda los funkos en una `List` en memoria. La parte nueva es **solo la capa web**.
+**Lo que hay que entregar:** una tabla con los siete problemas, qué devuelve ahora cada ruta y qué debería devolver, y el controlador reescrito.
 
-    Hazlo en pareja y en 25 minutos. El resultado se usa como punto de partida del [proyecto completo](04-proyecto-completo.md).
+Hazlo en pareja, en 25 minutos, **sin ejecutarlo**. Después se comprueba.
+
+??? success "Solución · los siete problemas"
+
+    | # | Problema | Por qué importa |
+    |:-:|---|---|
+    | **1** | `@Controller` en vez de `@RestController` | Spring busca **una vista** llamada como lo que devuelve el método. Según la configuración, 404 o 500. No hay JSON en ninguna parte |
+    | **2** | Falta el prefijo de versión | `/funkos` en vez de `/api/v1/funkos`. El día que cambie el contrato, no hay forma de convivir con la versión antigua |
+    | **3** | `@Autowired` en el campo | El campo no puede ser `final`, el objeto puede existir a medias, y no se puede instanciar en un test sin Spring |
+    | **4** | **Verbos en la URL**: `/todos`, `/crear`, `/borrar/{id}` | El verbo HTTP ya dice la acción. La URL nombra **el recurso**, no la operación |
+    | **5** | Devuelve **entidades**, no DTOs | Expone todos los campos y ata el contrato a la tabla. En la UT5 además revienta |
+    | **6** | `.get()` sobre un `Optional` vacío | Un id inexistente da **500**, cuando lo correcto es **404** |
+    | **7** | El POST devuelve **200** | Debe ser **201 Created** y con la cabecera `Location` |
+    | **8** | `GET` para borrar | Un GET **no debe modificar nada**: un buscador que rastree tu web borraría la base de datos |
+    | **9** | Devuelve texto donde debe ir un código | Un borrado correcto es **204 No Content**, sin cuerpo |
+
+    **Qué devuelve ahora y qué debería:**
+
+    | Petición | Ahora | Debería |
+    |---|:-:|:-:|
+    | `GET /funkos/todos` | 404 o 500 *(no hay vista)* | **200** en `GET /api/v1/funkos` |
+    | `GET /funkos/1` | 404 o 500 | **200** |
+    | `GET /funkos/9999` | **500** | **404** |
+    | `POST /funkos/crear` | 404 o 500 | **201** + `Location` en `POST /api/v1/funkos` |
+    | `GET /funkos/borrar/1` | 404 o 500, **y borra** | **204** en `DELETE /api/v1/funkos/1` |
+
+    **El controlador reescrito:**
+
+    ```java
+    @RestController                                               // (1)
+    @RequestMapping("${api.path:/api}/${api.version:v1}/funkos")   // (2)
+    public class FunkosRestController {
+
+        private final FunkosService servicio;                     // (3) final
+
+        public FunkosRestController(FunkosService servicio) {     // (3) constructor
+            this.servicio = servicio;
+        }
+
+        @GetMapping                                               // (4) sin verbo en la URL
+        public ResponseEntity<List<FunkoResponse>> findAll() {    // (5) DTO
+            return ResponseEntity.ok(servicio.findAll());
+        }
+
+        @GetMapping("/{id}")
+        public ResponseEntity<FunkoResponse> findById(@PathVariable Long id) {
+            return servicio.findById(id)                          // (6) sin .get()
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        }
+
+        @PostMapping
+        public ResponseEntity<FunkoResponse> create(@RequestBody FunkoCreateRequest dto) {
+            var creado = servicio.save(dto);
+            return ResponseEntity                                 // (7) 201 + Location
+                    .created(URI.create("/api/v1/funkos/" + creado.id()))
+                    .body(creado);
+        }
+
+        @DeleteMapping("/{id}")                                   // (8) DELETE, no GET
+        public ResponseEntity<Void> delete(@PathVariable Long id) {
+            servicio.deleteById(id);
+            return ResponseEntity.noContent().build();            // (9) 204
+        }
+    }
+    ```
+
+    !!! danger "El número 8 es el que tiene consecuencias de verdad"
+        `GET /funkos/borrar/1` funciona perfectamente en Postman, y por eso se cuela. Pero un GET se considera **seguro**: los navegadores lo precargan, los *proxies* lo cachean y los rastreadores lo siguen.
+
+        Un robot que indexe tu web recorrerá todos esos enlaces y **te vaciará la base de datos**. Ha pasado, y más de una vez.
+
+    !!! tip "Y el número 4 es el que más se repite"
+        `/productos/crear`, `/usuarios/listar`, `/pedidos/eliminar/5`. Es lo primero que delata que una API no es REST, aunque devuelva JSON.
+
+        La prueba: **si quitas el verbo HTTP de la petición, ¿sigue estando claro qué hace?** Si la respuesta es sí, la URL lleva información que no le toca.
 
 ---
 

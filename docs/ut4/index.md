@@ -9,13 +9,17 @@ Aquí cambia el juego. Dejas de escribir ficheros sueltos y empiezas a construir
 !!! quote "Autoría del material de los temas 1, 2 y 3"
     Los tres primeros temas son una **adaptación del material de [José Luis González Sánchez](https://github.com/joseluisgs)** (repositorio [DesarrolloWebEntornosServidor-02-2025-2026](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026), licencia [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/)), con el texto, los diagramas y los ejemplos originales.
 
-    Las adaptaciones de este curso: **Maven en vez de Gradle**, **Java 25 en vez de 17**, y los apartados de ejercicios, proyecto y retos del final. Cada tema lleva la nota de autoría arriba.
+    Las adaptaciones de este curso: **Maven en vez de Gradle**, **Java 25 en vez de 17**, y los apartados de configuración, proyectos y ejercicios prácticos del final. Cada tema lleva la nota de autoría arriba.
 
-!!! note "Aquí todavía no hay base de datos"
-    El repositorio guarda en memoria, así que al parar la aplicación los datos desaparecen. Es **deliberado**: esta unidad va de **arquitectura**, no de persistencia. Lo importante es que el servicio y el controlador no sepan **dónde** se guardan los datos, y por eso en la UT5 podrás cambiar memoria por base de datos sin tocarlos.
+!!! note "Aquí hay base de datos, pero NO hay JPA"
+    Hablamos con **H2 a mano, por JDBC**, con el SQL que escribes tú: igual que en la [UT3](../ut3/03-base-de-datos.md), pero con Spring poniendo el pegamento (`DataSource`, pool de conexiones, `JdbcClient`, transacciones).
+
+    **JPA, Hibernate, las entidades y los repositorios automáticos son la [UT5](../ut5/index.md).** Aquí lo que se evalúa es la **arquitectura**, y mezclar un ORM haría que atribuyeras a Hibernate problemas que son de diseño.
+
+    Lo que ganas: cuando en la UT5 Spring Data te genere un `findByCategoriaIgnoreCase` sin escribir nada, sabrás exactamente qué SQL está sustituyendo.
 
 !!! danger "Primera unidad con examen práctico"
-    Ya no hay test. La prueba consiste en **construir una aplicación en el ordenador** a partir de un enunciado, y se evalúa con **rúbrica por criterios**: la misma del [reto 3](retos.md).
+    Ya no hay test. La prueba consiste en **construir una aplicación en el ordenador** a partir de un enunciado, y se evalúa con **rúbrica por criterios**: la misma de los [ejercicios prácticos](ejercicios-practicos.md).
 
     Traducción: hay que programar todos los días, no estudiar la última semana.
 
@@ -41,8 +45,8 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 | **1** | [Introducción a Spring y Spring Boot](01-introduccion-spring-boot.md) | Qué es Spring, starters, beans, IoC y DI |
 | **2** | [Spring Web REST](02-spring-web-rest.md) | `@RestController`, rutas, `ResponseEntity`, versionado |
 | **3** | [Servicios, DTOs y caché](03-servicios-dtos-y-cache.md) | `@Service`, excepciones, DTOs, mapeadores, validación, caché |
-| **4** | [Proyecto completo paso a paso](04-proyecto-completo.md) | Una API de Funkos entera, en 14 pasos, con Maven |
-| **5** | [Configuración y variables de entorno](05-configuracion.md) | `application.properties`, perfiles, `.env`, `${VAR:defecto}` |
+| **4** | [Configuración y variables de entorno](04-configuracion.md) | `application.properties`, perfiles, `.env` en IntelliJ, `${VAR:defecto}` |
+| **5** | [Dos proyectos paso a paso](05-proyectos.md) | **Funkos** (1 tabla) y **tienda** (3 tablas), con H2 por JDBC |
 
 ## Calendario
 
@@ -54,17 +58,17 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 | **S4** | Spring MVC · el punto de entrada · `application.properties` | [2. Spring Web REST](02-spring-web-rest.md) §2.1–2.2 |
 | **S5** | Componentes y capas · `@RestController` y las rutas | [2. Spring Web REST](02-spring-web-rest.md) §2.3–2.4.3 |
 | **S6** | `ResponseEntity`, `@PathVariable`, `@RequestParam`, `@RequestBody` | [2. Spring Web REST](02-spring-web-rest.md) §2.4.4–2.4.5 |
-| **S7** | Versionado · Postman y `curl` · **mi primera API REST** | [2. Spring Web REST](02-spring-web-rest.md) §2.4.6–2.6 |
+| **S7** | Versionado · `curl` y Postman · **auditar un controlador** | [2. Spring Web REST](02-spring-web-rest.md) §2.4.6–2.6 |
 | **S8** | La capa de servicio · excepciones de dominio con `@ResponseStatus` | [3. Servicios](03-servicios-dtos-y-cache.md) §3.1–3.2 |
 | **S9** | **DTOs** y mapeadores: no expongas tu dominio | [3. Servicios](03-servicios-dtos-y-cache.md) §3.4–3.5 |
-| **S10** | Validación con Bean Validation y `@RestControllerAdvice` | [3. Servicios](03-servicios-dtos-y-cache.md) §3.6 |
+| **S10** | Validación con Bean Validation y `@RestControllerAdvice` | [3. Servicios](03-servicios-dtos-y-cache.md) §3.6–3.7 |
 | **S11** | **Caché**: `@Cacheable`, `@CacheEvict` y cuándo invalidarla | [3. Servicios](03-servicios-dtos-y-cache.md) §3.3 |
-| **S12** | **Proyecto completo**: pasos 1 a 8 (modelo, repositorio, DTOs) | [4. Proyecto](04-proyecto-completo.md) pasos 1–8 |
-| **S13** | **Proyecto completo**: pasos 9 a 14 (servicio, controlador, tests) | [4. Proyecto](04-proyecto-completo.md) pasos 9–14 |
-| **S14** | Perfiles, variables de entorno y `.env` | [5. Configuración](05-configuracion.md) |
-| **S15** | :material-check-circle: **Reto 1 · Biblioteca**, resuelto en clase | [Reto 1](retos.md) |
-| **S16** | :material-check-circle: **Reto 2 · Gimnasio**, con huecos | [Reto 2](retos.md) |
-| **S17** | :material-upload: Laboratorio del **reto 3** y defensa | [Reto 3](retos.md) |
+| **S12** | **Configuración**: perfiles, variables de entorno y `.env` en IntelliJ | [4. Configuración](04-configuracion.md) |
+| **S13** | **Proyecto A · Funkos**: H2 por JDBC, `JdbcClient` y `RowMapper` | [5. Proyectos](05-proyectos.md) A.1–A.4 |
+| **S14** | **Proyecto A · Funkos**: servicio, controlador, errores y tests | [5. Proyectos](05-proyectos.md) A.5–A.8 |
+| **S15** | **Proyecto B · Tienda**: tres tablas, claves ajenas y el esquema | [5. Proyectos](05-proyectos.md) B.1–B.3 |
+| **S16** | **Proyecto B · Tienda**: la transacción que descuenta stock | [5. Proyectos](05-proyectos.md) B.4–B.6 |
+| **S17** | :material-pencil: Laboratorio: uno de los **ejercicios prácticos** | [Ejercicios prácticos](ejercicios-practicos.md) |
 | **S18** | :material-laptop: **Examen práctico de RA5 (100 %)** | [Chuleta](chuleta.md) |
 
 ## Cómo se evalúa
@@ -73,30 +77,29 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 
 Se valora, por criterios: que **funcione**, que las **capas** estén bien separadas, la **inyección de dependencias** correcta, el uso de **DTOs y validación**, el **manejo de errores**, la **configuración** y los **tests**.
 
-El **[reto 3](retos.md)** es un enunciado del mismo tamaño y con **la misma rúbrica**. Si lo sacas, el examen es el mismo ejercicio con otro dominio.
+Los **[tres ejercicios prácticos](ejercicios-practicos.md)** son enunciados del mismo tamaño y con **la misma rúbrica**. Si resuelves uno, el examen es el mismo ejercicio con otro dominio.
 
 !!! success "La rúbrica, resumida"
-    | | Criterio | Puntos |
+    | | Bloque | Puntos |
     |---|---|:-:|
-    | 1 | Capas separadas | 2,0 |
-    | 2 | CRUD con los códigos correctos | 1,5 |
-    | 3 | DTOs y validación | 1,5 |
-    | 4 | Excepciones y `@RestControllerAdvice` | 1,5 |
-    | 5 | Reglas de negocio en el servicio | 1,5 |
-    | 6 | Tests de servicio y de capa web | 1,0 |
-    | 7 | Configuración y perfiles | 0,5 |
-    | 8 | PATCH que parchea, PUT que reemplaza | 0,5 |
+    | 1 | Arquitectura por capas | **2,5** |
+    | 2 | API REST y códigos de estado | 2,0 |
+    | 3 | DTOs y validación | 2,0 |
+    | 4 | Reglas de negocio y errores | **2,5** |
+    | 5 | Persistencia con JDBC | 1,0 |
+    | 6 | Tests | 1,0 |
 
-    Está completa, con los descuentos, en [Retos](retos.md).
+    Está completa, con los ítems comprobables uno a uno y las penalizaciones, en [Ejercicios prácticos](ejercicios-practicos.md#rubrica-de-calificacion).
+
+    **El bloque 1 no puede quedar en 0:** un proyecto que funciona con la lógica en el controlador no demuestra el RA5.
 
 ## Material
 
 | | |
 |---|---|
-| [**Proyecto completo**](04-proyecto-completo.md) | Una API REST de Funkos de cero a `.jar`, en 14 pasos con el código entero |
-| [**Retos**](retos.md) | Dos **resueltos** en clase y **un tercero que se entrega**, a elegir entre tres dominios |
-| [**Batería de ejercicios**](ejercicios.md) | 24 con solución, graduales y en el orden de los temas |
-| [Chuleta](chuleta.md) | Anotaciones, códigos de estado y los diez errores del examen, en una página |
+| [**Dos proyectos paso a paso**](05-proyectos.md) | La API de Funkos y la de una tienda, con el código entero y H2 por JDBC |
+| [**Ejercicios prácticos**](ejercicios-practicos.md) | **Tres enunciados del formato del examen**, con la rúbrica de calificación |
+| [**Chuleta**](chuleta.md) | Lo imprescindible y los 15 errores del examen · **[descargable en PDF](../pdf/chuleta-ut4.pdf)** |
 | [Comprobar tu trabajo](../comprobar-tu-trabajo.md) | Pégale tu código y te dice si aguanta la rúbrica |
 
 ## Antes de la S1

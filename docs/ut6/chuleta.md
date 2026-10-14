@@ -1,6 +1,9 @@
 # Chuleta de la UT6 — WebSockets, GraphQL y documentación
 
-Una página. **Es la que se puede imprimir y llevar al examen práctico.**
+!!! tip ":material-file-pdf-box: Descárgala para el examen"
+    **[:material-download: chuleta-ut6.pdf](../pdf/chuleta-ut6.pdf)** — cuatro caras, lista para imprimir. Es la única documentación permitida en el examen práctico de RA7.
+
+    También puedes generarla desde esta página con <kbd>Ctrl</kbd>+<kbd>P</kbd> → *Guardar como PDF*.
 
 ---
 

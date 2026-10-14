@@ -22,9 +22,12 @@ Un WebSocket es un protocolo de comunicación bidireccional en tiempo real que s
 
 ```mermaid
 graph LR
+    HTTP["HTTP<br/>📤 Petición → Respuesta"]
+    WS["WebSocket<br/>🔄 Bidireccional"]
+
     subgraph "HTTP vs WebSocket"
-        HTTP["HTTP<br/>📤 Petición → Respuesta"]
-        WS["WebSocket<br/>🔄 Bidireccional"]
+        HTTP
+        WS
     end
     
     HTTP -->|Solicitud| Cliente["Cliente"]
@@ -53,11 +56,16 @@ Para configurar los web socket necesitamos una clase de configuración donde def
 
 ```mermaid
 graph TB
+    Config["@Configuration<br/>⚙️"]
+    HandlerRegistry["WebSocketHandlerRegistry<br/>📋"]
+    Handler["WebSocketHandler<br/>🎮"]
+    Endpoint["/ws/v1/productos<br/>🔌"]
+
     subgraph "Configuración WebSocket"
-        Config["@Configuration<br/>⚙️"]
-        HandlerRegistry["WebSocketHandlerRegistry<br/>📋"]
-        Handler["WebSocketHandler<br/>🎮"]
-        Endpoint["/ws/v1/productos<br/>🔌"]
+        Config
+        HandlerRegistry
+        Handler
+        Endpoint
     end
     
     Config --> HandlerRegistry
@@ -318,11 +326,16 @@ void onChange(Notificacion.Tipo tipo, Producto data) {
 
 ```mermaid
 graph TB
+    FunkoService["Funko Service<br/>⚙️"]
+    WebSocket["WebSocket Handler<br/>🔌"]
+    Notificacion["Notificación<br/>📢"]
+    Cliente["Cliente Web<br/>👤"]
+
     subgraph "Práctica de WebSockets"
-        FunkoService["Funko Service<br/>⚙️"]
-        WebSocket["WebSocket Handler<br/>🔌"]
-        Notificacion["Notificación<br/>📢"]
-        Cliente["Cliente Web<br/>👤"]
+        FunkoService
+        WebSocket
+        Notificacion
+        Cliente
     end
     
     FunkoService -->|Cambio| WebSocket

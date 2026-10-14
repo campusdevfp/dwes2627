@@ -190,29 +190,28 @@ nav:
       - 1. Introducción a Spring Boot: ut4/01-introduccion-spring-boot.md
       - 2. Spring Web REST: ut4/02-spring-web-rest.md
       - 3. Servicios, DTOs y caché: ut4/03-servicios-dtos-y-cache.md
-      - 4. Proyecto completo paso a paso: ut4/04-proyecto-completo.md
-      - 5. Configuración y variables de entorno: ut4/05-configuracion.md
-      - Chuleta: ut4/chuleta.md
-      - Retos: ut4/retos.md
-      - Batería de ejercicios: ut4/ejercicios.md
+      - 4. Configuración y variables de entorno: ut4/04-configuracion.md
+      - 5. Dos proyectos paso a paso: ut4/05-proyectos.md
+      - Ejercicios prácticos: ut4/ejercicios-practicos.md
+      - Chuleta (PDF): ut4/chuleta.md
     - UT5 · RA6 · Spring Data con JPA y SQL:
       - ut5/index.md
       - 1. Spring Data con JPA y SQL: ut5/01-spring-data-jpa-sql.md
       - 2. Resultados avanzados: ut5/02-resultados-avanzados.md
-      - 3. Proyecto completo paso a paso: ut5/03-proyecto-completo.md
-      - 4. Referencia de JPA y validaciones: ut5/04-referencias.md
-      - Chuleta: ut5/chuleta.md
-      - Retos: ut5/retos.md
-      - Batería de ejercicios: ut5/ejercicios.md
+      - 3. Referencia de JPA y validaciones: ut5/03-referencias.md
+      - 4. Dos proyectos paso a paso: ut5/04-proyectos.md
+      - Ejercicios prácticos: ut5/ejercicios-practicos.md
+      - Chuleta (PDF): ut5/chuleta.md
     - UT6 · RA7 · Servicios web:
       - ut6/index.md
       - 1. WebSockets: ut6/01-websockets.md
       - 2. GraphQL: ut6/02-graphql.md
       - 3. CORS y documentación de APIs: ut6/03-documentacion-apis.md
-      - 4. Proyecto completo paso a paso: ut6/04-proyecto-completo.md
-      - Chuleta: ut6/chuleta.md
-      - Retos: ut6/retos.md
-      - Batería de ejercicios: ut6/ejercicios.md
+      - 4. Proyecto · WebSockets: ut6/04-proyecto-websockets.md
+      - 5. Proyecto · GraphQL: ut6/05-proyecto-graphql.md
+      - 6. Proyecto · CORS y OpenAPI: ut6/06-proyecto-openapi.md
+      - Ejercicios prácticos: ut6/ejercicios-practicos.md
+      - Chuleta (PDF): ut6/chuleta.md
 
   - 2.º trimestre · 80 h:
     - Proyecto · Pulso de Madrid:

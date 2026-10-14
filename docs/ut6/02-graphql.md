@@ -670,7 +670,7 @@ Con 100 productos, ¿cuántas consultas y cómo se arregla?
 
     **`@BatchMapping` recibe la lista entera de productos de golpe** y hace una sola consulta con todos los ids. De 101 a **2**.
 
-    Es el mismo problema del [E11 de la UT5](../ut5/ejercicios.md), pero aquí la solución no puede ser un `JOIN FETCH` fijo: la consulta depende de lo que pida el cliente, así que hace falta el agrupamiento.
+    Es el mismo problema del [N+1 de la UT5](../ut5/04-proyectos.md), pero aquí la solución no puede ser un `JOIN FETCH` fijo: la consulta depende de lo que pida el cliente, así que hace falta el agrupamiento.
 
 ### E5 ●● — El 200 que es un error
 

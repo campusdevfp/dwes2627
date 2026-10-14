@@ -11,7 +11,7 @@ Aquí se abren tres puertas más a lo mismo: **WebSockets** para que el servidor
 !!! quote "Autoría del material de los temas 1, 2 y 3"
     Los tres primeros temas son una **adaptación del material de [José Luis González Sánchez](https://github.com/joseluisgs)** (repositorio [DesarrolloWebEntornosServidor-02-2025-2026](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026), licencia [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/)), con el texto, los diagramas y los ejemplos originales.
 
-    Las adaptaciones de este curso: **Maven en vez de Gradle**, **Java 25**, y los apartados de proyecto, retos y ejercicios. Cada tema lleva su nota de autoría arriba.
+    Las adaptaciones de este curso: **Maven en vez de Gradle**, **Java 25**, y los apartados de proyectos y ejercicios prácticos. Cada tema lleva su nota de autoría arriba.
 
 !!! success "Un servicio, tres transportes"
     ```mermaid
@@ -61,7 +61,9 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**.
 | **1** | [WebSockets](01-websockets.md) | Comunicación bidireccional, sesiones, notificaciones |
 | **2** | [GraphQL](02-graphql.md) | Esquema, queries, mutaciones, suscripciones, el N+1 |
 | **3** | [CORS y documentación de APIs](03-documentacion-apis.md) | Política de origen, *preflight*, OpenAPI y Swagger |
-| **4** | [Proyecto completo paso a paso](04-proyecto-completo.md) | Los tres sobre el proyecto de la UT5, en 14 pasos |
+| **4** | [Proyecto · WebSockets](04-proyecto-websockets.md) | Notificaciones en tiempo real, en 7 pasos |
+| **5** | [Proyecto · GraphQL](05-proyecto-graphql.md) | Esquema, resolutores y `@BatchMapping`, en 5 pasos |
+| **6** | [Proyecto · CORS y OpenAPI](06-proyecto-openapi.md) | CORS por perfiles y la API documentada, en 4 pasos |
 
 ## Calendario
 
@@ -70,20 +72,20 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**.
 | **S1** | HTTP frente a WebSocket · *polling*, SSE y WebSocket · el `101` | [1. WebSockets](01-websockets.md) §1.1 |
 | **S2** | Instalar y configurar: el `handler` y las sesiones concurrentes | [1. WebSockets](01-websockets.md) §1.1 |
 | **S3** | Enviar notificaciones · eventos y **`AFTER_COMMIT`** | [1. WebSockets](01-websockets.md) §1.2 |
-| **S4** | :material-check-circle: **Reto 1.1 · Notificador de funkos** | [4. Proyecto](04-proyecto-completo.md) pasos 1–6 |
-| **S5** | :material-check-circle: **Reto 1.2 · Panel de stock**, con huecos | [Retos · bloque 1](retos.md) |
+| **S4** | **Proyecto WebSockets**: pasos 1 a 4 (evento, `handler`, notificador) | [4. Proyecto WS](04-proyecto-websockets.md) |
+| **S5** | **Proyecto WebSockets**: pasos 5 a 7 (endpoint, prueba y tests) | [4. Proyecto WS](04-proyecto-websockets.md) |
 | **S6** | Qué es GraphQL · comparación con REST · sintaxis del esquema | [2. GraphQL](02-graphql.md) §2.1–2.2 |
-| **S7** | Instalación · esquema de productos y categorías · el controlador | [2. GraphQL](02-graphql.md) §2.3–2.5 |
-| **S8** | Consultas, mutaciones y **suscripciones** · el **N+1** y `@BatchMapping` | [2. GraphQL](02-graphql.md) §2.6–2.7 |
-| **S9** | :material-check-circle: **Reto 2.1 · GraphQL de funkos** | [4. Proyecto](04-proyecto-completo.md) pasos 7–10 |
-| **S10** | :material-check-circle: **Reto 2.2 · GraphQL del instituto**, con huecos | [Retos · bloque 2](retos.md) |
+| **S7** | Instalación · esquema · el controlador y los resolutores | [2. GraphQL](02-graphql.md) §2.3–2.5 |
+| **S8** | Consultas, mutaciones y suscripciones · **el N+1 y `@BatchMapping`** | [2. GraphQL](02-graphql.md) §2.6–2.7 |
+| **S9** | **Proyecto GraphQL**: pasos 1 a 3 (esquema, controlador, excepciones) | [5. Proyecto GraphQL](05-proyecto-graphql.md) |
+| **S10** | **Proyecto GraphQL**: pasos 4 y 5 · **contar las consultas** | [5. Proyecto GraphQL](05-proyecto-graphql.md) |
 | **S11** | **CORS**: quién bloquea, el *preflight*, configurar por perfiles | [3. CORS y docs](03-documentacion-apis.md) §3.1 |
 | **S12** | **OpenAPI y Swagger**: documentar endpoints y DTOs | [3. CORS y docs](03-documentacion-apis.md) §3.2 |
-| **S13** | :material-check-circle: **Retos 3.1 y 3.2** · cruzar APIs entre parejas | [4. Proyecto](04-proyecto-completo.md) pasos 11–13 |
-| **S14** | **Testear los tres transportes** | [4. Proyecto](04-proyecto-completo.md) paso 14 |
-| **S15** | :material-upload: Laboratorio de los retos que se entregan (1.ª parte) | [Retos](retos.md) |
-| **S16** | :material-upload: Laboratorio de los retos que se entregan (2.ª parte) | [Retos](retos.md) |
-| **S17** | :material-upload: Defensa de los retos · repaso de la rúbrica | [Retos](retos.md) |
+| **S13** | **Proyecto OpenAPI**: los 4 pasos · cruzar las APIs entre parejas | [6. Proyecto OpenAPI](06-proyecto-openapi.md) |
+| **S14** | Repaso: los tres transportes y el criterio de reutilización | [Chuleta](chuleta.md) |
+| **S15** | :material-pencil: Laboratorio: un ejercicio del **bloque WebSockets** | [Ejercicios prácticos](ejercicios-practicos.md) |
+| **S16** | :material-pencil: Laboratorio: un ejercicio del **bloque GraphQL** | [Ejercicios prácticos](ejercicios-practicos.md) |
+| **S17** | :material-pencil: Laboratorio: un ejercicio del **bloque documentación** | [Ejercicios prácticos](ejercicios-practicos.md) |
 | **S18** | :material-laptop: **Examen práctico de RA7 (100 %)** | [Chuleta](chuleta.md) |
 
 ## Cómo se evalúa
@@ -92,33 +94,46 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**.
 
 Se valora, por criterios: que **el servicio no se toque**, las sesiones concurrentes y la limpieza, `AFTER_COMMIT`, el esquema GraphQL, **`@BatchMapping` medido**, las excepciones traducidas, CORS por perfiles, la documentación con los errores de negocio y los tests.
 
-Los **[retos 1.3, 2.3 y 3.3](retos.md)** son enunciados del mismo tamaño y con la misma rúbrica.
+Los **[nueve ejercicios prácticos](ejercicios-practicos.md)** son enunciados del mismo tamaño y con la misma rúbrica: tres por bloque.
 
 !!! success "Las tres rúbricas, resumidas"
+    **Hay una rúbrica por bloque**, y las tres empiezan por el mismo criterio:
+
     | Bloque | Lo que más pesa |
     |---|---|
-    | **1 · WebSockets** | El servicio no cambia (2,0) · `AFTER_COMMIT` (1,5) · sesiones y `try` (3,0) |
-    | **2 · GraphQL** | El servicio no cambia (2,0) · **`@BatchMapping` medido (2,0)** · esquema (1,5) |
-    | **3 · Documentación** | Endpoints documentados (2,0) · **los 409 de negocio (2,0)** · CORS (1,5) |
+    | **1 · WebSockets** | **Reutilización (2,0)** · `AFTER_COMMIT` (1,0) · sesiones concurrentes y `try` (2,2) |
+    | **2 · GraphQL** | **Reutilización (2,0)** · **`@BatchMapping` medido (2,0)** · esquema (1,0) |
+    | **3 · Documentación** | Los **409 de negocio documentados (2,0)** · endpoints (1,5) · CORS (1,0) |
 
-    Están completas en [Retos](retos.md).
+    Están completas, con los ítems comprobables uno a uno y las penalizaciones, en [Ejercicios prácticos](ejercicios-practicos.md).
 
-!!! danger "En la defensa se cuentan las consultas"
-    Como en la UT5: se pide una consulta GraphQL anidada **con `show-sql=true` en pantalla** y se cuentan las consultas SQL. Un `@BatchMapping` que falta se ve en dos segundos, y un programa que funciona no lo delata de ninguna otra manera.
+    **El criterio de reutilización no puede quedar en 0:** el RA7 dice literalmente *«servicios web reutilizables»*.
+
+!!! danger "Dos puntos se corrigen contando consultas en el log"
+    No hay defensa oral. Pero el **ítem 2.2 de la rúbrica de GraphQL vale 2 puntos y es todo o nada**: se pone `show-sql=true`, se pide una consulta que atraviese dos relaciones con 20 elementos, y se cuentan las líneas `Hibernate:`.
+
+    | Resultado | Nota del ítem |
+    |---|:-:|
+    | 2 o 3 consultas | **2,0** |
+    | Entre 4 y 10 | 1,0 |
+    | Más de 10 (patrón 1+N) | **0** |
+
+    Un `@BatchMapping` que falta no se detecta de ninguna otra manera: el programa funciona.
 
 ## Material
 
 | | |
 |---|---|
-| [**Proyecto completo**](04-proyecto-completo.md) | Los tres transportes sobre el proyecto de la UT5, con el código entero |
-| [**Retos**](retos.md) | **Nueve enunciados**: tres por bloque, dos resueltos y uno que se entrega |
-| [**Batería de ejercicios**](ejercicios.md) | 24 con solución, graduales y en el orden de los temas |
-| [Chuleta](chuleta.md) | Los tres transportes y los diez errores del examen, en una página |
+| [**Proyecto · WebSockets**](04-proyecto-websockets.md) | Notificaciones en tiempo real, con el código entero |
+| [**Proyecto · GraphQL**](05-proyecto-graphql.md) | Esquema, resolutores y `@BatchMapping` |
+| [**Proyecto · CORS y OpenAPI**](06-proyecto-openapi.md) | CORS por perfiles y la API documentada |
+| [**Ejercicios prácticos**](ejercicios-practicos.md) | **Nueve enunciados del formato del examen**, tres por bloque, con sus rúbricas |
+| [**Chuleta**](chuleta.md) | Los tres transportes y los 10 errores del examen · **[descargable en PDF](../pdf/chuleta-ut6.pdf)** |
 | [Comprobar tu trabajo](../comprobar-tu-trabajo.md) | Pégale tu código y te dice si aguanta la rúbrica |
 
 ## Antes de la S1
 
-- [ ] El [proyecto de la UT5](../ut5/03-proyecto-completo.md) funcionando con MySQL en Docker.
+- [ ] **Uno de los dos proyectos de la [UT5](../ut5/04-proyectos.md)** funcionando: es el punto de partida de los tres de aquí.
 - [ ] Comprueba que tus servicios están limpios:
 
     ```bash

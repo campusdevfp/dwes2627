@@ -363,7 +363,7 @@ Tu frontend está en `http://localhost:5173` en desarrollo y en `https://miapp.e
 
     **Tres cosas que importan:**
 
-    1. **Por configuración, no en el código.** Es el tema 5 de la UT4 aplicado: el mismo `.jar` sirve en los dos entornos.
+    1. **Por configuración, no en el código.** Es el tema 4 de la UT4 aplicado: el mismo `.jar` sirve en los dos entornos.
     2. **`exposedHeaders`.** Por defecto, el JavaScript **solo puede leer seis cabeceras**. Si tu 201 devuelve `Location` y el cliente no lo ve, es por esto.
     3. **`@CrossOrigin` en el controlador vale para pruebas**, pero reparte la política por todo el código y hay que acordarse en cada clase nueva.
 

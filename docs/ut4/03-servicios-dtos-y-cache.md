@@ -19,10 +19,14 @@ Un servicio encapsula la lógica de negocio de nuestra app. De esta manera aplic
 
 ```mermaid
 graph TB
+    Controller["@RestController<br/>🎮 Peticiones"]
+    Service["@Service<br/>⚙️ Lógica de Negocio"]
+    Repository["@Repository<br/>💾 Datos"]
+
     subgraph "Arquitectura de Capas"
-        Controller["@RestController<br/>🎮 Peticiones"]
-        Service["@Service<br/>⚙️ Lógica de Negocio"]
-        Repository["@Repository<br/>💾 Datos"]
+        Controller
+        Service
+        Repository
     end
 
     HTTP["HTTP Request"] --> Controller
@@ -133,10 +137,14 @@ La otra opción es crear nuestro sistema de excepciones y errores asociado al do
 
 ```mermaid
 graph TB
+    Runtime["RuntimeException"]
+    Custom["MiExcepcion<br/>@ResponseStatus"]
+    Handler["@ExceptionHandler<br/>🔧"]
+
     subgraph "Excepciones Personalizadas"
-        Runtime["RuntimeException"]
-        Custom["MiExcepcion<br/>@ResponseStatus"]
-        Handler["@ExceptionHandler<br/>🔧"]
+        Runtime
+        Custom
+        Handler
     end
 
     Runtime --> Custom
@@ -348,10 +356,14 @@ Los [DTO](https://www.oscarblancarteblog.com/2018/11/30/data-transfer-object-dto
 
 ```mermaid
 graph TB
+    Entidad["Entidad<br/>💾 Base de Datos"]
+    DTO["DTO<br/>📦 API"]
+    Mapeador["Mapper<br/>🔄 Conversión"]
+
     subgraph "DTO vs Entidad"
-        Entidad["Entidad<br/>💾 Base de Datos"]
-        DTO["DTO<br/>📦 API"]
-        Mapeador["Mapper<br/>🔄 Conversión"]
+        Entidad
+        DTO
+        Mapeador
     end
 
     Entidad -->|No exponer| DTO
@@ -510,10 +522,14 @@ Los [validadores](https://www.baeldung.com/spring-boot-bean-validation) son clas
 
 ```mermaid
 graph TB
+    Entrada["Datos Entrada<br/>📥"]
+    Validador["Validador<br/>✅/❌"]
+    Excepcion["Excepción o OK<br/>🚨/👍"]
+
     subgraph "Validación"
-        Entrada["Datos Entrada<br/>📥"]
-        Validador["Validador<br/>✅/❌"]
-        Excepcion["Excepción o OK<br/>🚨/👍"]
+        Entrada
+        Validador
+        Excepcion
     end
 
     Entrada --> Validador --> Excepcion
@@ -706,7 +722,7 @@ Son los [validadores](https://docs.jboss.org/hibernate/stable/validator/referenc
 
 ---
 
-## 3.7. Práctica de clase: servicio
+## 3.7. Ejercicio guiado: el servicio completo
 
 1. Crea un servicio con caché para manejar tu repositorio de Funkos.
 2. Crea un sistema de excepciones para las operaciones más comunes para el manejo de Funkos.
@@ -717,12 +733,18 @@ Son los [validadores](https://docs.jboss.org/hibernate/stable/validator/referenc
 
 ```mermaid
 graph TB
+    Cache["Cache<br/>💾"]
+    Excepciones["Excepciones<br/>🚨"]
+    DTOs["DTOs<br/>📦"]
+    Mapper["Mapper<br/>🔄"]
+    Validacion["Validación<br/>✅"]
+
     subgraph "Práctica de Servicios"
-        Cache["Cache<br/>💾"]
-        Excepciones["Excepciones<br/>🚨"]
-        DTOs["DTOs<br/>📦"]
-        Mapper["Mapper<br/>🔄"]
-        Validacion["Validación<br/>✅"]
+        Cache
+        Excepciones
+        DTOs
+        Mapper
+        Validacion
     end
 
     FunkoService["Funko Service"] --> Cache
@@ -732,8 +754,236 @@ graph TB
     FunkoService --> Validacion
 ```
 
-!!! reto "Esto es el proyecto de la unidad"
-    No lo hagas como un ejercicio suelto: es exactamente la segunda mitad de [4. Proyecto completo paso a paso](04-proyecto-completo.md), donde está escrito fichero a fichero. Haz primero la práctica tú, y después compara.
+!!! reto "Hazlo tú primero, y después compara"
+    Está resuelto abajo y, fichero a fichero, en el [tema 5](05-proyectos.md). Pero la solución solo sirve si antes te has peleado con ello: **30 minutos en pareja y luego se despliega**.
+
+??? success "Solución de los seis puntos"
+
+    **1 · El servicio con caché**
+
+    ```java title="funkos/services/FunkosService.java"
+    public interface FunkosService {
+        List<FunkoResponse> findAll(Optional<String> categoria);
+        FunkoResponse findById(Long id);
+        FunkoResponse save(FunkoCreateRequest funko);
+        FunkoResponse update(Long id, FunkoUpdateRequest funko);
+        void deleteById(Long id);
+    }
+    ```
+
+    ```java title="funkos/services/FunkosServiceImpl.java"
+    @Service
+    @CacheConfig(cacheNames = {"funkos"})
+    public class FunkosServiceImpl implements FunkosService {
+
+        private static final Logger log = LoggerFactory.getLogger(FunkosServiceImpl.class);
+
+        private final FunkosRepository repositorio;
+        private final FunkoMapper mapper;
+
+        public FunkosServiceImpl(FunkosRepository repositorio, FunkoMapper mapper) {
+            this.repositorio = repositorio;
+            this.mapper = mapper;
+        }
+
+        @Override
+        public List<FunkoResponse> findAll(Optional<String> categoria) {
+            log.info("findAll con categoria: {}", categoria);
+            return mapper.toResponse(
+                    categoria.map(repositorio::findByCategoria)
+                             .orElseGet(repositorio::findAll));
+        }
+
+        @Override
+        @Cacheable(key = "#id")
+        public FunkoResponse findById(Long id) {
+            return repositorio.findById(id)
+                    .map(mapper::toResponse)
+                    .orElseThrow(() -> new FunkoNotFoundException(id));
+        }
+
+        @Override
+        @CacheEvict(allEntries = true)
+        public FunkoResponse save(FunkoCreateRequest request) {
+            if (repositorio.existsByNombre(request.nombre()))
+                throw new FunkoConflictException(
+                        "Ya existe un funko llamado " + request.nombre());
+            return mapper.toResponse(repositorio.save(mapper.toModel(request)));
+        }
+
+        @Override
+        @CacheEvict(allEntries = true)
+        public FunkoResponse update(Long id, FunkoUpdateRequest request) {
+            var original = repositorio.findById(id)
+                    .orElseThrow(() -> new FunkoNotFoundException(id));
+            return mapper.toResponse(
+                    repositorio.save(mapper.toModelParcheando(original, request)));
+        }
+
+        @Override
+        @CacheEvict(allEntries = true)
+        public void deleteById(Long id) {
+            if (repositorio.findById(id).isEmpty())
+                throw new FunkoNotFoundException(id);
+            repositorio.deleteById(id);
+        }
+    }
+    ```
+
+    **Lo que hay que mirar de este fichero es lo que NO contiene:** ni `ResponseEntity`, ni `HttpStatus`, ni `@PathVariable`. El servicio no sabe que existe HTTP.
+
+    **2 · Las excepciones**
+
+    ```java
+    public abstract class FunkoException extends RuntimeException {
+        protected FunkoException(String mensaje) { super(mensaje); }
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public class FunkoNotFoundException extends FunkoException {
+        public FunkoNotFoundException(Long id) {
+            super("No se ha encontrado el funko con id: " + id);
+        }
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public class FunkoConflictException extends FunkoException {
+        public FunkoConflictException(String mensaje) { super(mensaje); }
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public class FunkoBadRequestException extends FunkoException {
+        public FunkoBadRequestException(String mensaje) { super(mensaje); }
+    }
+    ```
+
+    Una base **abstracta** por dominio y una subclase por código. El `FunkoNotFoundException` recibe **el id**, no el mensaje montado: así todos los 404 dicen lo mismo.
+
+    **3 · Los tres DTOs**
+
+    ```java
+    public record FunkoResponse(
+            Long id, String nombre, Double precio, Integer cantidad,
+            String imagen, String categoria,
+            LocalDateTime createdAt, LocalDateTime updatedAt) {}
+
+    public record FunkoCreateRequest(
+            @NotBlank(message = "El nombre no puede estar vacío")
+            @Size(max = 100) String nombre,
+            @NotNull @PositiveOrZero Double precio,
+            @NotNull @PositiveOrZero Integer cantidad,
+            String imagen,
+            @NotBlank @Pattern(regexp = "DISNEY|MARVEL|ANIME|OTROS") String categoria) {}
+
+    public record FunkoUpdateRequest(
+            @Size(max = 100) String nombre,
+            @PositiveOrZero Double precio,
+            @PositiveOrZero Integer cantidad,
+            String imagen,
+            @Pattern(regexp = "DISNEY|MARVEL|ANIME|OTROS") String categoria) {}
+    ```
+
+    En el de actualización **desaparecen todos los `@NotNull` y `@NotBlank`**: en un PATCH, `null` significa «no lo cambies». Las reglas de formato se quedan.
+
+    **4 · El mapeador**
+
+    ```java
+    @Component
+    public class FunkoMapper {
+
+        public FunkoResponse toResponse(Funko f) {
+            return new FunkoResponse(f.getId(), f.getNombre(), f.getPrecio(),
+                    f.getCantidad(), f.getImagen(), f.getCategoria(),
+                    f.getCreatedAt(), f.getUpdatedAt());
+        }
+
+        public List<FunkoResponse> toResponse(List<Funko> funkos) {
+            return funkos.stream().map(this::toResponse).toList();
+        }
+
+        public Funko toModel(FunkoCreateRequest r) {
+            var ahora = LocalDateTime.now();
+            return Funko.builder()
+                    .nombre(r.nombre()).precio(r.precio()).cantidad(r.cantidad())
+                    .imagen(r.imagen() != null ? r.imagen() : "https://placehold.co/300")
+                    .categoria(r.categoria().toUpperCase())
+                    .createdAt(ahora).updatedAt(ahora)
+                    .build();
+        }
+
+        /** PATCH: solo cambia lo que llega distinto de null. */
+        public Funko toModelParcheando(Funko original, FunkoUpdateRequest r) {
+            return Funko.builder()
+                    .id(original.getId())
+                    .nombre(r.nombre()       != null ? r.nombre()                  : original.getNombre())
+                    .precio(r.precio()       != null ? r.precio()                  : original.getPrecio())
+                    .cantidad(r.cantidad()   != null ? r.cantidad()                : original.getCantidad())
+                    .imagen(r.imagen()       != null ? r.imagen()                  : original.getImagen())
+                    .categoria(r.categoria() != null ? r.categoria().toUpperCase() : original.getCategoria())
+                    .createdAt(original.getCreatedAt())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+        }
+    }
+    ```
+
+    Los `!= null` **son** la semántica del PATCH, y `createdAt` no se toca nunca.
+
+    **5 · La validación, en dos niveles**
+
+    El **formato** ya está en las anotaciones del DTO (punto 3) y se dispara con `@Valid` en el controlador. Lo que las anotaciones no pueden hacer va en el servicio:
+
+    ```java
+    if (repositorio.existsByNombre(request.nombre()))
+        throw new FunkoConflictException("Ya existe un funko llamado " + request.nombre());
+    ```
+
+    Y el handler que convierte los errores de formato en un 400 útil:
+
+    ```java
+    @RestControllerAdvice
+    public class GlobalExceptionHandler {
+
+        @ResponseStatus(HttpStatus.BAD_REQUEST)
+        @ExceptionHandler(MethodArgumentNotValidException.class)
+        public Map<String, Object> validacion(MethodArgumentNotValidException ex) {
+            Map<String, String> campos = new LinkedHashMap<>();
+            ex.getBindingResult().getFieldErrors()
+              .forEach(e -> campos.put(e.getField(), e.getDefaultMessage()));
+            return Map.of("status", 400, "error", "Datos inválidos", "campos", campos);
+        }
+    }
+    ```
+
+    | | Dónde | Código |
+    |---|---|:-:|
+    | **Formato** (campo aislado) | DTO, con anotaciones | 400 |
+    | **Negocio** (necesita consultar) | Servicio | **409** |
+
+    **6 · Las pruebas**
+
+    ```bash
+    # 200
+    curl -s localhost:8080/api/v1/funkos | jq length
+
+    # 404: el servicio lanza, el @ResponseStatus traduce
+    curl -i localhost:8080/api/v1/funkos/9999
+
+    # 400: validación campo a campo
+    curl -s -X POST localhost:8080/api/v1/funkos \
+      -H "Content-Type: application/json" \
+      -d '{"nombre":"","precio":-5,"cantidad":1,"categoria":"COCINA"}' | jq
+
+    # 409: nombre repetido
+    curl -i -X POST localhost:8080/api/v1/funkos \
+      -H "Content-Type: application/json" \
+      -d '{"nombre":"Goku","precio":10.0,"cantidad":1,"categoria":"ANIME"}'
+    ```
+
+    !!! danger "Comprueba también lo que no se ve"
+        **Caché:** añade un `log.info` dentro de `findById`, llama dos veces al mismo id y comprueba que **el log sale una sola vez**. Después borra ese funko y vuelve a pedirlo: si te lo devuelve, falta el `@CacheEvict`.
+
+        **Y `@EnableCaching`** en la clase principal, o todo lo anterior es decoración.
 
 ---
 

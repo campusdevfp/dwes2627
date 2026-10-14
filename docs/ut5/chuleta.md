@@ -1,8 +1,11 @@
 # Chuleta de la UT5 — Spring Data JPA
 
-Una página. **Es la que se puede imprimir y llevar al examen práctico.**
+!!! tip ":material-file-pdf-box: Descárgala para el examen"
+    **[:material-download: chuleta-ut5.pdf](../pdf/chuleta-ut5.pdf)** — cuatro caras, lista para imprimir. Es la única documentación permitida en el examen práctico de RA6.
 
-La lista completa de anotaciones, con sus valores por defecto y sus trampas, está en [4. Referencias](04-referencias.md).
+    También puedes generarla desde esta página con <kbd>Ctrl</kbd>+<kbd>P</kbd> → *Guardar como PDF*.
+
+La lista **completa** de anotaciones, con sus valores por defecto y sus trampas, está en [3. Referencia de JPA y validaciones](03-referencias.md).
 
 ---
 

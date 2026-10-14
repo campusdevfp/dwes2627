@@ -1,4 +1,4 @@
-# 4. Referencia de JPA y validaciones
+# 3. Referencia de JPA y validaciones
 
 Página de consulta. **No se estudia: se mira mientras programas.** Todas las anotaciones de JPA y de Bean Validation que se usan en el módulo, con qué hacen y dónde van.
 
@@ -9,7 +9,7 @@ Página de consulta. **No se estudia: se mira mientras programas.** Todas las an
 
 ---
 
-## 4.1. Anotaciones de entidad
+## 3.1. Anotaciones de entidad
 
 | Anotación | Qué hace | Nota |
 |---|---|---|
@@ -68,7 +68,7 @@ Página de consulta. **No se estudia: se mira mientras programas.** Todas las an
 
 ---
 
-## 4.2. Identificadores
+## 3.2. Identificadores
 
 ```java
 @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -105,7 +105,7 @@ private UUID id;
 
 ---
 
-## 4.3. `@Column`
+## 3.3. `@Column`
 
 ```java
 @Column(
@@ -141,7 +141,7 @@ private UUID id;
 
 ---
 
-## 4.4. Relaciones
+## 3.4. Relaciones
 
 ```mermaid
 graph TB
@@ -280,7 +280,7 @@ pedido.getLineas().remove(linea);      // con orphanRemoval = true → DELETE
 
 ---
 
-## 4.5. Consultas derivadas del nombre
+## 3.5. Consultas derivadas del nombre
 
 | Palabra | SQL |
 |---|---|
@@ -326,7 +326,7 @@ long        countByCategoriaId(Long id);
 
 ---
 
-## 4.6. `@Query`
+## 3.6. `@Query`
 
 ```java
 // JPQL: habla de ENTIDADES y campos Java
@@ -377,7 +377,7 @@ int borradoLogico(@Param("id") Long id);
 
 ---
 
-## 4.7. Paginación y ordenación
+## 3.7. Paginación y ordenación
 
 ```java
 Page<Funko>  findAll(Pageable pageable);          // + count(*): 2 consultas
@@ -424,7 +424,7 @@ spring.data.web.pageable.one-indexed-parameters=false   # page empieza en 0
 
 ---
 
-## 4.8. Transacciones
+## 3.8. Transacciones
 
 ```java
 @Transactional(readOnly = true)     // lecturas
@@ -466,7 +466,7 @@ org.springframework.orm.ObjectOptimisticLockingFailureException
 
 ---
 
-## 4.9. Bean Validation
+## 3.9. Bean Validation
 
 ### En los DTOs (lo habitual)
 
@@ -589,7 +589,7 @@ graph TB
 
 ---
 
-## 4.10. Enlaces oficiales
+## 3.10. Enlaces oficiales
 
 | | |
 |---|---|

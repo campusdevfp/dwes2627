@@ -341,12 +341,18 @@ En Spring Data JPA, una relación es una asociación entre dos o más entidades.
 
 ```mermaid
 graph TD
+    OneToOne["OneToOne<br/>1:1<br/>Persona-Dirección"]
+    OneToMany["OneToMany<br/>1:N<br/>Equipo-Jugadores"]
+    ManyToOne["ManyToOne<br/>N:1<br/>Jugador-Equipo"]
+    ManyToMany["ManyToMany<br/>N:N<br/>Estudiantes-Cursos"]
+    Embedded["Embedded<br/>Composición<br/>Dirección en Persona"]
+
     subgraph "Relaciones JPA"
-        OneToOne["OneToOne<br/>1:1<br/>Persona-Dirección"]
-        OneToMany["OneToMany<br/>1:N<br/>Equipo-Jugadores"]
-        ManyToOne["ManyToOne<br/>N:1<br/>Jugador-Equipo"]
-        ManyToMany["ManyToMany<br/>N:N<br/>Estudiantes-Cursos"]
-        Embedded["Embedded<br/>Composición<br/>Dirección en Persona"]
+        OneToOne
+        OneToMany
+        ManyToOne
+        ManyToMany
+        Embedded
     end
     
     OneToOne -->|"Única"| Relaciones
