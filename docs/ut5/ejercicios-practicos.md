@@ -1,291 +1,191 @@
 # Ejercicios prácticos — UT5 (RA6)
 
-Tres enunciados **del mismo formato y la misma extensión que el examen**. Se resuelven igual que los [dos proyectos paso a paso](04-proyectos.md): Spring Data JPA, H2 en fichero, entidades con relaciones, validaciones, paginación y los tres niveles de test.
-
-!!! success "Qué evalúa el RA6 y qué no"
-    El RA6 es *«desarrolla aplicaciones web de acceso a almacenes de datos, aplicando medidas para mantener la **seguridad y la integridad** de la información»*.
-
-    Traducido a lo que se corrige aquí:
-
-    | | |
-    |---|---|
-    | **Integridad** | Relaciones bien modeladas, claves ajenas, restricciones, transacciones atómicas, bloqueo optimista |
-    | **Seguridad** | Nada de concatenar en consultas, nada de exponer entidades, `?sort=` con lista blanca |
-    | **JPA e Hibernate** | Entidades, relaciones, `LAZY`, cascada, repositorios, JPQL, `Specification`, **sin N+1** |
-    | **Validaciones** | Bean Validation en los DTOs, reglas de negocio en el servicio, restricciones en la tabla |
-
-    **La arquitectura por capas ya se evaluó en el RA5**: aquí se da por sabida y solo resta puntos si está mal.
-
-| | Enunciado | Entidades | Tiempo | Dificultad característica |
-|:-:|---|:-:|:-:|---|
-| **EP1** | [Biblioteca con préstamos](#ep1-biblioteca-con-prestamos) | 4 | 4 h | Reglas que consultan **otras filas** antes de insertar |
-| **EP2** | [Instituto: matrículas y notas](#ep2-instituto-matriculas-y-notas) | 4 | 4 h | **N:M con datos propios** y una consulta que provoca N+1 |
-| **EP3** | [Clínica veterinaria](#ep3-clinica-veterinaria) | 5 | 4 h | **Transacción multi-tabla** y bloqueo optimista |
+Tres enunciados **del mismo tamaño que el examen**: dos o tres entidades relacionadas, ocho endpoints, siete reglas y tres tests. Pensados para **resolverse en cuatro horas** con el esqueleto dado.
 
 !!! info "Qué se te da y qué escribes tú"
-    **Se te da:** el `pom.xml`, los `application*.properties` de los tres perfiles, el `data.sql` y la clase de arranque.
+    **Se te da:** `pom.xml`, los `application*.properties` de los tres perfiles, `data.sql` y la clase de arranque.
 
-    **Escribes tú:** las entidades (**el esquema lo genera Hibernate**), DTOs, repositorios, mapeadores, excepciones, servicios, controladores, el manejador global y los tests.
+    **Escribes tú:** las entidades, los DTOs, los repositorios, el mapeador, las excepciones, el servicio, el controlador, el manejador global y tres tests.
 
-    **Importante y distinto de la UT4:** aquí **no hay `schema.sql`**. El esquema sale de tus entidades con `ddl-auto=update`, así que **el modelo de datos lo diseñas tú** y es la primera cosa que se corrige.
+    **No hay `schema.sql`:** el esquema lo genera Hibernate desde tus entidades, así que **el modelo de datos lo diseñas tú** y es lo primero que se corrige.
+
+| | Enunciado | Entidades | La dificultad |
+|:-:|---|:-:|---|
+| **EP1** | [Biblioteca](#ep1-biblioteca) | 2 | Relación 1:N, borrado lógico y una regla sobre contadores de las dos tablas |
+| **EP2** | [Instituto](#ep2-instituto) | 3 | **N:M con datos propios** y un N+1 de manual |
+| **EP3** | [Tienda](#ep3-tienda) | 2 | **Transacción** y **`@Version`**: el único que trabaja la concurrencia |
+
+!!! success "Reparto del tiempo, para que quepa"
+    | | Qué | Tiempo |
+    |:-:|---|:-:|
+    | 1 | Las entidades y sus relaciones | 45 min |
+    | 2 | DTOs y mapeador | 30 min |
+    | 3 | Repositorios: derivadas, una `@Query` y la `Specification` | 50 min |
+    | 4 | Servicio con las siete reglas y `@Transactional` | 70 min |
+    | 5 | Controlador con `Pageable` saneado y el advice | 30 min |
+    | 6 | Tres tests | 25 min |
+    | 7 | Probar con `curl` y **contar las consultas** del log | 20 min |
+    | | | **4 h** |
+
+    **Si vas justo, el orden de lo que se abandona** es: las estadísticas, el tercer test y el PATCH. Nunca el `LAZY`, el `JOIN FETCH` ni el `@Transactional`: ahí están 4 de los 10 puntos.
 
 ---
 
-## EP1 · Biblioteca con préstamos
+## EP1 · Biblioteca
 
-**Contexto.** Una biblioteca municipal necesita una API para su catálogo y sus préstamos. Un libro tiene un autor y un género; de cada libro hay varios ejemplares. Los socios piden libros prestados con un plazo de devolución, y la biblioteca necesita saber en todo momento qué está fuera y qué está vencido.
+**Contexto.** Una biblioteca presta libros a sus socios. Cada libro pertenece a un género y hay que saber en todo momento cuántos ejemplares están fuera y cuántos préstamos activos tiene cada socio.
 
-### Modelo de datos que hay que crear
+### Modelo que hay que crear
 
 ```mermaid
 erDiagram
-    AUTOR  ||--o{ LIBRO    : "1:N"
-    GENERO ||--o{ LIBRO    : "1:N"
-    LIBRO  ||--o{ PRESTAMO : "1:N"
-    SOCIO  ||--o{ PRESTAMO : "1:N"
+    GENERO ||--o{ LIBRO : "1:N"
 ```
 
 | Entidad | Campos |
 |---|---|
-| **`Autor`** | `id`, `nombre` (único), `nacionalidad`, `nacimiento` (fecha), `deleted` |
-| **`Genero`** | `id`, `nombre` (único, máx. 40), `deleted` |
-| **`Libro`** | `id`, `isbn` (único, 13 dígitos), `titulo`, `autor` (N:1), `genero` (N:1), `ejemplares`, `prestados`, `publicacion` (fecha), `deleted`, `createdAt`, `updatedAt` |
-| **`Socio`** | `id`, `numeroSocio` (único, `SOC-00001`), `nombre`, `email` (único), `alta` (fecha), `activo`, `deleted` |
-| **`Prestamo`** | `id`, `libro` (N:1), `socio` (N:1), `fecha`, `vencimiento`, `devolucion` (puede ser nula), `estado` (`enum`: `ACTIVO`, `DEVUELTO`, `VENCIDO`) |
+| **`Genero`** | `id`, `nombre` (único, máx. 40), `prestamosTotales` (contador), `deleted` |
+| **`Libro`** | `id`, `isbn` (único, 13 dígitos), `titulo`, `autor`, `genero` (**N:1**), `ejemplares`, `prestados`, `publicacion` (fecha), `deleted`, `createdAt`, `updatedAt` |
 
-### Endpoints que hay que implementar
+### Endpoints
 
-| # | Método y ruta | Qué hace | Éxito |
-|:-:|---|---|:-:|
-| 1 | `GET /api/v1/libros` | **Paginado**. Filtros opcionales y combinables: `titulo` (contiene), `autor` (nombre, contiene), `genero` (nombre exacto), `disponibles=true` | 200 |
-| 2 | `GET /api/v1/libros/{id}` | Uno, con **el nombre del autor y del género**, no sus ids | 200 |
-| 3 | `POST` · `PUT` · `PATCH` · `DELETE` de `/api/v1/libros` | CRUD, con **borrado lógico** | 201/200/200/204 |
-| 4 | `GET /api/v1/autores` · `/{id}` · CRUD | Con borrado lógico | — |
-| 5 | `GET /api/v1/autores/{id}/libros` | Paginado | 200 |
-| 6 | `GET /api/v1/generos` · CRUD | Con borrado lógico | — |
-| 7 | `GET /api/v1/socios` · `/{id}` · CRUD | Con borrado lógico | — |
-| 8 | `POST /api/v1/prestamos` | Presta un libro a un socio | 201 + `Location` |
-| 9 | `POST /api/v1/prestamos/{id}/devolucion` | Devuelve | 200 |
-| 10 | `GET /api/v1/prestamos` | Paginado. Filtros `socioId`, `libroId`, `estado`, `vencidos=true` | 200 |
-| 11 | `GET /api/v1/socios/{id}/historial` | Paginado, con título del libro y fechas | 200 |
-| 12 | `GET /api/v1/libros/mas-prestados?limite=5` | Ranking | 200 |
-| 13 | `GET /api/v1/prestamos/estadisticas` | Resumen (abajo) | 200 |
+| # | Método y ruta | Éxito |
+|:-:|---|:-:|
+| 1 | `GET /api/v1/libros` · **paginado**. Filtros opcionales y combinables `titulo` (contiene), `autor` (contiene), `genero` (nombre exacto), `disponibles=true` | 200 |
+| 2 | `GET /api/v1/libros/{id}` · con **el nombre del género**, no su id | 200 |
+| 3 | `POST /api/v1/libros` | 201 + `Location` |
+| 4 | `PATCH /api/v1/libros/{id}` | 200 |
+| 5 | `DELETE /api/v1/libros/{id}` · **borrado lógico** | 204 |
+| 6 | `POST /api/v1/libros/{id}/prestamo` · **toca las dos entidades** | 200 |
+| 7 | `POST /api/v1/libros/{id}/devolucion` | 200 |
+| 8 | `GET /api/v1/generos` · `POST` · `DELETE` | — |
 
 ### Reglas de negocio
 
 | # | Regla | Respuesta |
 |:-:|---|:-:|
-| R1 | `isbn` exactamente 13 dígitos y **único** | **400** / **409** |
-| R2 | `email` del socio con formato válido y **único**; `numeroSocio` con formato `SOC-\d{5}` | **400** / **409** |
-| R3 | `ejemplares` ≥ 1; `publicacion` **no futura**; `nacimiento` del autor **no futuro** | **400** |
-| R4 | El autor y el género de un libro **deben existir y no estar borrados** | **400** |
-| R5 | **No se puede prestar** si `prestados == ejemplares` | **409** |
-| R6 | **Un socio no puede tener más de 3 préstamos activos** | **409** |
-| R7 | **Un socio con algún préstamo vencido no puede pedir otro** | **409** |
-| R8 | Un socio **inactivo** no puede pedir préstamos | **409** |
-| R9 | El `vencimiento` son **15 días naturales** desde la fecha del préstamo, **calculado por el servidor** | — |
-| R10 | **No se puede devolver** un préstamo que ya está `DEVUELTO` | **409** |
-| R11 | Devolver pone `devolucion = hoy`, estado `DEVUELTO` y **decrementa `prestados`** | — |
-| R12 | **No se puede borrar** un autor con libros, un género con libros, un libro con préstamos activos, ni un socio con préstamos activos | **409** |
-| R13 | Un préstamo pasa a `VENCIDO` automáticamente cuando `vencimiento < hoy` y no se ha devuelto | — |
+| R1 | `isbn` **13 dígitos** y único; `titulo` y `autor` no vacíos | **400** / **409** |
+| R2 | `ejemplares` ≥ 1; `publicacion` **no futura** | **400** |
+| R3 | El `genero` indicado **debe existir y no estar borrado** | **400** |
+| R4 | **No se puede prestar** si `prestados == ejemplares` | **409** |
+| R5 | Prestar incrementa `libro.prestados` **y** `genero.prestamosTotales`, de forma **atómica** | — |
+| R6 | **No se puede devolver** si `prestados == 0` | **409** |
+| R7 | **No se puede borrar** un libro con `prestados > 0`, ni un género con libros | **409** |
 
-!!! danger "R5, R6 y R7 son el núcleo del ejercicio"
-    Las tres necesitan **consultar el estado de otras filas antes de insertar**, y eso es exactamente lo que el RA6 evalúa.
+### Lo que se evalúa aquí
 
-    **R5** se hace con un `UPDATE` condicionado, no con «leer, comprobar, escribir»:
+```java title="Libro.java — las cuatro decisiones del modelo"
+@Entity
+@Table(name = "libros", indexes = {
+        @Index(name = "idx_libro_titulo",  columnList = "titulo"),
+        @Index(name = "idx_libro_deleted", columnList = "is_deleted")
+})
+public class Libro {
 
-    ```java
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("""
-           UPDATE Libro l SET l.prestados = l.prestados + 1
-            WHERE l.id = :id AND l.prestados < l.ejemplares
-           """)
-    int reservarEjemplar(@Param("id") Long id);
-    ```
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    Si afecta a **0 filas**, no había ejemplares libres → 409.
+    @Column(nullable = false, unique = true, length = 13)
+    private String isbn;
 
-    **R6 y R7** son dos consultas de conteo:
+    /** Lado DUEÑO: la clave ajena vive en esta tabla. LAZY, siempre. */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "genero_id", nullable = false,
+                foreignKey = @ForeignKey(name = "fk_libro_genero"))
+    private Genero genero;
 
-    ```java
-    long countBySocioIdAndEstado(Long socioId, EstadoPrestamo estado);
+    @Column(name = "is_deleted", nullable = false)
+    private boolean deleted = false;
 
-    @Query("""
-           SELECT count(p) FROM Prestamo p
-            WHERE p.socio.id = :socioId
-              AND p.devolucion IS NULL
-              AND p.vencimiento < CURRENT_DATE
-           """)
-    long vencidosDe(@Param("socioId") Long socioId);
-    ```
-
-    Y **todo el método `prestar` va en una sola transacción**: si falla la R6 después de reservar el ejemplar, el `prestados` no puede quedar incrementado.
-
-!!! tip "R13: cuidado con guardar un estado derivado"
-    `VENCIDO` se puede calcular (`devolucion == null && vencimiento < hoy`), así que **guardarlo en una columna es redundante y se queda obsoleto solo**.
-
-    Dos soluciones válidas, y hay que elegir una y justificarla en el `README`:
-
-    1. **Calcularlo al leer**, en el mapeador. El campo `estado` solo guarda `ACTIVO` o `DEVUELTO`.
-    2. **Guardarlo y actualizarlo** con una tarea programada (`@Scheduled`) que lo recalcule cada noche.
-
-    La 1 es más simple y no se desincroniza nunca. La 2 permite consultarlo con un índice, que importa con millones de filas.
-
-### `GET /api/v1/prestamos/estadisticas`
-
-```json
-{
-  "prestamosActivos": 23,
-  "vencidos": 4,
-  "devueltosEsteMes": 61,
-  "duracionMediaDias": 11.3,
-  "porGenero": { "COMIC": 5, "ENSAYO": 7, "NOVELA": 11 },
-  "librosSinEjemplaresLibres": ["Dune", "Fundación"],
-  "sociosConVencidos": [
-    { "numeroSocio": "SOC-00012", "nombre": "Ana Pérez", "vencidos": 2 }
-  ],
-  "topLibros": [
-    { "isbn": "9788497593793", "titulo": "Dune", "veces": 14 }
-  ]
+    protected Libro() {}          // JPA lo necesita
 }
 ```
 
-!!! warning "`porGenero` y `topLibros` se resuelven con `GROUP BY`, no en Java"
-    Traer 10.000 préstamos a memoria para contarlos agrupados es **exactamente lo que el RA6 penaliza**. La agrupación la hace la base de datos:
+```java title="Genero.java — el lado inverso"
+/** mappedBy: el dueño es el campo "genero" de Libro. SIN cascade. */
+@OneToMany(mappedBy = "genero", fetch = FetchType.LAZY)
+private List<Libro> libros = new ArrayList<>();
+```
 
-    ```java
-    @Query("""
-           SELECT p.libro.genero.nombre, count(p)
-             FROM Prestamo p
-            WHERE p.devolucion IS NULL
-            GROUP BY p.libro.genero.nombre
-            ORDER BY p.libro.genero.nombre
-           """)
-    List<Object[]> contarActivosPorGenero();
-    ```
+```java title="LibrosRepository.java — sin N+1"
+@Query(value      = """
+                    SELECT l FROM Libro l JOIN FETCH l.genero
+                     WHERE l.deleted = false
+                    """,
+       countQuery = "SELECT count(l) FROM Libro l WHERE l.deleted = false")
+Page<Libro> findAllConGenero(Pageable pageable);
 
-    Y `topLibros` es un `GROUP BY` con `ORDER BY count(*) DESC` y `Pageable` para el `LIMIT`.
+@Modifying(clearAutomatically = true, flushAutomatically = true)
+@Query("""
+       UPDATE Libro l SET l.prestados = l.prestados + 1, l.updatedAt = CURRENT_TIMESTAMP
+        WHERE l.id = :id AND l.prestados < l.ejemplares
+       """)
+int reservarEjemplar(@Param("id") Long id);
+```
+
+!!! danger "Los tres ítems que más puntúan en este enunciado"
+    **1. `fetch = FetchType.LAZY` en el `@ManyToOne`.** El valor por defecto es `EAGER`, y entonces listar 20 libros trae 20 géneros aunque nadie los mire.
+
+    **2. El `JOIN FETCH` con su `countQuery`.** Listar 20 libros con su género tiene que ser **2 consultas**. Si son 21, falta.
+
+    **3. El `@Transactional` de la R5.** Si el incremento del género falla después de reservar el ejemplar, el `rollback` tiene que devolver `libro.prestados`. **Se comprueba apuntando los dos contadores, provocando el fallo y volviendo a mirar.**
 
 ---
 
-## EP2 · Instituto: matrículas y notas
+## EP2 · Instituto
 
-**Contexto.** Un centro de FP gestiona las matrículas de sus alumnos en los módulos de cada ciclo. Un alumno se matricula de varios módulos por curso académico, y cada matrícula tiene **su nota y su fecha**. Algunos módulos de segundo exigen tener aprobados módulos de primero.
+**Contexto.** Un centro gestiona las matrículas de sus alumnos en los módulos de un ciclo. Un alumno se matricula de varios módulos por curso académico, y **cada matrícula tiene su nota y su fecha**.
 
-### Modelo de datos que hay que crear
+### Modelo que hay que crear
 
 ```mermaid
 erDiagram
-    CICLO  ||--o{ MODULO    : "1:N"
     ALUMNO ||--o{ MATRICULA : "1:N"
     MODULO ||--o{ MATRICULA : "1:N"
-    MODULO }o--o{ MODULO    : "prerrequisitos N:M"
 ```
 
 | Entidad | Campos |
 |---|---|
-| **`Ciclo`** | `id`, `codigo` (único, ej. `DAW`), `nombre`, `nivel` (`enum`: `GM`, `GS`), `deleted` |
-| **`Modulo`** | `id`, `codigo` (único, 4 dígitos), `nombre`, `ciclo` (N:1), `curso` (1 o 2), `horas`, `prerrequisitos` (**N:M consigo mismo**), `deleted` |
-| **`Alumno`** | `id`, `dni` (único, con letra válida), `nombre`, `email` (único), `telefono`, `alta` (fecha), `deleted` |
-| **`Matricula`** | `id`, `alumno` (N:1), `modulo` (N:1), `curso` (`2025-2026`), `nota` (`BigDecimal(4,2)`, puede ser nula), `fechaMatricula`, **única por (alumno, modulo, curso)** |
+| **`Alumno`** | `id`, `dni` (único, `\d{8}[A-Z]`), `nombre`, `email` (único), `deleted` |
+| **`Modulo`** | `id`, `codigo` (único, 4 dígitos), `nombre`, `curso` (1 o 2), `horas`, `deleted` |
+| **`Matricula`** | `id`, `alumno` (**N:1**), `modulo` (**N:1**), `curso` (`2025-2026`), `nota` (`BigDecimal(4,2)`, puede ser nula), `fechaMatricula`, **única por (alumno, modulo, curso)** |
 
-!!! danger "La decisión de diseño que se corrige primero"
+!!! danger "La decisión de diseño que se corrige primero, y es eliminatoria"
     La relación «alumno cursa módulos» **no es un `@ManyToMany`**, porque la matrícula tiene **datos propios**: la nota y la fecha.
 
     | | `@ManyToMany` | Entidad intermedia |
     |---|---|---|
     | La tabla de unión | La crea Hibernate | **La defines tú** |
-    | Datos propios | **Imposible** | Sí: nota, fecha, estado |
+    | Datos propios | **Imposible** | Sí: nota, fecha |
     | Consultar la relación | No se puede | Es un repositorio más |
     | Paginar las matrículas de un alumno | No se puede | Sí |
 
-    **El `@ManyToMany` solo se usa para los prerrequisitos**, que es una relación sin datos propios: «este módulo exige estos otros».
+    **Resolverlo con un `@ManyToMany` es 0 puntos en todo el bloque 1**, porque hace imposible el resto del enunciado.
 
-    Resolver esto con un `@ManyToMany` para las matrículas es **0 puntos en el bloque 1 de la rúbrica**, porque hace imposible el resto del enunciado.
+### Endpoints
 
-### Endpoints que hay que implementar
-
-| # | Método y ruta | Qué hace | Éxito |
-|:-:|---|---|:-:|
-| 1 | `GET /api/v1/alumnos` | Paginado. Filtros `nombre`, `dni`, `cicloCodigo` | 200 |
-| 2 | `GET /api/v1/alumnos/{id}` · CRUD completo | Con borrado lógico | — |
-| 3 | `GET /api/v1/alumnos/{id}/matriculas?curso=` | Paginado, **con el nombre del módulo y la nota** | 200 |
-| 4 | `GET /api/v1/alumnos/{id}/expediente?curso=` | Resumen (abajo) | 200 |
-| 5 | `GET /api/v1/ciclos` · CRUD · `GET /api/v1/ciclos/{id}/modulos` | — | — |
-| 6 | `GET /api/v1/modulos` | Paginado. Filtros `cicloCodigo`, `curso` | 200 |
-| 7 | `GET /api/v1/modulos/{id}` | Con **la lista de nombres de sus prerrequisitos** | 200 |
-| 8 | `POST /api/v1/modulos/{id}/prerrequisitos` | Añade un prerrequisito | 200 |
-| 9 | `GET /api/v1/modulos/{id}/alumnos?curso=` | Paginado | 200 |
-| 10 | `POST /api/v1/matriculas` | Matricula, comprobando todas las reglas | 201 + `Location` |
-| 11 | `PATCH /api/v1/matriculas/{id}/nota` | Pone o cambia la nota | 200 |
-| 12 | `DELETE /api/v1/matriculas/{id}` | Desmatricula | 204 |
-| 13 | `GET /api/v1/matriculas/estadisticas?curso=` | Resumen | 200 |
+| # | Método y ruta | Éxito |
+|:-:|---|:-:|
+| 1 | `GET /api/v1/alumnos` · **paginado**. Filtros opcionales `nombre`, `dni` | 200 |
+| 2 | `GET /api/v1/alumnos/{id}` · CRUD completo con **borrado lógico** | — |
+| 3 | `GET /api/v1/alumnos/{id}/matriculas?curso=` · con **el nombre del módulo y la nota** | 200 |
+| 4 | `GET /api/v1/alumnos/{id}/expediente?curso=` · resumen (abajo) | 200 |
+| 5 | `GET /api/v1/modulos` · paginado, filtro `curso`. `POST` y `PATCH` | — |
+| 6 | `POST /api/v1/matriculas` | 201 + `Location` |
+| 7 | `PATCH /api/v1/matriculas/{id}/nota` | 200 |
+| 8 | `DELETE /api/v1/matriculas/{id}` | 204 |
 
 ### Reglas de negocio
 
 | # | Regla | Respuesta |
 |:-:|---|:-:|
-| R1 | `dni` con formato `\d{8}[A-Z]` **y letra de control correcta** | **400** |
-| R2 | `email` válido y único; `codigo` de módulo `\d{4}`; `codigo` de ciclo 3 letras mayúsculas | **400** / **409** |
-| R3 | `curso` con formato `AAAA-AAAA` **y años consecutivos** | **400** |
-| R4 | `nota` entre **0 y 10**, con dos decimales | **400** |
-| R5 | `horas` del módulo entre 30 y 400; `curso` del módulo 1 o 2 | **400** |
-| R6 | El alumno y el módulo **deben existir y no estar borrados** | **400** |
-| R7 | **Un alumno no se matricula dos veces del mismo módulo en el mismo curso** | **409** |
-| R8 | **No se puede matricular de un módulo de 2.º sin tener aprobados todos sus prerrequisitos** (nota ≥ 5), y el mensaje **dice cuáles faltan** | **409** |
-| R9 | Un módulo **no puede ser prerrequisito de sí mismo**, ni crear un ciclo de dependencias | **409** |
-| R10 | Un prerrequisito **debe ser del mismo ciclo** y de un curso anterior | **409** |
-| R11 | **No se puede desmatricular** si la matrícula ya tiene nota | **409** |
-| R12 | **No se puede borrar** un ciclo con módulos, un módulo con matrículas, ni un alumno con matrículas | **409** |
-| R13 | Un alumno **no puede matricularse de más de 12 módulos** en el mismo curso | **409** |
-
-!!! danger "R8 es la regla del ejercicio, y trae un N+1 dentro"
-    La comprobación obvia es ésta, **y está mal**:
-
-    ```java
-    // ❌ Un SELECT por cada matrícula para traer su módulo
-    var aprobados = matriculasRepository.findByAlumnoId(alumnoId).stream()
-            .filter(m -> m.getNota() != null
-                      && m.getNota().compareTo(APROBADO) >= 0)
-            .map(m -> m.getModulo().getId())      // ← N+1 aquí
-            .collect(Collectors.toSet());
-    ```
-
-    Con 40 matrículas son **41 consultas**. Lo correcto trae **solo los ids** en una:
-
-    ```java
-    @Query("""
-           SELECT m.modulo.id FROM Matricula m
-            WHERE m.alumno.id = :alumnoId AND m.nota >= 5.00
-           """)
-    Set<Long> idsModulosAprobados(@Param("alumnoId") Long alumnoId);
-    ```
-
-    **Una consulta, y no trae ni una entidad entera.** De 41 a 1.
-
-    **Parte del ejercicio es verlo en el log con `show-sql=true` y corregirlo.** Se corrige contando las consultas, no leyendo el código.
-
-!!! tip "R9: el ciclo de dependencias"
-    Si A exige B y B exige A, matricularse de cualquiera es imposible. Y con tres módulos (A→B→C→A) el bucle no se ve a simple vista.
-
-    La comprobación al añadir un prerrequisito: **recorrer el grafo** desde el candidato buscando el módulo actual.
-
-    ```java
-    private boolean creariaCiclo(Modulo modulo, Modulo candidato) {
-        var visitados = new HashSet<Long>();
-        var pendientes = new ArrayDeque<Modulo>();
-        pendientes.add(candidato);
-        while (!pendientes.isEmpty()) {
-            var m = pendientes.poll();
-            if (m.getId().equals(modulo.getId())) return true;
-            if (!visitados.add(m.getId())) continue;
-            pendientes.addAll(m.getPrerrequisitos());
-        }
-        return false;
-    }
-    ```
-
-    Es un recorrido en anchura, y **cuidado**: recorrer `getPrerrequisitos()` en un bucle vuelve a ser N+1. Con un `@EntityGraph` o un `JOIN FETCH` de la relación, una sola consulta por nivel.
+| R1 | `dni` con formato `\d{8}[A-Z]`; `email` válido; `codigo` de módulo `\d{4}` | **400** |
+| R2 | `curso` con formato `AAAA-AAAA` **y años consecutivos** | **400** |
+| R3 | `nota` entre **0 y 10**, con dos decimales; `horas` entre 30 y 400 | **400** |
+| R4 | Alumno y módulo **deben existir y no estar borrados** | **400** |
+| R5 | **Un alumno no se matricula dos veces del mismo módulo en el mismo curso** | **409** |
+| R6 | **No se puede desmatricular** una matrícula que ya tiene nota | **409** |
+| R7 | **No se puede borrar** un alumno ni un módulo con matrículas | **409** |
 
 ### `GET /api/v1/alumnos/{id}/expediente?curso=2025-2026`
 
@@ -293,285 +193,261 @@ erDiagram
 {
   "alumno": { "dni": "12345678Z", "nombre": "Ana Pérez" },
   "curso": "2025-2026",
-  "ciclo": "DAW",
   "matriculados": 8,
   "calificados": 6,
   "aprobados": 5,
   "suspensos": 1,
-  "pendientes": 2,
   "media": 6.83,
-  "horasAprobadas": 420,
   "porModulo": [
-    { "codigo": "0613", "nombre": "DWES",            "horas": 130, "nota": 8.00 },
-    { "codigo": "0612", "nombre": "Bases de Datos",  "horas": 120, "nota": 7.50 },
-    { "codigo": "0614", "nombre": "Despliegue",      "horas": 100, "nota": null  }
+    { "codigo": "0613", "nombre": "DWES",           "nota": 8.00 },
+    { "codigo": "0612", "nombre": "Bases de Datos", "nota": 7.50 },
+    { "codigo": "0614", "nombre": "Despliegue",     "nota": null }
   ]
 }
 ```
 
-!!! warning "La media con `BigDecimal` y `RoundingMode`, no con `average()`"
+!!! danger "El expediente trae un N+1 dentro, y es el ítem que decide"
+    Lo obvio **está mal**:
+
     ```java
-    var media = calificadas.stream()
+    // ❌ Un SELECT por cada matrícula para traer su módulo
+    var matriculas = matriculasRepository.findByAlumnoIdAndCurso(id, curso);
+    matriculas.forEach(m -> m.getModulo().getNombre());    // ← N+1 aquí
+    ```
+
+    Con 8 matrículas son 9 consultas; con 40, 41. Lo correcto trae el módulo **en la misma consulta**:
+
+    ```java
+    @Query("""
+           SELECT m FROM Matricula m
+             JOIN FETCH m.modulo
+            WHERE m.alumno.id = :alumnoId AND m.curso = :curso
+           """)
+    List<Matricula> findConModulo(@Param("alumnoId") Long alumnoId,
+                                  @Param("curso") String curso);
+    ```
+
+    **Se corrige con `show-sql=true` y contando las líneas `Hibernate:`.** Dos consultas, no nueve.
+
+!!! warning "La media con `BigDecimal` y `RoundingMode`"
+    ```java
+    var media = calificadas.isEmpty() ? null : calificadas.stream()
             .map(Matricula::getNota)
             .reduce(BigDecimal.ZERO, BigDecimal::add)
             .divide(BigDecimal.valueOf(calificadas.size()), 2, RoundingMode.HALF_UP);
     ```
 
-    Son notas: **el redondeo tiene consecuencias**. Un 4,995 con `double` puede salir como 4,99 o como 5,00 según el día, y eso es la diferencia entre aprobar y suspender.
-
-    Y `calificadas.size()` puede ser **0**: hay que devolver `null` en la media, no un `ArithmeticException`.
+    Son notas: **el redondeo tiene consecuencias**. Y `calificadas.size()` puede ser **0**: hay que devolver `null`, no un `ArithmeticException`.
 
 ---
 
-## EP3 · Clínica veterinaria
+## EP3 · Tienda
 
-**Contexto.** Una clínica veterinaria gestiona sus pacientes, consultas y almacén. En cada consulta el veterinario puede aplicar tratamientos que **consumen medicamentos del almacén**, y la factura de la consulta se cierra con un total. Varios veterinarios pueden editar la misma consulta.
+**Contexto.** Una tienda gestiona su catálogo y sus ventas. Cada producto pertenece a una categoría, y vender descuenta stock. Varios administradores pueden editar el mismo producto a la vez.
 
-### Modelo de datos que hay que crear
+### Modelo que hay que crear
 
 ```mermaid
 erDiagram
-    PROPIETARIO ||--o{ MASCOTA     : "1:N"
-    MASCOTA     ||--o{ CONSULTA    : "1:N"
-    VETERINARIO ||--o{ CONSULTA    : "1:N"
-    CONSULTA    ||--|{ TRATAMIENTO : "1:N cascade"
-    MEDICAMENTO ||--o{ TRATAMIENTO : "1:N"
+    CATEGORIA ||--o{ PRODUCTO : "1:N"
 ```
 
 | Entidad | Campos |
 |---|---|
-| **`Propietario`** | `id`, `dni` (único), `nombre`, `telefono`, `email` (único), `deleted` |
-| **`Mascota`** | `id`, `chip` (único, 15 dígitos), `nombre`, `especie` (`enum`), `raza`, `nacimiento` (fecha), `propietario` (N:1), `deleted` |
-| **`Veterinario`** | `id`, `colegiado` (único), `nombre`, `especialidad` (`enum`), `activo`, `deleted` |
-| **`Medicamento`** | `id`, `codigo` (único), `nombre`, `precio` (`BigDecimal(10,2)`), `stock`, `requiereReceta` (booleano), `deleted` |
-| **`Consulta`** | `id`, `codigo` (único, `CON-2026-000123`), `mascota` (N:1), `veterinario` (N:1), `fecha`, `motivo`, `diagnostico`, `estado` (`enum`: `ABIERTA`, `CERRADA`, `FACTURADA`, `ANULADA`), `importeConsulta`, `total`, `tratamientos` (1:N con cascada), **`@Version`** |
-| **`Tratamiento`** | `id`, `consulta` (N:1), `medicamento` (N:1), `cantidad`, `precioUnitario`, `indicaciones` |
+| **`Categoria`** | `id`, `nombre` (único, máx. 40), `unidadesVendidas` (contador), `deleted` |
+| **`Producto`** | `id`, `sku` (único), `nombre`, `categoria` (**N:1**), `precio` (`BigDecimal(10,2)`), `stock`, `deleted`, **`@Version version`**, `createdAt`, `updatedAt` |
 
-### Endpoints que hay que implementar
+### Endpoints
 
-| # | Método y ruta | Qué hace | Éxito |
-|:-:|---|---|:-:|
-| 1 | `GET /api/v1/propietarios` · CRUD · `/{id}/mascotas` | Paginado, con borrado lógico | — |
-| 2 | `GET /api/v1/mascotas` | Paginado. Filtros `nombre`, `especie`, `propietarioId`, `chip` | 200 |
-| 3 | `GET /api/v1/mascotas/{id}` · CRUD · `/{id}/historial` | Historial paginado de consultas | — |
-| 4 | `GET /api/v1/veterinarios` · CRUD · `/{id}/consultas` | — | — |
-| 5 | `GET /api/v1/medicamentos` | Paginado. Filtros `nombre`, `conStock`, `requiereReceta` | 200 |
-| 6 | `POST` · `PATCH` · `DELETE` de medicamentos · `PATCH /{id}/stock` | — | — |
-| 7 | `POST /api/v1/consultas` | Abre una consulta. Estado `ABIERTA` | 201 + `Location` |
-| 8 | `GET /api/v1/consultas/{id}` | Con mascota, veterinario y **sus tratamientos con nombres** | 200 |
-| 9 | `POST /api/v1/consultas/{id}/tratamientos` | **Añade tratamientos y descuenta stock** | 200 |
-| 10 | `DELETE /api/v1/consultas/{id}/tratamientos/{tid}` | Quita uno y **devuelve el stock** | 200 |
-| 11 | `POST /api/v1/consultas/{id}/cerrar` | Fija el diagnóstico y calcula el `total` | 200 |
-| 12 | `POST /api/v1/consultas/{id}/anular` | Anula y **devuelve todo el stock** | 200 |
-| 13 | `GET /api/v1/consultas` | Paginado. Filtros `mascotaId`, `veterinarioId`, `estado`, `desde`, `hasta` | 200 |
-| 14 | `GET /api/v1/consultas/estadisticas` | Resumen | 200 |
-
-### La operación clave
-
-```json
-POST /api/v1/consultas/7/tratamientos
-{
-  "tratamientos": [
-    { "medicamentoId": 4, "cantidad": 2, "indicaciones": "1 cada 12 h, 5 días" },
-    { "medicamentoId": 9, "cantidad": 1, "indicaciones": "Dosis única" }
-  ]
-}
-```
-
-El servidor: comprueba que la consulta está `ABIERTA`, que hay stock de **todos** los medicamentos, lo descuenta, copia los precios y recalcula el `total`.
+| # | Método y ruta | Éxito |
+|:-:|---|:-:|
+| 1 | `GET /api/v1/productos` · **paginado**. Filtros opcionales y combinables `nombre` (contiene), `categoria` (nombre), `precioMax`, `conStock=true` | 200 |
+| 2 | `GET /api/v1/productos/{id}` · con **el nombre de la categoría** | 200 |
+| 3 | `POST /api/v1/productos` | 201 + `Location` |
+| 4 | `PATCH /api/v1/productos/{id}` | 200 |
+| 5 | `DELETE /api/v1/productos/{id}` · **borrado lógico** | 204 |
+| 6 | `POST /api/v1/productos/{id}/venta` · `{"cantidad":2}` · **toca las dos entidades** | 200 |
+| 7 | `POST /api/v1/productos/{id}/reposicion` · `{"cantidad":10}` | 200 |
+| 8 | `GET /api/v1/categorias` · `POST` · `DELETE` · `GET /{id}/productos` paginado | — |
 
 ### Reglas de negocio
 
 | # | Regla | Respuesta |
 |:-:|---|:-:|
-| R1 | `chip` 15 dígitos y único; `dni` con formato válido; `colegiado` único | **400** / **409** |
-| R2 | `nacimiento` de la mascota **no futuro**; `fecha` de consulta no futura | **400** |
-| R3 | `cantidad` ≥ 1; `precio` ≥ 0; `importeConsulta` ≥ 0 | **400** |
-| R4 | Mascota, veterinario y medicamentos **deben existir y no estar borrados** | **400** |
-| R5 | El veterinario debe estar **activo** | **409** |
-| R6 | `codigo` de consulta generado por el servidor, **correlativo por año** | — |
-| R7 | **Si falta stock de un medicamento, no se descuenta ninguno** y no se añade ningún tratamiento | **409** |
-| R8 | Solo se pueden añadir o quitar tratamientos con la consulta **`ABIERTA`** | **409** |
-| R9 | Cerrar calcula `total = importeConsulta + Σ(precioUnitario × cantidad)` y pasa a `CERRADA`. **Requiere diagnóstico no vacío** | **409** / **400** |
-| R10 | Transiciones válidas: `ABIERTA → CERRADA → FACTURADA`, y `ABIERTA|CERRADA → ANULADA` | **409** |
-| R11 | Anular **devuelve todo el stock** de los tratamientos. No se puede anular una `FACTURADA` | **409** |
-| R12 | `total` y `precioUnitario` los calcula **siempre el servidor** | — |
-| R13 | **Dos veterinarios editando la misma consulta a la vez**: el segundo recibe un **409** con un mensaje claro | **409** |
-| R14 | No se puede borrar un propietario con mascotas, una mascota con consultas, ni un medicamento usado en algún tratamiento | **409** |
+| R1 | `sku` único, formato `SKU-\d{3}`; `nombre` no vacío | **400** / **409** |
+| R2 | `precio` ≥ 0 con dos decimales; `stock` ≥ 0; `cantidad` de venta ≥ 1 | **400** |
+| R3 | La `categoria` indicada **debe existir y no estar borrada** | **400** |
+| R4 | **No se puede vender** más de lo que hay en stock | **409** |
+| R5 | Vender descuenta `producto.stock` **y** suma a `categoria.unidadesVendidas`, de forma **atómica** | — |
+| R6 | **No se puede borrar** un producto con stock > 0, ni una categoría con productos | **409** |
+| R7 | **Dos administradores editando el mismo producto a la vez**: el segundo recibe un **409** con un mensaje claro | **409** |
 
-!!! danger "R13 es el bloqueo optimista, y es el único enunciado que lo trabaja"
-    ```java
-    @Version
-    private Long version;
-    ```
+### La regla 7: bloqueo optimista
 
-    Hibernate añade `AND version = ?` a cada `UPDATE` e incrementa el número. Si otro ya lo había cambiado, el `UPDATE` afecta a **0 filas** y lanza:
+```java
+@Version
+private Long version;
+```
 
-    ```
-    org.springframework.orm.ObjectOptimisticLockingFailureException
-    ```
+Hibernate añade `AND version = ?` a cada `UPDATE` e incrementa el número. Si otro ya lo había cambiado, el `UPDATE` afecta a **0 filas** y lanza `ObjectOptimisticLockingFailureException`.
 
-    **Sin esto, el último en guardar pisa los cambios del primero y nadie se entera.** Se llama *lost update*, y en una clínica significa perder un diagnóstico escrito.
-
-    Hay que traducirlo a un 409 útil:
-
-    ```java
-    @ResponseStatus(HttpStatus.CONFLICT)
-    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
-    public Map<String, Object> conflictoDeEdicion(ObjectOptimisticLockingFailureException ex) {
-        return Map.of("status", 409,
-                "error", "Otro usuario ha modificado esta consulta. "
-                       + "Recarga los datos y vuelve a intentarlo.");
-    }
-    ```
-
-    **Y hay que demostrarlo con un test**, provocando el conflicto a propósito:
-
-    ```java
-    @Test
-    void dosEdicionesSimultaneasProvocanConflicto() {
-        var a = repositorio.findById(1L).orElseThrow();   // version = 0
-        var b = repositorio.findById(1L).orElseThrow();   // version = 0
-
-        a.setDiagnostico("Otitis");
-        repositorio.saveAndFlush(a);                      // version → 1
-
-        b.setDiagnostico("Dermatitis");
-        assertThrows(ObjectOptimisticLockingFailureException.class,
-                () -> repositorio.saveAndFlush(b));       // version 0 ≠ 1
-    }
-    ```
-
-!!! danger "R7 es la transacción, y se corrige comparando el estado"
-    Un bloque de tres tratamientos donde falta stock del tercero **no puede dejar descontados los dos primeros**.
-
-    ```java
-    @Transactional
-    public ConsultaResponse añadirTratamientos(Long id, TratamientosRequest req) { … }
-    ```
-
-    Con el `UPDATE` condicionado de siempre:
-
-    ```java
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("""
-           UPDATE Medicamento m SET m.stock = m.stock - :cantidad
-            WHERE m.id = :id AND m.stock >= :cantidad
-           """)
-    int descontarStock(@Param("id") Long id, @Param("cantidad") int cantidad);
-    ```
-
-    **Cómo se comprueba:** se apunta el stock de todos los medicamentos, se manda un bloque que falle en el último, y se vuelve a mirar. **Los dos listados tienen que ser idénticos**, y los tratamientos no pueden haberse añadido.
-
-### `GET /api/v1/consultas/estadisticas`
-
-```json
-{
-  "total": 142,
-  "porEstado": { "ABIERTA": 3, "CERRADA": 18, "FACTURADA": 118, "ANULADA": 3 },
-  "facturado": 18420.50,
-  "ticketMedio": 156.11,
-  "porEspecie": { "PERRO": 78, "GATO": 51, "AVE": 9, "OTRO": 4 },
-  "medicamentoMasUsado": { "codigo": "MED-0045", "nombre": "Amoxicilina", "unidades": 213 },
-  "medicamentosSinStock": 4,
-  "veterinarioMasActivo": { "colegiado": "COL-1234", "nombre": "Dra. Ruiz", "consultas": 61 }
+```java
+@ResponseStatus(HttpStatus.CONFLICT)
+@ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+public Map<String, Object> conflictoDeEdicion(ObjectOptimisticLockingFailureException ex) {
+    return Map.of("status", 409,
+            "error", "Otro usuario ha modificado este producto. "
+                   + "Recarga los datos y vuelve a intentarlo.");
 }
 ```
+
+```java title="El test que lo demuestra"
+@Test
+void dosEdicionesSimultaneasProvocanConflicto() {
+    var a = repositorio.findById(1L).orElseThrow();   // version = 0
+    var b = repositorio.findById(1L).orElseThrow();   // version = 0
+
+    a.setNombre("Teclado nuevo");
+    repositorio.saveAndFlush(a);                      // version → 1
+
+    b.setNombre("Teclado viejo");
+    assertThrows(ObjectOptimisticLockingFailureException.class,
+            () -> repositorio.saveAndFlush(b));       // version 0 ≠ 1
+}
+```
+
+!!! danger "Sin `@Version`, el último en guardar pisa al primero y nadie se entera"
+    Se llama *lost update*, y es el bug silencioso clásico de un panel de administración con dos personas trabajando. **Este es el único enunciado de la unidad que lo trabaja.**
+
+### Y la regla 4, con el `UPDATE` condicionado
+
+```java
+@Modifying(clearAutomatically = true, flushAutomatically = true)
+@Query("""
+       UPDATE Producto p SET p.stock = p.stock - :cantidad
+        WHERE p.id = :id AND p.stock >= :cantidad
+       """)
+int descontarStock(@Param("id") Long id, @Param("cantidad") int cantidad);
+```
+
+Si afecta a **0 filas**, no había bastante → 409. Nunca «leer, comprobar con un `if` y escribir»: con JPA es **más fácil caer en eso**, porque el `setStock` parece inofensivo.
+
+---
+
+## ¿Cabe en cuatro horas?
+
+**Sí.** Las entidades son verbosas pero los repositorios **no tienen cuerpo**, así que el volumen total baja respecto a la UT4 aunque el modelo sea más rico.
+
+| | Ficheros que escribes | Líneas aprox. |
+|---|---|:-:|
+| Entidades (2 o 3) | 3 | 170 |
+| DTOs (`Response`, `CreateRequest`, `UpdateRequest`, el del resumen) | 4 | 60 |
+| Repositorios (**interfaces sin cuerpo**) | 2–3 | 50 |
+| Excepciones (base + 3) | 4 | 30 |
+| Mapeador | 1 | 60 |
+| Servicio (interfaz + impl) | 2 | 110 |
+| Controlador (con `Pageable` saneado) | 1–2 | 80 |
+| `@RestControllerAdvice` | 1 | 35 |
+| Tests | 2 | 60 |
+
+!!! success "Lo que se recortó respecto a versiones anteriores de estos enunciados"
+    | | Antes | Ahora |
+    |---|:-:|:-:|
+    | Entidades | 4–5 | **2, o 3 en el EP2** |
+    | Endpoints | 13–14 | **8** |
+    | Reglas de negocio | 13–14 | **7** |
+    | Tests exigidos | 7 | **3** |
+
+    **Lo que se queda, porque es lo que evalúa el RA6:** una relación 1:N bien modelada, `LAZY` en todas partes, un `JOIN FETCH` que evita el N+1, la transacción de dos entidades y el `@Version` del EP3.
 
 ---
 
 ## Rúbrica de calificación
 
-**La misma para los tres enunciados y para el examen.** Sobre 10 puntos, y cada ítem se comprueba con una acción concreta.
+**La misma para los tres enunciados y para el examen.** Sobre 10 puntos.
 
-!!! info "Lo que esta rúbrica mide y la del RA5 no"
-    En el RA5 el peso estaba en las capas. **Aquí el peso está en el modelo de datos, el rendimiento y la integridad.** Las capas se dan por sabidas y solo aparecen como penalización.
+!!! info "Lo que mide esta rúbrica y no la del RA5"
+    En el RA5 el peso estaba en las capas. **Aquí está en el modelo de datos, el rendimiento y la integridad.** Las capas se dan por sabidas y solo aparecen como penalización.
 
 ### Bloque 1 · Modelo de datos y relaciones — 2,5 puntos
 
 | | Se comprueba con | Puntos |
 |---|---|:-:|
-| 1.1 | **Las relaciones del diagrama están todas**, con la cardinalidad correcta y la clave ajena en el lado que toca | **1,0** |
-| 1.2 | Todos los `@OneToMany` llevan **`mappedBy`**. `grep -rn "@OneToMany" src/` y comprobar uno a uno | 0,5 |
-| 1.3 | `cascade` y `orphanRemoval` **solo donde hay composición**; ningún `cascade = ALL` que pueda borrar un maestro | 0,4 |
-| 1.4 | `@Enumerated(EnumType.STRING)` en **todos** los `enum`. `grep -rn "@Enumerated" src/` → ninguno sin `STRING` | 0,3 |
+| 1.1 | **La relación del diagrama está bien**, con la cardinalidad correcta y la clave ajena en el lado que toca | **1,0** |
+| 1.2 | El `@OneToMany` lleva **`mappedBy`**, y no hay tabla intermedia fantasma | 0,5 |
+| 1.3 | **Sin `cascade` que pueda borrar un maestro**; las reglas de borrado son comprobaciones en el servicio | 0,4 |
+| 1.4 | `@Enumerated(EnumType.STRING)` en los `enum`, si usas alguno. `grep -rn "@Enumerated" src/` → ninguno sin `STRING` | 0,3 |
 | 1.5 | Dinero y notas con **`BigDecimal`** y `precision`/`scale`. `grep -rn "double\|float" src/main/java/**/models/` → vacío | 0,3 |
 
-!!! danger "El 1.1 tiene una condición eliminatoria"
-    En el **EP2**, resolver las matrículas con un `@ManyToMany` en lugar de una entidad intermedia es **0 puntos en todo el bloque 1**, porque hace imposible guardar la nota y, con ella, la mitad del enunciado.
+!!! danger "Eliminatoria en el EP2"
+    Resolver las matrículas con `@ManyToMany` en lugar de una entidad intermedia → **0 en todo el bloque 1**.
 
 ### Bloque 2 · Rendimiento: `LAZY` y el N+1 — 2,0 puntos
 
 | | Se comprueba con | Puntos |
 |---|---|:-:|
-| 2.1 | `grep -rn "FetchType.EAGER" src/` → **sin resultados**. Un solo `EAGER` → 0 en este ítem | **0,7** |
-| 2.2 | Con `show-sql=true`, **listar una página de 20 elementos con su relación son 2 consultas**, no 21. Se cuenta en el log | **0,8** |
-| 2.3 | La consulta de agregados (estadísticas, ranking) se resuelve con **`GROUP BY` en el repositorio**, no trayendo todas las filas a Java | 0,3 |
-| 2.4 | `spring.jpa.open-in-view=false` en `application.properties` | 0,2 |
+| 2.1 | `grep -rn "FetchType.EAGER" src/` → **vacío**. Un solo `EAGER` → 0 en este ítem | **0,7** |
+| 2.2 | Con `show-sql=true`, **listar una página de 20 elementos con su relación son 2 consultas**, no 21 | **0,8** |
+| 2.3 | La consulta del resumen o las estadísticas trae la relación con `JOIN FETCH`, o agrupa con **`GROUP BY`** en el repositorio | 0,3 |
+| 2.4 | `spring.jpa.open-in-view=false` | 0,2 |
 
 !!! danger "El 2.2 se corrige con el log delante, y no hay otra forma"
-    Un programa con N+1 **funciona perfectamente** y pasa cualquier prueba manual. Se pide un listado paginado, se cuentan las líneas `Hibernate:` del log, y se apunta el número.
+    Un programa con N+1 **funciona perfectamente** y pasa cualquier prueba manual.
 
-    Con `JOIN FETCH` + `countQuery` o con `@EntityGraph`: **2**. Sin ellos: **1 + tamaño de página**.
+    | Consultas | Nota |
+    |---|:-:|
+    | 2 | **0,8** |
+    | 3 a 5 | 0,4 |
+    | 1 + tamaño de página | **0** |
 
 ### Bloque 3 · Repositorios y consultas — 1,5 puntos
 
 | | Se comprueba con | Puntos |
 |---|---|:-:|
-| 3.1 | **Consultas derivadas del nombre** para lo sencillo, al menos cinco distintas y con `IgnoreCase` donde el enunciado lo pide | 0,4 |
-| 3.2 | Al menos **dos `@Query` con JPQL**, una de ellas con `JOIN FETCH` o agregado | 0,4 |
-| 3.3 | Los **filtros opcionales y combinables** del listado con **`Specification`**, no con `if` anidados ni con un método por combinación | 0,4 |
-| 3.4 | Los `@Modifying` llevan `@Transactional` en quien los llama y `clearAutomatically` donde hace falta | 0,3 |
+| 3.1 | Al menos **cuatro consultas derivadas del nombre**, con `IgnoreCase` donde el enunciado lo pide | 0,4 |
+| 3.2 | Al menos **una `@Query` con JPQL**, con `JOIN FETCH` o agregado | 0,4 |
+| 3.3 | Los **filtros opcionales y combinables** del listado con **`Specification`**, no con `if` anidados ni un método por combinación | 0,4 |
+| 3.4 | Los `@Modifying` llevan `@Transactional` en quien los llama y `clearAutomatically` | 0,3 |
 
 ### Bloque 4 · Validaciones en tres niveles — 2,0 puntos
 
 | | Se comprueba con | Puntos |
 |---|---|:-:|
-| 4.1 | **Formato en el DTO**: las reglas R1–R5 del enunciado con anotaciones de Bean Validation, y `@Valid` en todos los `@RequestBody` | **0,6** |
+| 4.1 | **Formato en el DTO**: las reglas R1–R3 con Bean Validation, y `@Valid` en todos los `@RequestBody` | **0,6** |
 | 4.2 | Un POST inválido devuelve **400 con los errores campo a campo** | 0,4 |
 | 4.3 | **Negocio en el servicio**: cada regla que necesita consultar la BD devuelve **409**, no 400 ni 500 | **0,6** |
 | 4.4 | **Integridad en la entidad**: `nullable = false`, `unique = true`, `length`, y un handler de `DataIntegrityViolationException` → 409 | 0,4 |
-
-!!! tip "Los tres niveles se ponen los tres, y se distinguen por el código"
-    | | Dónde | Código |
-    |---|---|:-:|
-    | Formato, un campo aislado | DTO | **400** |
-    | Formato, dos campos del mismo objeto | DTO, `@AssertTrue` | **400** |
-    | Necesita consultar la base de datos | **Servicio** | **409** |
-    | Última red | Entidad / tabla | 409 vía handler |
-
-    Devolver **400 donde toca 409** resta: lo primero es «está mal escrito», lo segundo es «está bien escrito pero choca con el estado actual del sistema».
 
 ### Bloque 5 · Integridad y transacciones — 2,0 puntos
 
 | | Se comprueba con | Puntos |
 |---|---|:-:|
-| 5.1 | **Las reglas de negocio del enunciado se cumplen** y devuelven el código indicado. *0,1 por regla, hasta 1,0* | **1,0** |
-| 5.2 | La operación multi-tabla lleva `@Transactional`, y **se demuestra comparando el estado antes y después de un fallo** | **0,6** |
-| 5.3 | El descuento de stock o de ejemplares se hace con un **`UPDATE … WHERE … >= :cantidad`**, no con «leer, comprobar, escribir» | 0,4 |
+| 5.1 | **Las siete reglas** se cumplen y devuelven el código indicado. *0,15 por regla* | **1,05** |
+| 5.2 | La operación de dos entidades lleva `@Transactional`, y **se demuestra comparando los contadores antes y después de un fallo** | **0,6** |
+| 5.3 | El descuento usa un **`UPDATE … WHERE … >= :cantidad`**, no «leer, comprobar, escribir» | 0,35 |
 
 !!! danger "El 5.2 se demuestra, no se declara"
-    Se apunta el estado (stock, `prestados`, lo que corresponda) de **todas** las filas implicadas, se provoca el fallo de la última operación, y se vuelve a mirar.
+    Se apuntan los dos contadores, se provoca el fallo de la última operación y se vuelve a mirar. **Los dos valores tienen que estar intactos.**
 
-    **Los dos listados tienen que ser idénticos.** Si no lo son, 0 en el ítem aunque la anotación esté puesta: lo normal en ese caso es que la excepción se capture dentro del método transaccional, y entonces **no hay rollback**.
+    Si no lo están, 0 en el ítem **aunque la anotación esté puesta**: lo habitual es que la excepción se capture dentro del método transaccional, y entonces no hay *rollback*.
 
 ### Bloque 6 · Tests — 1,0 punto
 
 | | Se comprueba con | Puntos |
 |---|---|:-:|
-| 6.1 | `./mvnw clean test` acaba en **BUILD SUCCESS**. Si no compila o hay tests comentados → **0 en todo el bloque** | 0,2 |
-| 6.2 | Al menos **3 tests con `@DataJpaTest`**: uno de una relación, uno de una consulta derivada y uno del borrado lógico | 0,4 |
-| 6.3 | Al menos **3 tests de servicio** con Mockito, uno por regla de negocio distinta | 0,2 |
-| 6.4 | **Un test de la transacción** del 5.2, que compare el estado antes y después | 0,2 |
+| 6.1 | `./mvnw clean test` acaba en **BUILD SUCCESS**. Si no compila o hay tests comentados → **0 en el bloque** | 0,2 |
+| 6.2 | **Un test con `@DataJpaTest`**: la relación, una consulta derivada o el borrado lógico | 0,3 |
+| 6.3 | **Un test de servicio** con Mockito de una regla de negocio | 0,3 |
+| 6.4 | **Un test de la transacción** del 5.2, o del `@Version` en el EP3 | 0,2 |
 
 ### Bloque 7 · Configuración y persistencia — 1,0 punto
 
 | | Se comprueba con | Puntos |
 |---|---|:-:|
-| 7.1 | Los datos **sobreviven** a parar y arrancar (H2 en fichero, `ddl-auto` adecuado) | 0,3 |
+| 7.1 | Los datos **sobreviven** a parar y arrancar | 0,3 |
 | 7.2 | Tres perfiles: `dev` con `update`, `prod` con **`validate`**, `test` con `create-drop` y H2 `mem:` | 0,3 |
 | 7.3 | `?page=&size=&sort=` funcionan, con **tope de tamaño** y **lista blanca** de campos ordenables | 0,3 |
-| 7.4 | `.env` en `.gitignore` y `.env.example` presente; sin credenciales en el código | 0,1 |
+| 7.4 | Sin credenciales en el código; `.env` ignorado si lo usas | 0,1 |
 
 !!! danger "Penalizaciones — se restan del total"
     | | |
@@ -582,35 +458,33 @@ El servidor: comprueba que la consulta está `ABIERTA`, que hay stock de **todos
     | Concatenar un valor de entrada en un `@Query` | **−2,0** |
     | `ResponseEntity` o `HttpStatus` dentro de un `@Service` | **−1,0** |
     | `@Valid` olvidado en algún `@RequestBody` | **−1,0** |
-    | Aceptar del cliente un dato que debe calcular el servidor (total, precio congelado, estado, código) | **−1,0** |
     | `?sort=` sin lista blanca o `?size=` sin tope | **−0,5** |
     | `equals`/`hashCode` generados por el IDE en una entidad | **−0,5** |
-    | `System.out.println` en lugar de un `Logger` | **−0,25** |
 
-!!! success "Nota mínima y cómo se reparte"
-    Se aprueba con **5,0**, y hay dos mínimos: **el bloque 1 no puede quedar en 0** y **el ítem 2.1 tampoco** (`EAGER` por todas partes).
+!!! success "Nota mínima"
+    Se aprueba con **5,0**. **Dos mínimos:** el bloque 1 no puede quedar en 0, y tampoco el ítem 2.1.
 
-    | Bloque | Peso | Qué mide del RA6 |
-    |---|:-:|---|
-    | 1 · Modelo y relaciones | 25 % | **Que el almacén de datos está bien diseñado** |
-    | 2 · `LAZY` y N+1 | 20 % | Que el acceso es eficiente |
-    | 3 · Repositorios | 15 % | Que se consulta con las herramientas de JPA |
-    | 4 · Validaciones | 20 % | **Integridad de la información** |
-    | 5 · Transacciones | 20 % | **Integridad frente a fallos y concurrencia** |
-    | 6 · Tests | 10 % | Que se puede comprobar |
-    | 7 · Configuración | 10 % | Que funciona fuera de tu portátil |
+    | Bloque | Peso |
+    |---|:-:|
+    | 1 · Modelo y relaciones | 25 % |
+    | 2 · `LAZY` y N+1 | 20 % |
+    | 3 · Repositorios | 15 % |
+    | 4 · Validaciones | 20 % |
+    | 5 · Integridad y transacciones | 20 % |
+    | 6 · Tests | 10 % |
+    | 7 · Configuración | 10 % |
 
-    *(Los bloques suman 12 puntos de criterios sobre un máximo de 10: los ítems se puntúan y la nota se trunca a 10. Permite compensar un bloque flojo con otro excelente, salvo los dos mínimos.)*
+    *(Suman 12 puntos de criterios sobre un máximo de 10: permite compensar un bloque flojo, salvo los dos mínimos.)*
 
-!!! info "Cómo se corrige, paso a paso"
-    1. `./mvnw clean test` → bloque 6.1 y la penalización de compilación.
+!!! info "Orden de corrección"
+    1. `./mvnw clean test` → bloque 6.1.
     2. **Los cuatro `grep`**: `FetchType.EAGER`, `@Enumerated` sin `STRING`, `double` en los modelos, `ResponseEntity` en los servicios. **Dos minutos y un 15 % de la nota.**
-    3. Abrir las entidades y dibujar el modelo → bloque 1 completo.
+    3. Abrir las entidades y dibujar el modelo → bloque 1.
     4. `java -jar` con `show-sql=true`, pedir un listado paginado y **contar las consultas** → bloque 2.2.
-    5. La colección de peticiones del enunciado → bloque 5.1.
-    6. Un POST inválido → bloque 4.1 y 4.2.
-    7. Apuntar el estado, provocar el fallo de la operación transaccional, volver a apuntar → bloque 5.2.
+    5. Las peticiones del enunciado → bloque 5.1.
+    6. Un POST inválido → bloques 4.1 y 4.2.
+    7. Apuntar los contadores, provocar el fallo y volver a mirar → bloque 5.2.
     8. Parar, arrancar y volver a listar → bloque 7.1.
     9. `?size=99999` y `?sort=inventado` → bloque 7.3.
 
-    Se entrega el proyecto comprimido **sin `target/` ni `datos/`**, con un `README.md` que incluya **el diagrama del modelo de datos** y cómo arrancarlo.
+    Se entrega comprimido **sin `target/` ni `datos/`**, con un `README.md` que incluya **el diagrama del modelo**.

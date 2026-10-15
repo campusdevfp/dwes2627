@@ -1,20 +1,7 @@
 # 1. WebSockets
 
-!!! quote "Autoría del material"
-    Este tema es una **adaptación del material de [José Luis González Sánchez](https://github.com/joseluisgs)**, concretamente del archivo `springboot/09-WebSockets.md` del repositorio [DesarrolloWebEntornosServidor-02-2025-2026](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026).
-
-    Publicado bajo licencia [Creative Commons Reconocimiento-NoComercial-CompartirIgual 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/). Se conservan el texto, los diagramas y los ejemplos originales; se han renumerado los apartados para la UT6 y se han añadido los ejercicios del final.
-
-!!! note "Nota del Profesor"
-    WebSocket permite comunicación bidireccional en tiempo real. A diferencia de HTTP, no requiere que el cliente pregunte constantemente al servidor.
-
 !!! tip "Tip del Examinador"
     WebSocket es ideal para notificaciones, chat, y datos en tiempo real. HTTP polling es ineficiente para estos casos.
-
-!!! success "Lo que esto cambia respecto a la UT4 y la UT5"
-    Hasta ahora **el cliente preguntaba y el servidor contestaba**. Siempre. Si querías saber si había un funko nuevo, tenías que preguntar cada pocos segundos.
-
-    Con un WebSocket, **el servidor habla cuando tiene algo que decir**. Y lo importante para esta unidad: el servicio que ya escribiste en la UT5 no cambia. Solo se le añade alguien que escucha.
 
 ---
 
@@ -44,8 +31,6 @@ Los WebSockets se utilizan en servicios web para habilitar la comunicación en t
 Con los WebSockets, se establece una conexión persistente entre el cliente y el servidor, lo que permite que los dos extremos se comuniquen de manera eficiente y en tiempo real. Una vez que se establece la conexión WebSocket, tanto el cliente como el servidor pueden enviar mensajes en cualquier momento sin necesidad de esperar una solicitud explícita.
 
 Los WebSockets son ampliamente utilizados en aplicaciones web que requieren actualizaciones en tiempo real, como notificaciones, chats en línea, juegos multijugador, aplicaciones de colaboración en tiempo real y paneles de control en tiempo real. Proporcionan una forma eficiente y escalable de mantener una comunicación bidireccional entre el cliente y el servidor, lo que mejora la experiencia del usuario y permite la implementación de aplicaciones web más interactivas y dinámicas.
-
-![Figura](https://raw.githubusercontent.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026/master/images/apis.gif)
 
 !!! tip "Tip del Examinador"
     Para conectar desde el cliente: `new WebSocket("ws://localhost:3000/ws/v1/productos")`. El prefijo es `ws://` no `http://`.
@@ -343,10 +328,6 @@ graph TB
     Notificacion -->|Tiempo Real| Cliente
     
 ```
-
-## 1.4. Proyecto del curso
-
-Puedes encontrar el proyecto con lo visto hasta este punto en la etiqueta: [v.0.0.4 del repositorio del curso: websockets_notificaciones](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-Proyecto-SpringBoot/releases/tag/websockets_notificaciones).
 
 ---
 

@@ -1,23 +1,7 @@
 # 3. CORS y documentación de APIs
 
-!!! quote "Autoría del material"
-    Este tema es una **adaptación del material de [José Luis González Sánchez](https://github.com/joseluisgs)**, concretamente del archivo `springboot/13-Documentacion.md` del repositorio [DesarrolloWebEntornosServidor-02-2025-2026](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026).
-
-    Publicado bajo licencia [Creative Commons Reconocimiento-NoComercial-CompartirIgual 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/). Se conservan el texto, los diagramas y los ejemplos originales; se han renumerado los apartados para la UT6, las dependencias van en **pestañas Maven / Gradle** y se han añadido los ejercicios del final.
-
-!!! note "Nota del Profesor"
-    La documentación API con Swagger/OpenAPI es esencial para que otros desarrolladores puedan consumir tu API. Siempre documenta tus endpoints.
-
 !!! tip "Tip del Examinador"
     En el examen valoran saber qué es CORS y cómo configurarlo. Es un tema frecuente.
-
-!!! success "Por qué estos dos temas van juntos"
-    Los dos son **el contrato con quien consume tu API**, y los dos se olvidan hasta que algo falla:
-
-    - **CORS** es la razón por la que tu API funciona con `curl` y falla desde un navegador. El error no está en tu código: está en que no has dicho quién puede llamarte.
-    - **OpenAPI** es la razón por la que alguien puede usar tu API sin preguntarte nada.
-
-    Una API sin documentar es una API que solo sabe usar quien la escribió.
 
 ---
 
@@ -26,14 +10,6 @@
 Los navegadores web implementan una política de seguridad llamada [Cross-Origin Resource Sharing](https://developer.mozilla.org/es/docs/Web/Security/Same-origin_policy), que impide que una página web pueda acceder a recursos de otro dominio. Por ejemplo, si tenemos una página web en el dominio `https://www.midominio.com`, no podremos acceder a recursos de otro dominio, como por ejemplo `https://www.otrodominio.com`. Esto es así por seguridad, para evitar que una página web pueda acceder a recursos de otro dominio sin nuestro consentimiento.
 
 CORS (Cross-Origin Resource Sharing) es un mecanismo de seguridad implementado en los navegadores web para controlar las solicitudes HTTP entre diferentes dominios o recursos de origen cruzado. En términos más sencillos, CORS permite que un servidor especifique a qué dominios o recursos externos se les permite acceder a sus recursos.
-
-Cuando un navegador realiza una solicitud HTTP a un dominio diferente al del sitio web actual, el navegador normalmente bloquea la respuesta debido a las políticas de seguridad del mismo origen. CORS proporciona una forma de superar esta restricción y permite que los navegadores realicen solicitudes a recursos de origen cruzado de manera controlada.
-
-La importancia de CORS radica en la seguridad y la protección de los datos del usuario. Sin CORS, un sitio web malicioso podría realizar solicitudes a recursos en otros dominios sin restricciones, lo que podría conducir a ataques de suplantación de identidad (CSRF) y la exposición de información sensible.
-
-Al habilitar y configurar CORS correctamente en el servidor, se puede controlar qué dominios o recursos externos tienen permiso para acceder a los recursos del servidor. Esto permite que los sitios web legítimos accedan a los recursos necesarios mientras se protege contra posibles ataques de seguridad.
-
-En resumen, CORS es un mecanismo de seguridad que permite controlar y permitir el acceso a recursos de origen cruzado en los navegadores web. Su importancia radica en la protección de datos y la prevención de ataques maliciosos. Al implementar y configurar CORS adecuadamente, puedes garantizar que solo los dominios o recursos autorizados tengan acceso a tus recursos del servidor.
 
 Aquí tienes algunos ejemplos que ilustran la importancia de CORS:
 
@@ -110,27 +86,27 @@ class SwaggerConfig {
         return new OpenAPI()
                 .info(
                         new Info()
-                                .title("API REST Tenistas Spring Boot 2023")
+                                .title("API REST de Funkos — DWES 2.º DAW")
                                 .version("1.0.0")
-                                .description("API de ejemplo del curso Desarrollo de un API REST con Spring Boot para Profesores/as. 2022/2023")
-                                .termsOfService("https://joseluisgs.dev/docs/license/")
+                                .description("API de ejemplo del módulo Desarrollo Web en Entorno Servidor")
+                                .termsOfService("https://iesx.es/terminos")
                                 .license(
                                         new License()
                                                 .name("CC BY-NC-SA 4.0")
-                                                .url("https://joseluisgs.dev/docs/license/")
+                                                .url("https://creativecommons.org/licenses/by-nc-sa/4.0/")
                                 )
                                 .contact(
                                         new Contact()
-                                                .name("José Luis González Sánchez")
-                                                .email("joseluis.gonzales@iesluisvives.org")
-                                                .url("https://joseluisgs.dev")
+                                                .name("2.º DAW · IES Ejemplo")
+                                                .email("dwes@iesx.es")
+                                                .url("https://iesx.es")
                                 )
 
                 )
                 .externalDocs(
                         new ExternalDocumentation()
                                 .description("Repositorio y Documentación del Proyecto y API")
-                                .url("https://github.com/joseluisgs/tenistas-rest-springboot-2022-2023")
+                                .url("https://github.com/iesx-daw/funkos-api")
                 );
     }
 
@@ -139,9 +115,9 @@ class SwaggerConfig {
         return GroupedOpenApi.builder()
                 .group("http")
                 //.pathsToMatch("/api/**") // Todas las rutas
-                .pathsToMatch("/api/tenistas/**") 
+                .pathsToMatch("/api/v1/funkos/**") 
                 //.pathsToMatch("/api/test/**")
-                .displayName("HTTP-API Tenistas Test")
+                .displayName("API de Funkos")
                 .build();
     }
 }
@@ -227,9 +203,6 @@ Finalmente entrando en la ruta de Swagger podemos ver la documentación de nuest
 ## 3.3. Práctica de clase: Swagger y OpenAPI
 1. Configura Swagger en tu proyecto
 2. Documenta los modelos, DTOs y endpoints de tu API para el endpoint de funkos.
-
-## 3.4. Proyecto del curso
-Puedes encontrar el proyecto con lo visto hasta este punto en la etiqueta: [v.0.0.9 del repositorio del curso: documentacion_swagger](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-Proyecto-SpringBoot/releases/tag/documentacion_swagger).
 
 ---
 

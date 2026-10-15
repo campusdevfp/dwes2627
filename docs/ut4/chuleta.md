@@ -1,4 +1,4 @@
-# Chuleta de la UT4 — Spring Boot, capas, REST y JDBC
+# Chuleta de la UT4 — Spring Boot: capas, REST y JDBC
 
 !!! tip ":material-file-pdf-box: Descárgala para el examen"
     **[:material-download: chuleta-ut4.pdf](../pdf/chuleta-ut4.pdf)** — cuatro caras, lista para imprimir. Es la única documentación permitida en el examen práctico de RA5.

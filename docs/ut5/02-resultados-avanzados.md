@@ -1,15 +1,5 @@
 # 2. Resultados avanzados: paginación, ordenación y criterios
 
-!!! quote "Autoría del material"
-    Este tema es una **adaptación del material de [José Luis González Sánchez](https://github.com/joseluisgs)**, concretamente del archivo `springboot/10-ResultadosAvazados.md` del repositorio [DesarrolloWebEntornosServidor-02-2025-2026](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026).
-
-    Publicado bajo licencia [Creative Commons Reconocimiento-NoComercial-CompartirIgual 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/). Se conservan el texto, los diagramas y los ejemplos originales; se han renumerado los apartados para la UT5, las dependencias van en **pestañas Maven / Gradle** y se han añadido los ejercicios del final.
-
-!!! danger "Por qué esto no es un extra"
-    Un `GET /funkos` que devuelve la tabla entera funciona con 20 registros y tumba el servidor con 200.000: los carga todos en memoria, los serializa todos a JSON y los manda todos por la red.
-
-    **Paginar no es una mejora: es el requisito mínimo de cualquier endpoint de listado.** Y una vez paginado, hace falta ordenar y filtrar, porque la página 1 de un orden arbitrario no le sirve a nadie.
-
 ---
 
 La negociación de contenido es un mecanismo que permite a un cliente especificar el formato de los datos que desea recibir del servidor. En una aplicación Spring Boot, puedes configurar esto para permitir que los clientes soliciten datos en un formato específico, como XML.
@@ -467,9 +457,6 @@ public Page<Categoria> findAll(Optional<String> nombre, Optional<Boolean> isDele
 2. Ajusta repositorios, servicios y controladores para que se pueda consultar paginadamente en base a criterios de selección y poder ordenar además los resultados.
 3. Configura la negociación de contenido para que se pueda obtener los datos en formato XML o JSON.
 4. Testea los repositorios, servicios y controladores con la nueva funcionalidad.
-
-## 2.4. Proyecto del curso
-Puedes encontrar el proyecto con lo visto hasta este punto en la etiqueta: [v.0.0.5 del repositorio del curso: paginacion_seleccion_ordenacion](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-Proyecto-SpringBoot/releases/tag/paginacion_seleccion_ordenacion).
 
 ---
 

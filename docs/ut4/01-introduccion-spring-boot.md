@@ -1,13 +1,5 @@
 # 1. Introducción a Spring y Spring Boot
 
-!!! quote "Autoría del material"
-    Este tema es una **adaptación del material de [José Luis González Sánchez](https://github.com/joseluisgs)**, concretamente del archivo `springboot/03-Spring.md` del repositorio [DesarrolloWebEntornosServidor-02-2025-2026](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026).
-
-    Publicado bajo licencia [Creative Commons Reconocimiento-NoComercial-CompartirIgual 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/). Se conservan el texto, los diagramas y los ejemplos originales; se han renumerado los apartados para encajar en la UT4 y se han añadido los ejercicios del final.
-
-!!! note "Nota del Profesor"
-    Spring es el framework más popular de Java. Dominar Spring Boot es esencial para cualquier desarrollador Java moderno.
-
 !!! tip "Tip del Examinador"
     En el examen preguntan mucho sobre la diferencia entre IoC y DI. ¡No los confundas!
 
@@ -134,8 +126,6 @@ graph LR
 
 **Spring Framework** está diseñado de manera modular, lo que significa que puedes elegir usar solo los módulos que necesitas para tu aplicación. Aquí te describo algunos de los [módulos](https://spring.io/projects/) más comunes:
 
-![Módulos de Spring](https://raw.githubusercontent.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026/master/images/modulos-spring.png)
-
 ```mermaid
 graph TB
     Core["Spring Core<br/>IoC + DI"]
@@ -225,8 +215,6 @@ graph TB
 
 6. **Spring Batch**: Proporciona funciones robustas para el procesamiento por lotes, incluyendo servicios de transacción, tareas programadas, etc.
 
-Cada uno de estos módulos y proyectos proporciona funcionalidad específica, lo que permite a los desarrolladores elegir y usar solo lo que necesitan para sus aplicaciones.
-
 !!! info "Lo que toca en este módulo"
     En la **UT4** usamos Spring Core (IoC/DI) y Spring Web MVC. En la **UT5**, Spring Data JPA. En la **UT6**, WebSockets y GraphQL. Spring Security llega en la **UT8**.
 
@@ -267,8 +255,6 @@ La creación de beans se puede configurar de varias maneras en Spring:
     - `@Service`: Lógica de negocio
     - `@Repository`: Acceso a datos
     - `@Controller`: Web/API
-
-![Componentes de Spring](https://raw.githubusercontent.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026/master/images/components.png)
 
 ```java
 @Service
@@ -317,10 +303,6 @@ public class MyController {
 
 !!! tip "Tip del Examinador"
     Usa inyección por constructor (como arriba). Es la forma recomendada desde Spring 4.3+. Permite inmutabilidad y testing más fácil.
-
-En este ejemplo, Spring inyectará automáticamente el bean `MyService` en `MyController` cuando este último sea creado.
-
-Los beans son útiles porque te permiten abstraer la creación y gestión de objetos. Esto hace que tu código sea más limpio, más fácil de probar y más modular. Además, los beans de Spring pueden tener ámbitos (como singleton, prototype, request, session, etc.) que te permiten controlar cuándo y cómo se crean y destruyen los beans.
 
 ```mermaid
 graph TB
@@ -394,8 +376,6 @@ public class A {
     // resto de la clase
 }
 ```
-
-En este ejemplo, Spring creará un bean de `B` y lo inyectará en `A` cuando cree un bean de `A`. Esto significa que no tienes que preocuparte por la creación y gestión de `B` - eso es manejado por Spring, lo que es IoC y DI en acción.
 
 !!! success "Lo que esto te da en la UT4"
     Es exactamente el `ServicioPedidos` que recibía un `Notificador` por el constructor en la [UT2](../ut2/03-poo-en-java.md), pero con Spring montando el cableado. Tú declaras qué necesitas; el framework decide **qué implementación** te llega y **cuándo** se crea.

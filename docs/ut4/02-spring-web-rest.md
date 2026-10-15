@@ -1,13 +1,5 @@
 # 2. Spring Web REST
 
-!!! quote "Autoría del material"
-    Este tema es una **adaptación del material de [José Luis González Sánchez](https://github.com/joseluisgs)**, concretamente del archivo `springboot/04-SpringWebRest.md` del repositorio [DesarrolloWebEntornosServidor-02-2025-2026](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026).
-
-    Publicado bajo licencia [Creative Commons Reconocimiento-NoComercial-CompartirIgual 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/). Se conservan el texto, los diagramas y los ejemplos originales. **Adaptaciones de este curso:** el original usa Gradle con Kotlin DSL y Java 17; aquí los ejemplos de construcción van **en pestañas Maven / Gradle** y el proyecto del módulo es **Maven con Java 25**, que es lo que se evalúa.
-
-!!! note "Nota del Profesor"
-    Este es el tema más importante del módulo. Aquí aprendemos a crear APIs REST reales con Spring Boot.
-
 !!! tip "Tip del Examinador"
     En el examen suelen pedir crear un controlador REST con operaciones CRUD. ¡Practica mucho este tema!
 
@@ -75,15 +67,11 @@ graph TB
 !!! tip "Tip del Examinador"
     Spring Web ≠ Spring MVC. Spring Web es más amplio e incluye MVC y más.
 
-En resumen, Spring MVC es una parte integral de la mayoría de las aplicaciones web basadas en Spring, proporcionando un marco robusto y flexible para el manejo de las interacciones web.
-
 ---
 
 ## 2.2. Creando un proyecto
 
 Podemos crear un proyecto Spring Boot usando el plugin de IntelliJ o desde su web. Con estos [asistentes](https://start.spring.io/) podemos crear un proyecto Spring con las opciones que queramos y descargarlo, fijando su filosofía (tradicional o reactiva), el lenguaje, las dependencias, etc.
-
-![Spring Initializr](https://raw.githubusercontent.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026/master/images/quickstart-1.png)
 
 Para nuestro proyecto deberemos usar las siguientes dependencias:
 
@@ -96,12 +84,8 @@ Para nuestro proyecto deberemos usar las siguientes dependencias:
 !!! note "Nota del Profesor"
     El original del autor usa Java 17 porque es LTS y tiene características modernas como records y pattern matching. **En este curso usamos Java 25**, que es el LTS actual y el que hemos usado en la UT2 y la UT3: records, `switch` con patrones, `sealed` y bloques de texto siguen estando, y hay más.
 
-Posteriormente podemos añadir las dependencias que necesitemos, por ejemplo para usar una base de datos, seguridad, testing u otras librerías (Lombok, etc.).
-
 !!! warning "Advertencia"
     ¡Cuidado con las versiones! Spring Boot 3.x requiere Java 17+. No intentes usar Java 11 con Spring Boot 3.
-
-Si se nos olvida alguna dependencia, podemos añadirla posteriormente desde el fichero `pom.xml` o `build.gradle.kts` sin problemas.
 
 ### 2.2.1. Starters
 
@@ -311,8 +295,6 @@ graph TB
 
 Spring Boot nos ofrece una serie de componentes que nos ayudan a crear aplicaciones web de forma rápida y sencilla. Nuestros componentes principales se etiquetarán con `@` para que el framework Spring los reconozca (módulo de inversión de control y posterior inyección de dependencias). Cada uno tiene una misión en nuestra arquitectura:
 
-![Componentes de Spring](https://raw.githubusercontent.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026/master/images/components.png)
-
 !!! note "Nota del Profesor"
     Esta arquitectura en capas es fundamental. Controller → Service → Repository es el patrón clásico.
 
@@ -416,10 +398,6 @@ public class MiComponente {
    // ...
 }
 ```
-
-En este ejemplo, se define un componente llamado `MiComponente` con alcance de prototipo, lo que significa que cada vez que se solicite este componente, se creará una nueva instancia.
-
-Es importante tener en cuenta que el uso adecuado del alcance de los componentes depende de las necesidades específicas de la aplicación. Se debe considerar cuidadosamente el impacto en el rendimiento y la gestión de recursos al elegir el alcance adecuado para cada componente.
 
 ### 2.4.2. IoC y DI en Spring Boot
 

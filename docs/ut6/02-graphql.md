@@ -1,20 +1,7 @@
 # 2. GraphQL
 
-!!! quote "Autoría del material"
-    Este tema es una **adaptación del material de [José Luis González Sánchez](https://github.com/joseluisgs)**, concretamente del archivo `springboot/16-GraphQL.md` del repositorio [DesarrolloWebEntornosServidor-02-2025-2026](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026).
-
-    Publicado bajo licencia [Creative Commons Reconocimiento-NoComercial-CompartirIgual 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/). Se conservan el texto, los diagramas y los ejemplos originales; se han renumerado los apartados para la UT6, las dependencias van en **pestañas Maven / Gradle** y se han añadido los ejercicios del final.
-
-!!! note "Nota del Profesor"
-    GraphQL es una alternativa a REST que permite al cliente solicitar exactamente los datos que necesita. Es ideal para aplicaciones móviles y SPA.
-
 !!! tip "Tip del Examinador"
     GraphQL usa "queries" para leer y "mutations" para escribir, similar a GET y POST en REST.
-
-!!! info "GraphQL no sustituye a REST: se suma"
-    En este módulo la API REST de la UT5 **se queda tal cual**. GraphQL se añade en `/graphql` como una segunda puerta a los **mismos servicios**.
-
-    Eso es la idea de la unidad entera: tres transportes (REST, WebSocket, GraphQL) sobre una sola capa de negocio.
 
 ---
 
@@ -705,7 +692,7 @@ Tu monitorización avisa cuando hay respuestas 4xx y 5xx. Con GraphQL no avisa n
     }
     ```
 
-    **Y fíjate en lo que esto demuestra:** las excepciones propias de la [UT4](../ut4/03-servicios-dtos-y-cache.md) funcionan aquí sin tocarlas. Si el servicio lanzara `ResponseStatusException` con `HttpStatus`, no habría nada que traducir, porque en GraphQL un código HTTP no significa nada.
+    **Y fíjate en lo que esto demuestra:** las excepciones propias de la [UT4](../ut4/03-repositorios-servicios-dtos.md) funcionan aquí sin tocarlas. Si el servicio lanzara `ResponseStatusException` con `HttpStatus`, no habría nada que traducir, porque en GraphQL un código HTTP no significa nada.
 
 ### E6 ●●● — El controlador GraphQL
 

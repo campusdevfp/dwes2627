@@ -2,9 +2,6 @@
 
 Todo lo que cambia entre tu portátil y el servidor —el puerto, la base de datos, las contraseñas— **no se escribe en el código**. Este tema va de dónde se escribe.
 
-!!! quote "Sobre este tema"
-    Apartado propio de este curso, construido sobre los apartados *4.1.3. Parametrizando la aplicación* del material de [José Luis González Sánchez](https://github.com/joseluisgs) y su tema `springboot/14-Perfiles.md`, licenciado [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/).
-
 !!! danger "La regla de la que sale todo lo demás"
     **El mismo `.jar` tiene que poder arrancar en desarrollo, en preproducción y en producción sin recompilarse.**
 

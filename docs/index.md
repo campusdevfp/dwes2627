@@ -85,7 +85,7 @@ Los **nueve resultados de aprendizaje** no se imparten en el orden en que los nu
     : 1. CSV y JSON · 2. Fechas y validación · 3. CRUD contra base de datos
 
     **UT4 · RA5 · Spring Boot, capas y REST** — 5 temas
-    : 1. Introducción a Spring Boot · 2. Spring Web REST · 3. Servicios, DTOs y caché · 4. Configuración y variables de entorno · **5. Dos proyectos paso a paso** (funkos y tienda, con H2 por JDBC)
+    : 1. Introducción a Spring Boot · 2. Spring Web REST · 3. Repositorios, servicios y DTOs · 4. Configuración y variables de entorno · **5. Dos proyectos paso a paso** (funkos y tienda, con H2 por JDBC)
 
     **UT5 · RA6 · Spring Data con JPA y SQL** — 4 temas
     : 1. Spring Data con JPA y SQL · 2. Resultados avanzados · 3. Referencia de JPA y validaciones · **4. Dos proyectos paso a paso** (los dos de la UT4, migrados a JPA)
@@ -311,7 +311,7 @@ Casi todo el temario es original de este curso, con una excepción importante qu
     |---|---|---|
     | **UT4** | 1. Introducción a Spring Boot | `springboot/03-Spring.md` |
     | **UT4** | 2. Spring Web REST | `springboot/04-SpringWebRest.md` |
-    | **UT4** | 3. Servicios, DTOs y caché | `springboot/05-Servicios.md` |
+    | **UT4** | 3. Repositorios, servicios y DTOs | `springboot/05-Servicios.md` |
     | **UT5** | 1. Spring Data con JPA y SQL | `springboot/07-SpringDataJPASQL.md` |
     | **UT5** | 2. Resultados avanzados | `springboot/10-ResultadosAvazados.md` |
     | **UT6** | 1. WebSockets | `springboot/09-WebSockets.md` |
@@ -320,9 +320,9 @@ Casi todo el temario es original de este curso, con una excepción importante qu
 
     **Qué se ha conservado:** el texto, los diagramas, los ejemplos de código y las «Notas del Profesor» y «Tips del Examinador» del autor.
 
-    **Qué se ha adaptado a este curso:** **Maven** en lugar de Gradle (en pestañas, con el original al lado), **Java 25** en lugar de Java 17, la renumeración de apartados para encajar en estas unidades, y los temas de proyecto, referencias, retos y baterías de ejercicios, que son propios.
+    **Qué se ha adaptado a este curso:** **Maven** en lugar de Gradle (en pestañas, con el original al lado), **Java 25** en lugar de Java 17, la renumeración y el recorte de apartados para encajar en estas unidades, y los temas de configuración, proyectos paso a paso, referencias y ejercicios prácticos, que son propios.
 
-    Cada uno de esos temas lleva su nota de autoría al principio.
+    **Esta página es la atribución del material.** Los temas no la repiten para no interrumpir la lectura.
 
 !!! info "Material complementario del autor, por si quieres ir más allá"
     - **Vídeos:** [Construyendo Servicios Web con Spring Boot](https://youtu.be/oat9HhL2Nvc) · [Spring Data JPA y SQL](https://youtu.be/teZSHyXWLzs) · [WebSockets](https://youtu.be/QyOSZc2g8fQ) · [GraphQL](https://youtu.be/c_aNuF8oBVM)

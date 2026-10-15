@@ -189,7 +189,7 @@ nav:
       - ut4/index.md
       - 1. Introducción a Spring Boot: ut4/01-introduccion-spring-boot.md
       - 2. Spring Web REST: ut4/02-spring-web-rest.md
-      - 3. Servicios, DTOs y caché: ut4/03-servicios-dtos-y-cache.md
+      - 3. Repositorios, servicios y DTOs: ut4/03-repositorios-servicios-dtos.md
       - 4. Configuración y variables de entorno: ut4/04-configuracion.md
       - 5. Dos proyectos paso a paso: ut4/05-proyectos.md
       - Ejercicios prácticos: ut4/ejercicios-practicos.md

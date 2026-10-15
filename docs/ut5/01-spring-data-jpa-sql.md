@@ -1,32 +1,7 @@
 # 1. Spring Data con JPA y SQL
 
-!!! quote "Autoría del material"
-    Este tema es una **adaptación del material de [José Luis González Sánchez](https://github.com/joseluisgs)**, concretamente del archivo `springboot/07-SpringDataJPASQL.md` del repositorio [DesarrolloWebEntornosServidor-02-2025-2026](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026).
-
-    Publicado bajo licencia [Creative Commons Reconocimiento-NoComercial-CompartirIgual 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/). Se conservan el texto, los diagramas y los ejemplos originales; se han renumerado los apartados para encajar en la UT5, las dependencias van en **pestañas Maven / Gradle** y se han añadido los ejercicios del final.
-
-!!! note "Nota del Profesor"
-    Spring Data JPA es fundamental para interactuar con bases de datos relacionales. Dominar entidades, repositorios y relaciones es clave para el examen.
-
 !!! tip "Tip del Examinador"
     En el examen preguntan mucho sobre relaciones JPA (@OneToMany, @ManyToOne, FetchType, Cascade). ¡Practica estos conceptos!
-
-!!! info "Este tema es largo a propósito: es la referencia de la unidad"
-    Se da en seis sesiones y se vuelve a él todo el trimestre. Usa el índice de la derecha para saltar.
-
-    | Apartado | En clase |
-    |---|---|
-    | 1.1 – 1.2 · Conexión y datos iniciales | S1 |
-    | 1.3 · Entidades, identificadores y marcas temporales | S2 |
-    | 1.4.1 – 1.4.5 · Relaciones | S3 |
-    | 1.4.6 – 1.4.10 · Cascada, *lazy*, borrado lógico y recursión | S4 |
-    | 1.5 · Repositorios y consultas | S5 |
-    | 1.6 · Testing del repositorio | S6 |
-
-!!! danger "Lo que ya sabes hacer a mano"
-    En la [UT3, tema 3](../ut3/03-base-de-datos.md) escribiste este mismo CRUD con `DriverManager`, `PreparedStatement` y `ResultSet`. Todo lo de esta unidad lo hace JPA por ti.
-
-    Eso es exactamente por qué se dio primero a mano: cuando una consulta de Spring Data haga algo raro —y lo hará— sabrás qué SQL está generando por debajo y podrás leerlo.
 
 ---
 
@@ -35,8 +10,6 @@
 Spring Data con JPA ofrece una abstracción de alto nivel sobre las tecnologías de acceso a datos, lo que permite a los desarrolladores centrarse en la lógica de negocio en lugar de preocuparse por los detalles técnicos de la integración con la base de datos. 
 
 Spring Data proporciona soporte para una variedad de tecnologías de acceso a datos, incluyendo bases de datos relacionales, bases de datos NoSQL, bases de datos en memoria y sistemas de archivos. Además, Spring Data proporciona integración con otras tecnologías de Spring, como Spring MVC y Spring Boot, lo que permite a los desarrolladores construir aplicaciones web escalables y fáciles de mantener. 
-
-En resumen, Spring Data es una capa de abstracción que permite a los desarrolladores interactuar con diferentes tipos de bases de datos de una manera coherente y sencilla, reduciendo la complejidad de la integración con la base de datos y acelerando el desarrollo de aplicaciones.
 
 Spring Data [JPA](https://www.ibm.com/docs/es/was-liberty/nd?topic=overview-java-persistence-api-jpa) es un proyecto dentro del ecosistema de Spring que proporciona una implementación de la API JPA (Java Persistence API) estándar para la persistencia de datos en bases de datos relacionales y se superpone a Hibernate.
 
@@ -115,8 +88,6 @@ La propiedad `spring.jpa.hibernate.ddl-auto` controla el comportamiento de gener
 La propiedad `spring.jpa.show-sql` controla si se deben mostrar las consultas SQL en la consola.
 
 Por último, `spring.jpa.properties.hibernate.dialect` define el dialecto de Hibernate que se va a utilizar. Esto es necesario para que Hibernate pueda generar SQL que sea compatible con tu base de datos.
-
-Es importante tener en cuenta que estas configuraciones pueden variar dependiendo de si estás en un entorno de **desarrollo** o **producción**. Por ejemplo, podrías querer usar `create-drop` en desarrollo para tener una base de datos limpia cada vez que inicies tu aplicación, pero en producción probablemente querrías usar `update` o `none` para no perder datos.
 
 ## 1.2. Definiendo tablas personalizadas o insertando datos
 Aunque como veremos más tarde Spring Data puede crear los esquemas, tienes la posibilidad de crearlos tú o de insertar datos en los propios esquemas generados para usarlos tanto en producción, como en desarrollo o pruebas.
@@ -332,8 +303,6 @@ public class JpaConfig {
 
 En este ejemplo, `@EnableJpaAuditing` se utiliza en una clase de configuración para habilitar la auditoría JPA en toda la aplicación.
 
-En resumen, `@EntityListeners` se utiliza para especificar listeners de eventos de ciclo de vida para una entidad específica, mientras que `@EnableJpaAuditing` se utiliza para habilitar la auditoría JPA en toda la aplicación. En muchos casos, se utilizarán juntos para realizar auditorías automáticas de entidades en una aplicación Spring Boot.
-
 ## 1.4. Relaciones entre entidades
 En Spring Data JPA, una relación es una asociación entre dos o más entidades. Hay varios tipos de relaciones que se pueden establecer entre entidades, entre los cuales se encuentran:
 
@@ -473,8 +442,6 @@ public class Course {
     // getters and setters
 }
 ```
-
-En resumen, en Spring Data JPA, las relaciones se establecen mediante anotaciones como `@OneToOne`, `@OneToMany` y `@ManyToMany`. Estas anotaciones indican cómo se asocian las entidades entre sí y pueden proporcionar información sobre la clave externa, la tabla de unión, entre otros detalles necesarios para definir correctamente la relación.
 
 ### 1.4.4. Relaciones Embebidas (Embedded)
 Además, podemos usar las anotaciones `@Embedded` y `@Embeddable` para definir una relación de composición entre entidades. Por ejemplo, una entidad "Persona" podría tener una relación de composición con una entidad "Dirección". Para ello, en la entidad "Persona" podemos agregar la anotación `@Embedded`  de tipo Dirección y en la entidad "Dirección" la anotación `@Embeddable` (se va a embeber en otra entidad y no necesita una tabla propia ni un identificador propio)
@@ -733,8 +700,6 @@ Ventajas del borrado lógico:
 - Auditoría y seguimiento: El borrado lógico permite mantener un registro de las acciones de eliminación realizadas en la base de datos, lo que facilita el seguimiento y la auditoría de las actividades.
 - Integridad referencial: Al utilizar el borrado lógico, es posible mantener la integridad referencial en la base de datos, ya que los registros eliminados no rompen las relaciones con otros registros relacionados. Esto puede ser especialmente útil en bases de datos con relaciones complejas.
 - Restauración selectiva: Con el borrado lógico, es posible restaurar selectivamente los registros eliminados según sea necesario, lo que brinda flexibilidad en la recuperación de datos.
-
-Es importante tener en cuenta que la elección entre el borrado físico y el borrado lógico depende de los requisitos y las necesidades específicas del sistema y de las regulaciones aplicables. En muchos casos, una combinación de ambos enfoques puede ser la mejor opción, utilizando el borrado físico para datos no sensibles y el borrado lógico para datos críticos o sensibles.
 
 Podemos trabajar automáticamente con la estrategia de borrado lógico de la siguiente manera, aunque no lo recomiendo por ahora y que lo hagas tú manualmente en las clases que necesites.
 
@@ -1010,8 +975,6 @@ Existen diferentes tipos de repositorios en Spring Data JPA, algunos de los más
 - [CrudRepository](https://docs.spring.io/spring-data/commons/docs/current/api/org/springframework/data/repository/CrudRepository.html): es la interfaz más básica y proporciona las operaciones CRUD básicas, como guardar, eliminar, actualizar y buscar.
 
 - [QueryDslPredicateExecutor](https://docs.spring.io/spring-data/jpa/docs/current/api/org/springframework/data/jpa/repository/support/QuerydslJpaRepository.html): es una interfaz que permite utilizar Querydsl para construir consultas dinámicas, lo que permite personalizar las consultas en tiempo de ejecución.
-
-En resumen, un repositorio en Spring Data JPA es una interfaz que define una colección de métodos para acceder y manipular datos en una base de datos relacional. Los repositorios proporcionan una abstracción de la capa de acceso a datos y facilitan la implementación de operaciones CRUD en la aplicación. Existen diferentes tipos de repositorios que ofrecen funcionalidades específicas para JPA y permiten personalizar las consultas en tiempo de ejecución.
 
 ### 1.5.1. Creando consultas para nuestros repositorios
 A la hora de crear consultas para nuestros repositorios, Spring Data JPA nos ofrece diferentes opciones para personalizar las consultas generadas automáticamente y crear consultas personalizadas.
@@ -1390,7 +1353,7 @@ Para testear nuestro repositorio JPA con TestContainers, primero debemos asegura
         kotlin("plugin.jpa") version "1.9.20"
     }
 
-    group = "dev.joseluisgs"
+    group = "es.iesx"
     version = "1.0.0"
     java.sourceCompatibility = JavaVersion.VERSION_17
 
@@ -1946,9 +1909,6 @@ volumes:
     # Generar reporte de tests
     ./gradlew test jacocoTestReport
     ```
-
-## 1.7. Proyecto del curso
-Puedes encontrar el proyecto con lo visto hasta este punto en la etiqueta: [v.0.0.2 del repositorio del curso: categorias](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-Proyecto-SpringBoot/releases/tag/categorias).
 
 ---
 

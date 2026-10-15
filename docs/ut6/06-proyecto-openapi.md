@@ -237,7 +237,6 @@ curl -s -o /dev/null -w "%{http_code}\n" localhost:8080/swagger-ui/index.html
 
 ---
 
-
 ---
 
 ## Paso 4 · Los tests

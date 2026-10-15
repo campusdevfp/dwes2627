@@ -254,7 +254,7 @@ public class FunkosSubscriptionController {
     | GraphQL | **200** con `errors[0].extensions.classification = "NOT_FOUND"` |
     | WebSocket | No aplica: no se notifica nada |
 
-    **Si el servicio lanzara `ResponseStatusException` con `HttpStatus`, aquí no habría nada que traducir**, porque en GraphQL un código HTTP no significa nada. Es la decisión del [tema 3 de la UT4](../ut4/03-servicios-dtos-y-cache.md) cobrando intereses.
+    **Si el servicio lanzara `ResponseStatusException` con `HttpStatus`, aquí no habría nada que traducir**, porque en GraphQL un código HTTP no significa nada. Es la decisión del [tema 3 de la UT4](../ut4/03-repositorios-servicios-dtos.md) cobrando intereses.
 
     Y el `switch` con patrones es Java 25, el de la UT2.
 
@@ -340,7 +340,6 @@ spring.graphql.schema.introspection.enabled=false
     Déjala abierta y manda un POST por REST. **El mensaje llega a la suscripción GraphQL y al WebSocket a la vez**, desde el mismo evento.
 
 ---
-
 
 ---
 

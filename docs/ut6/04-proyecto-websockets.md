@@ -312,7 +312,6 @@ npx wscat -c ws://localhost:8080/ws/v1/funkos
 
 ---
 
-
 ---
 
 ## Paso 7 · Los tests

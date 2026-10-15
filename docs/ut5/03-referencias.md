@@ -602,7 +602,3 @@ graph TB
 | [Spring · gestión de transacciones](https://docs.spring.io/spring-framework/reference/data-access/transaction.html) | Propagación, aislamiento, *rollback* |
 | [Baeldung · Spring Data JPA](https://www.baeldung.com/spring-data-jpa-tutorial) | Ejemplos cortos de casi todo |
 
-!!! info "Y el repositorio del que sale el material de esta unidad"
-    [joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-2025-2026), de **José Luis González Sánchez**, licencia [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/).
-
-    El proyecto completo del autor, con todo el código: [DesarrolloWebEntornosServidor-02-Proyecto-SpringBoot](https://github.com/joseluisgs/DesarrolloWebEntornosServidor-02-Proyecto-SpringBoot). Está organizado por etiquetas, una por tema, así que se puede ir viendo cómo crece.
