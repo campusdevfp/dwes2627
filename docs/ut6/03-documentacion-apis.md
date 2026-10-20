@@ -174,309 +174,245 @@ Un ejemplo de documentación de un método:
 Para ello usaremos la anotación `@Schema`:
 
 ```java
-/**
- * Modelo de datos de un producto
- */
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-@Schema(description = "Modelo de datos de un producto")
-public class ProductoResponse {
-    @Schema(description = "Identificador del producto", example = "1", required = true)
-    private Long id;
-    @Schema(description = "Nombre del producto", example = "Producto 1", required = true)
-    private String nombre;
-    @Schema(description = "Descripción del producto", example = "Descripción del producto 1", required = true)
-    private String descripcion;
-    @Schema(description = "Precio del producto", example = "10.0", required = true)
-    private Double precio;
-    @Schema(description = "Fecha de creación del producto", example = "2021-09-01T00:00:00.000Z", required = true)
-    private Date fechaCreacion;
-    @Schema(description = "Fecha de actualización del producto", example = "2021-09-01T00:00:00.000Z", required = true)
-    private Date fechaActualizacion;
-}
+@Schema(description = "Datos de un producto")
+public record ProductoResponse(
+
+        @Schema(description = "Identificador", example = "1")
+        Long id,
+
+        @Schema(description = "Nombre del producto", example = "Teclado mecánico")
+        String nombre,
+
+        @Schema(description = "Precio en euros", example = "79.90")
+        BigDecimal precio,
+
+        @Schema(description = "Unidades en stock", example = "10")
+        Integer stock,
+
+        @Schema(description = "Nombre de la categoría", example = "INFORMATICA")
+        String categoria,
+
+        @Schema(description = "Fecha de creación, en ISO-8601", example = "2026-06-12T10:31:02")
+        LocalDateTime createdAt
+) {}
 ```
 
 Finalmente entrando en la ruta de Swagger podemos ver la documentación de nuestros endpoints.
 
-## 3.3. Práctica de clase: Swagger y OpenAPI
-1. Configura Swagger en tu proyecto
-2. Documenta los modelos, DTOs y endpoints de tu API para el endpoint de funkos.
+## Casos especiales
 
----
+Los sitios donde esto se rompe, y qué hacer.
 
-## Pruébalo ahora (12 min)
-
-Sobre el proyecto de Funkos con `springdoc` añadido:
-
-1. Arranca y abre `http://localhost:8080/swagger-ui/index.html`. ¿Aparecen todos tus endpoints sin haber escrito nada?
-2. Descarga `http://localhost:8080/v3/api-docs` y mira el JSON.
-3. Prueba un POST **desde la interfaz de Swagger**. ¿Funciona de verdad?
-4. Monta una página HTML en otro puerto que haga `fetch` a tu API. Lee el error de la consola.
-5. Añade `@CrossOrigin` o la configuración global y vuelve a probar.
-
-??? success "Solución de las cinco"
-
-    **1. Sí, todos**, y con los esquemas de los DTOs incluidos. `springdoc` lee tus `@GetMapping`, tus `@RequestBody` y tus `record` por reflexión, así que la documentación base **sale de tu propio código**.
-
-    Lo que no puede inventarse es **para qué sirve** cada endpoint ni **qué errores** devuelve. Eso son las anotaciones del apartado 3.2.1.
-
-    **2.** Un JSON con la especificación OpenAPI 3: `paths`, `components.schemas`, tipos, formatos, obligatoriedad. Es **un contrato leíble por máquinas**: con ese fichero se generan clientes en cualquier lenguaje, y herramientas como Postman lo importan directamente.
-
-    **3. Sí, de verdad.** Swagger UI no simula: manda la petición a tu servidor. Es un cliente HTTP completo, así que **en producción hay que apagarlo**:
-
-    ```properties title="application-prod.properties"
-    springdoc.api-docs.enabled=false
-    springdoc.swagger-ui.enabled=false
-    ```
-
-    Dejarlo abierto es publicar un panel con todos tus endpoints y un botón para llamarlos.
-
-    **4.**
-
-    ```
-    Access to fetch at 'http://localhost:8080/api/v1/funkos' from origin
-    'http://localhost:5173' has been blocked by CORS policy: No
-    'Access-Control-Allow-Origin' header is present on the requested resource.
-    ```
-
-    **Y el servidor no ha fallado**: mira el log y verás un `200`. La petición llegó, se procesó y se respondió; **el navegador** es quien tira la respuesta a la basura porque falta la cabecera.
-
-    Por eso `curl` funciona y el navegador no: `curl` no aplica la política del mismo origen.
-
-    **5.** Ya funciona, y en las cabeceras de la respuesta aparece:
-
-    ```
-    Access-Control-Allow-Origin: http://localhost:5173
-    ```
-
----
-
-## Ejercicios (con solución)
-
-### E1 ● — Quién bloquea
+### Quién bloquea
 
 Tu API funciona con `curl` y falla desde el navegador con un error de CORS. ¿Quién bloquea y por qué?
 
-??? success "Solución"
+**El navegador**, no tu servidor.
 
-    **El navegador**, no tu servidor.
+La petición **sí llega** al servidor, se procesa y se responde con un 200. Lo que hace el navegador es **negarle el resultado al JavaScript** que la pidió, porque la respuesta no trae `Access-Control-Allow-Origin` con su origen.
 
-    La petición **sí llega** al servidor, se procesa y se responde con un 200. Lo que hace el navegador es **negarle el resultado al JavaScript** que la pidió, porque la respuesta no trae `Access-Control-Allow-Origin` con su origen.
+`curl` no implementa la política del mismo origen, así que no le afecta. Y eso explica el síntoma: *«pero si funciona en Postman»*.
 
-    `curl` no implementa la política del mismo origen, así que no le afecta. Y eso explica el síntoma: *«pero si funciona en Postman»*.
+**Consecuencia práctica:** CORS **no es un mecanismo de seguridad del servidor**. No protege tu API de nada: cualquiera puede llamarla desde fuera de un navegador. Lo que hace es proteger **al usuario** de que una web maliciosa use su sesión en otro sitio.
 
-    **Consecuencia práctica:** CORS **no es un mecanismo de seguridad del servidor**. No protege tu API de nada: cualquiera puede llamarla desde fuera de un navegador. Lo que hace es proteger **al usuario** de que una web maliciosa use su sesión en otro sitio.
-
-### E2 ● — La petición `OPTIONS`
+### La petición `OPTIONS`
 
 En el log aparece un `OPTIONS /api/v1/funkos` antes de cada POST. ¿Qué es?
 
-??? success "Solución"
+Es el ***preflight***: antes de una petición «no simple», el navegador **pregunta primero** si tiene permiso.
 
-    Es el ***preflight***: antes de una petición «no simple», el navegador **pregunta primero** si tiene permiso.
+Dispara *preflight* cualquier petición que:
 
-    Dispara *preflight* cualquier petición que:
+- Use un verbo que no sea `GET`, `HEAD` o `POST`.
+- Lleve `Content-Type: application/json` (sí: **esto solo ya lo dispara**).
+- Lleve cabeceras propias como `Authorization`.
 
-    - Use un verbo que no sea `GET`, `HEAD` o `POST`.
-    - Lleve `Content-Type: application/json` (sí: **esto solo ya lo dispara**).
-    - Lleve cabeceras propias como `Authorization`.
+O sea: **prácticamente cualquier petición de una API REST**.
 
-    O sea: **prácticamente cualquier petición de una API REST**.
+```
+OPTIONS /api/v1/funkos
+Origin: http://localhost:5173
+Access-Control-Request-Method: POST
+Access-Control-Request-Headers: content-type
 
-    ```
-    OPTIONS /api/v1/funkos
-    Origin: http://localhost:5173
-    Access-Control-Request-Method: POST
-    Access-Control-Request-Headers: content-type
+→ 200
+Access-Control-Allow-Origin: http://localhost:5173
+Access-Control-Allow-Methods: POST
+Access-Control-Allow-Headers: content-type
+Access-Control-Max-Age: 3600
+```
 
-    → 200
-    Access-Control-Allow-Origin: http://localhost:5173
-    Access-Control-Allow-Methods: POST
-    Access-Control-Allow-Headers: content-type
-    Access-Control-Max-Age: 3600
-    ```
+El `Max-Age` es el que importa en rendimiento: sin él, **cada** POST lleva dos viajes de ida y vuelta.
 
-    El `Max-Age` es el que importa en rendimiento: sin él, **cada** POST lleva dos viajes de ida y vuelta.
-
-### E3 ●● — Configurar CORS
+### Configurar CORS
 
 Tu frontend está en `http://localhost:5173` en desarrollo y en `https://miapp.es` en producción. Configúralo.
 
-??? success "Solución"
+```java
+@Configuration
+public class CorsConfig implements WebMvcConfigurer {
 
-    ```java
-    @Configuration
-    public class CorsConfig implements WebMvcConfigurer {
+    @Value("${cors.origenes-permitidos}")
+    private String[] origenes;
 
-        @Value("${cors.origenes-permitidos}")
-        private String[] origenes;
-
-        @Override
-        public void addCorsMappings(CorsRegistry registry) {
-            registry.addMapping("/api/**")
-                    .allowedOrigins(origenes)
-                    .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                    .allowedHeaders("*")
-                    .exposedHeaders("Location", "X-Total-Count")
-                    .allowCredentials(true)
-                    .maxAge(3600);
-        }
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/api/**")
+                .allowedOrigins(origenes)
+                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .exposedHeaders("Location", "X-Total-Count")
+                .allowCredentials(true)
+                .maxAge(3600);
     }
-    ```
+}
+```
 
-    ```properties title="application-dev.properties"
-    cors.origenes-permitidos=http://localhost:5173,http://localhost:3000
-    ```
+```properties title="application-dev.properties"
+cors.origenes-permitidos=http://localhost:5173,http://localhost:3000
+```
 
-    ```properties title="application-prod.properties"
-    cors.origenes-permitidos=https://miapp.es
-    ```
+```properties title="application-prod.properties"
+cors.origenes-permitidos=https://miapp.es
+```
 
-    **Tres cosas que importan:**
+**Tres cosas que importan:**
 
-    1. **Por configuración, no en el código.** Es el tema 4 de la UT4 aplicado: el mismo `.jar` sirve en los dos entornos.
-    2. **`exposedHeaders`.** Por defecto, el JavaScript **solo puede leer seis cabeceras**. Si tu 201 devuelve `Location` y el cliente no lo ve, es por esto.
-    3. **`@CrossOrigin` en el controlador vale para pruebas**, pero reparte la política por todo el código y hay que acordarse en cada clase nueva.
+1. **Por configuración, no en el código.** Es el tema 4 de la UT4 aplicado: el mismo `.jar` sirve en los dos entornos.
+2. **`exposedHeaders`.** Por defecto, el JavaScript **solo puede leer seis cabeceras**. Si tu 201 devuelve `Location` y el cliente no lo ve, es por esto.
+3. **`@CrossOrigin` en el controlador vale para pruebas**, pero reparte la política por todo el código y hay que acordarse en cada clase nueva.
 
-### E4 ●● — El comodín peligroso
+### El comodín peligroso
 
 ```java
 .allowedOrigins("*")
 .allowCredentials(true)
 ```
 
-??? success "Solución"
+**No funciona**: el navegador rechaza la combinación y verás
 
-    **No funciona**: el navegador rechaza la combinación y verás
+```
+The value of the 'Access-Control-Allow-Origin' header must not be the
+wildcard '*' when the request's credentials mode is 'include'.
+```
 
-    ```
-    The value of the 'Access-Control-Allow-Origin' header must not be the
-    wildcard '*' when the request's credentials mode is 'include'.
-    ```
+Y está prohibido **a propósito**: `allowCredentials(true)` hace que el navegador mande cookies y cabeceras de autenticación. Con `*`, cualquier web de internet podría hacer peticiones autenticadas **con la sesión de tu usuario**. Es exactamente el ataque CSRF que CORS existe para impedir.
 
-    Y está prohibido **a propósito**: `allowCredentials(true)` hace que el navegador mande cookies y cabeceras de autenticación. Con `*`, cualquier web de internet podría hacer peticiones autenticadas **con la sesión de tu usuario**. Es exactamente el ataque CSRF que CORS existe para impedir.
+Si necesitas comodín con credenciales, usa `allowedOriginPatterns("https://*.miapp.es")`, que Spring resuelve al origen concreto en cada respuesta.
 
-    Si necesitas comodín con credenciales, usa `allowedOriginPatterns("https://*.miapp.es")`, que Spring resuelve al origen concreto en cada respuesta.
+**La regla:** `allowedOrigins("*")` solo para una API pública **sin autenticación**. En cualquier otro caso, lista explícita.
 
-    **La regla:** `allowedOrigins("*")` solo para una API pública **sin autenticación**. En cualquier otro caso, lista explícita.
-
-### E5 ●● — Documentar un endpoint
+### Documentar un endpoint
 
 Añade a `GET /funkos/{id}` la descripción y las tres respuestas posibles.
 
-??? success "Solución"
+```java
+@Operation(
+    summary = "Obtiene un funko por su id",
+    description = "Devuelve el funko con el id indicado. Los borrados lógicamente "
+                + "no se devuelven y se tratan como inexistentes.")
+@ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Funko encontrado",
+        content = @Content(mediaType = "application/json",
+                           schema = @Schema(implementation = FunkoResponse.class))),
+    @ApiResponse(responseCode = "400", description = "El id no es un número",
+        content = @Content),
+    @ApiResponse(responseCode = "404", description = "No existe un funko con ese id",
+        content = @Content)
+})
+@GetMapping("/{id}")
+public ResponseEntity<FunkoResponse> findById(
+        @Parameter(description = "Id del funko", example = "1", required = true)
+        @PathVariable Long id) {
+    return ResponseEntity.ok(servicio.findById(id));
+}
+```
 
-    ```java
-    @Operation(
-        summary = "Obtiene un funko por su id",
-        description = "Devuelve el funko con el id indicado. Los borrados lógicamente "
-                    + "no se devuelven y se tratan como inexistentes.")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Funko encontrado",
-            content = @Content(mediaType = "application/json",
-                               schema = @Schema(implementation = FunkoResponse.class))),
-        @ApiResponse(responseCode = "400", description = "El id no es un número",
-            content = @Content),
-        @ApiResponse(responseCode = "404", description = "No existe un funko con ese id",
-            content = @Content)
-    })
-    @GetMapping("/{id}")
-    public ResponseEntity<FunkoResponse> findById(
-            @Parameter(description = "Id del funko", example = "1", required = true)
-            @PathVariable Long id) {
-        return ResponseEntity.ok(servicio.findById(id));
-    }
-    ```
+Y en el DTO:
 
-    Y en el DTO:
+```java
+@Schema(description = "Datos de un funko")
+public record FunkoResponse(
+        @Schema(description = "Identificador", example = "1")
+        Long id,
+        @Schema(description = "Nombre del funko", example = "Mickey Mouse")
+        String nombre,
+        @Schema(description = "Precio en euros", example = "15.99")
+        BigDecimal precio) {}
+```
 
-    ```java
-    @Schema(description = "Datos de un funko")
-    public record FunkoResponse(
-            @Schema(description = "Identificador", example = "1")
-            Long id,
-            @Schema(description = "Nombre del funko", example = "Mickey Mouse")
-            String nombre,
-            @Schema(description = "Precio en euros", example = "15.99")
-            BigDecimal precio) {}
-    ```
+**Lo que `springdoc` no puede adivinar y hay que escribir:**
 
-    **Lo que `springdoc` no puede adivinar y hay que escribir:**
+| Lo deduce solo | Hay que escribirlo |
+|---|---|
+| Ruta, verbo, parámetros | **Para qué sirve** el endpoint |
+| Tipos y obligatoriedad (de las anotaciones de validación) | **Qué errores** devuelve y cuándo |
+| Esquema de los DTOs | **Ejemplos** de valores reales |
 
-    | Lo deduce solo | Hay que escribirlo |
-    |---|---|
-    | Ruta, verbo, parámetros | **Para qué sirve** el endpoint |
-    | Tipos y obligatoriedad (de las anotaciones de validación) | **Qué errores** devuelve y cuándo |
-    | Esquema de los DTOs | **Ejemplos** de valores reales |
+Y la columna de la derecha es justo la que convierte «una lista de endpoints» en documentación usable.
 
-    Y la columna de la derecha es justo la que convierte «una lista de endpoints» en documentación usable.
-
-### E6 ●●● — Documentar la API y apagarla en producción
+### Documentar la API y apagarla en producción
 
 Configura OpenAPI con metadatos y deja Swagger apagado en `prod`.
 
-??? success "Solución"
+```java title="config/OpenApiConfig.java"
+@Configuration
+public class OpenApiConfig {
 
-    ```java title="config/OpenApiConfig.java"
-    @Configuration
-    public class OpenApiConfig {
+    @Bean
+    public OpenAPI apiInfo(@Value("${api.version:v1}") String version) {
+        return new OpenAPI()
+            .info(new Info()
+                .title("API REST de Funkos — DWES 2.º DAW")
+                .version(version)
+                .description("""
+                    API REST de gestión de funkos y categorías.
 
-        @Bean
-        public OpenAPI apiInfo(@Value("${api.version:v1}") String version) {
-            return new OpenAPI()
-                .info(new Info()
-                    .title("API REST de Funkos — DWES 2.º DAW")
-                    .version(version)
-                    .description("""
-                        API REST de gestión de funkos y categorías.
-
-                        Construida en la UT4 (capas), la UT5 (persistencia con JPA)
-                        y la UT6 (WebSockets, GraphQL y documentación).
-                        """)
-                    .contact(new Contact()
-                        .name("IES Ejemplo · 2.º DAW")
-                        .email("dwes@iesx.es"))
-                    .license(new License()
-                        .name("CC BY-NC-SA 4.0")
-                        .url("https://creativecommons.org/licenses/by-nc-sa/4.0/")))
-                .servers(List.of(
-                    new Server().url("http://localhost:8080").description("Desarrollo"),
-                    new Server().url("https://api.miapp.es").description("Producción")))
-                .tags(List.of(
-                    new Tag().name("Funkos").description("CRUD de funkos"),
-                    new Tag().name("Categorías").description("CRUD de categorías")));
-        }
+                    Construida en la UT4 (capas), la UT5 (persistencia con JPA)
+                    y la UT6 (WebSockets, GraphQL y documentación).
+                    """)
+                .contact(new Contact()
+                    .name("IES Ejemplo · 2.º DAW")
+                    .email("dwes@iesx.es"))
+                .license(new License()
+                    .name("CC BY-NC-SA 4.0")
+                    .url("https://creativecommons.org/licenses/by-nc-sa/4.0/")))
+            .servers(List.of(
+                new Server().url("http://localhost:8080").description("Desarrollo"),
+                new Server().url("https://api.miapp.es").description("Producción")))
+            .tags(List.of(
+                new Tag().name("Funkos").description("CRUD de funkos"),
+                new Tag().name("Categorías").description("CRUD de categorías")));
     }
-    ```
+}
+```
 
-    ```properties title="application-dev.properties"
-    springdoc.api-docs.enabled=true
-    springdoc.api-docs.path=/v3/api-docs
-    springdoc.swagger-ui.enabled=true
-    springdoc.swagger-ui.path=/swagger-ui.html
-    springdoc.swagger-ui.operationsSorter=method
-    springdoc.swagger-ui.tagsSorter=alpha
-    ```
+```properties title="application-dev.properties"
+springdoc.api-docs.enabled=true
+springdoc.api-docs.path=/v3/api-docs
+springdoc.swagger-ui.enabled=true
+springdoc.swagger-ui.path=/swagger-ui.html
+springdoc.swagger-ui.operationsSorter=method
+springdoc.swagger-ui.tagsSorter=alpha
+```
 
-    ```properties title="application-prod.properties"
-    springdoc.api-docs.enabled=false
-    springdoc.swagger-ui.enabled=false
-    ```
+```properties title="application-prod.properties"
+springdoc.api-docs.enabled=false
+springdoc.swagger-ui.enabled=false
+```
 
-    !!! danger "Por qué hay que apagarlo en producción"
-        Swagger UI **no es un visor: es un cliente HTTP completo** con un botón «Try it out» que manda peticiones de verdad.
+!!! danger "Por qué hay que apagarlo en producción"
+    Swagger UI **no es un visor: es un cliente HTTP completo** con un botón «Try it out» que manda peticiones de verdad.
 
-        Dejarlo abierto publica:
+    Dejarlo abierto publica:
 
-        - La lista completa de tus endpoints, incluidos los que no documentas en ningún sitio.
-        - El esquema de tus DTOs, que dice qué campos tienes.
-        - Un formulario para llamarlos a todos.
+    - La lista completa de tus endpoints, incluidos los que no documentas en ningún sitio.
+    - El esquema de tus DTOs, que dice qué campos tienes.
+    - Un formulario para llamarlos a todos.
 
-        Es el mismo criterio que la consola de H2 de la UT5 y la introspección de GraphQL del tema 2: **todo lo que es cómodo en desarrollo se apaga en producción**.
+    Es el mismo criterio que la consola de H2 de la UT5 y la introspección de GraphQL del tema 2: **todo lo que es cómodo en desarrollo se apaga en producción**.
 
-    !!! tip "Y el `/v3/api-docs` sí puede quedarse, con matices"
-        Si tu API es pública y quieres que otros la consuman, la **especificación** (el JSON) tiene sentido publicarla: con ella se generan clientes automáticamente. Lo que no debe quedarse es **la interfaz con el botón de disparar**.
+!!! tip "Y el `/v3/api-docs` sí puede quedarse, con matices"
+    Si tu API es pública y quieres que otros la consuman, la **especificación** (el JSON) tiene sentido publicarla: con ella se generan clientes automáticamente. Lo que no debe quedarse es **la interfaz con el botón de disparar**.
 
-        Alternativa habitual: generar el JSON en el *build* con el plugin de `springdoc` y publicarlo como una página estática, sin exponer nada en el servidor de producción.
+    Alternativa habitual: generar el JSON en el *build* con el plugin de `springdoc` y publicarlo como una página estática, sin exponer nada en el servidor de producción.

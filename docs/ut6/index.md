@@ -19,7 +19,7 @@
 
 | | |
 |---|---|
-| [**Ejercicios prácticos**](ejercicios-practicos.md) | Seis enunciados del formato del examen, con las rúbricas |
+| [**Examen práctico**](examen.md) | Seis enunciados del formato del examen, con las rúbricas |
 | [**Chuleta**](chuleta.md) | Referencia en una página · **[PDF para el examen](../pdf/chuleta-ut6.pdf)** |
 
 !!! success "Un servicio, tres transportes"
@@ -52,7 +52,7 @@
 | 4 | Configuración por perfiles | 0,8 |
 | 5 | Tests | 0,7 |
 
-Se aprueba con **5,0**. La rúbrica completa, con los dos desgloses del bloque 2 y las penalizaciones, está en [Ejercicios prácticos](ejercicios-practicos.md).
+Se aprueba con **5,0**. La rúbrica completa, con los dos desgloses del bloque 2 y las penalizaciones, está en [Examen práctico](examen.md).
 
 !!! danger "El bloque 1 no puede quedar en 0"
     El RA7 dice literalmente *«servicios web **reutilizables**»*. Se comprueba con tres comandos, antes de abrir ningún fichero:

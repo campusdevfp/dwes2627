@@ -1,11 +1,11 @@
-# 3. Repositorios, servicios y DTOs
+# 3. Las capas: repositorio, servicio y controlador
 
-Las dos capas que quedan por debajo del controlador, y las piezas que viajan entre ellas.
+Una aplicación por capas se escribe **de abajo arriba**: primero el modelo, luego el repositorio, luego el servicio y al final el controlador. Así cada pieza solo necesita lo que ya existe.
 
 ```mermaid
 flowchart LR
-    C["@RestController<br/>HTTP"] -->|DTOs| S["@Service<br/>reglas de negocio"]
-    S -->|modelos| R["@Repository<br/>SQL"]
+    C["@RestController<br/>HTTP"] -->|DTOs| S["@Service<br/>reglas"]
+    S -->|modelo| R["@Repository<br/>SQL"]
     R --> BD[("H2")]
 ```
 
@@ -15,46 +15,69 @@ flowchart LR
 | `@Service` | Reglas de negocio | HTTP, `ResponseEntity` |
 | `@Repository` | SQL y mapeo de filas | Reglas de negocio |
 
-!!! danger "La prueba de que está bien hecho"
+!!! success "El orden en el que se escribe"
+    | | Qué | Fichero |
+    |:-:|---|---|
+    | 1 | **El modelo** | `Funko.java` — un `record` |
+    | 2 | **El repositorio** | interfaz + `…Jdbc` |
+    | 3 | **Las excepciones** | 3 clases de 4 líneas |
+    | 4 | **Los DTOs** | 3 `record` |
+    | 5 | **El mapeador** | convierte DTO ↔ modelo |
+    | 6 | **El servicio** | interfaz + `…Impl` |
+    | 7 | **El controlador** | solo delega |
+    | 8 | **El manejador de errores** | 1 clase |
+
+    Y la comprobación de que no se ha cruzado ninguna línea:
+
     ```bash
-    grep -rn "ResponseEntity\|HttpStatus" src/main/java/**/services/    # debe estar vacío
-    grep -rni "SELECT\|INSERT\|UPDATE" src/main/java/**/controllers/    # debe estar vacío
+    grep -rn "ResponseEntity\|HttpStatus" src/main/java/**/services/    # vacío
+    grep -rni "SELECT\|INSERT\|UPDATE" src/main/java/**/controllers/    # vacío
     ```
 
-    Un `ResponseEntity` en el servicio o un `SELECT` en el controlador son los dos errores que más puntos restan en el examen.
+---
+
+## 3.0. El modelo
+
+Es la clase que representa una fila de la tabla. En esta unidad **un `record` basta**: solo transporta datos.
+
+```java title="funkos/models/Funko.java"
+package es.iesx.funkos.funkos.models;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+public record Funko(
+        Long id,
+        String nombre,
+        BigDecimal precio,
+        Integer cantidad,
+        String categoria,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
+) {}
+```
+
+!!! info "Un `record` y no una clase con *setters*"
+    Siete campos, cero métodos, y gratis: constructor, `equals`, `hashCode`, `toString` y los captadores (`f.nombre()`, no `f.getNombre()`).
+
+    Para «cambiar» un campo **se crea otro `record`** con los valores que quieres. Parece raro al principio y es justo lo que hace falta para el PATCH del apartado 3.5.
+
+!!! warning "En la UT5 esto cambia"
+    Cuando el modelo pase a ser una `@Entity` de JPA tendrá que ser una **clase** con constructor sin argumentos, porque Hibernate la construye por reflexión. Un `record` no sirve para eso.
+
+    Aquí, sin JPA, el `record` es lo más simple que funciona.
 
 ---
 
 ## 3.1. El repositorio
 
-Es la capa que habla con la base de datos. **El SQL lo escribes tú**: en esta unidad usamos H2 con `JdbcClient`, no JPA.
+**Qué hace:** hablar con la base de datos. Recibe y devuelve **modelos**, y es el único sitio donde hay SQL.
 
-### La dependencia
+**Qué no hace:** ninguna comprobación de negocio. Si no hay stock, eso lo decide el servicio.
 
-```xml
-<dependency>
-  <groupId>org.springframework.boot</groupId>
-  <artifactId>spring-boot-starter-jdbc</artifactId>
-</dependency>
-<dependency>
-  <groupId>com.h2database</groupId>
-  <artifactId>h2</artifactId>
-  <scope>runtime</scope>
-</dependency>
-```
+### La interfaz
 
-!!! info "`starter-jdbc`, no `starter-data-jpa`"
-    | | `starter-jdbc` (UT4) | `starter-data-jpa` (UT5) |
-    |---|---|---|
-    | El SQL | **Lo escribes tú** | Lo genera Hibernate |
-    | El esquema | **Tú**, en `schema.sql` | Desde las entidades |
-    | El mapeo fila → objeto | **Tú**, con un `RowMapper` | Automático |
-
-    Lo que ya te da: el **pool de conexiones** (HikariCP, configurado solo) y `@Transactional`. Lo que en la [UT3](../ut3/03-base-de-datos.md) hacías a mano con `DriverManager`.
-
-### La interfaz y la implementación
-
-El repositorio se declara como **interfaz** y se implementa aparte. Así el servicio depende del contrato, no de JDBC, y en la UT5 se podrá cambiar la implementación sin tocar nada más.
+Se declara primero como interfaz. El servicio dependerá del contrato, no de JDBC.
 
 ```java title="funkos/repositories/FunkosRepository.java"
 public interface FunkosRepository {
@@ -62,45 +85,44 @@ public interface FunkosRepository {
     Optional<Funko> findById(Long id);
     boolean         existsByNombre(String nombre);
     Funko           save(Funko funko);
-    Funko           update(Funko funko);
+    void            update(Funko funko);
     boolean         deleteById(Long id);
 }
 ```
 
-!!! success "Las cuatro firmas que hay que copiar siempre"
-    | Devuelve | Por qué |
+!!! success "Las cuatro firmas que importan, y por qué"
+    | Devuelve | Motivo |
     |---|---|
-    | `findById` → **`Optional<Funko>`** | Que no exista es un resultado normal, no un error. Nunca `null` |
-    | `save` → **`Funko`** | Con el **id generado** ya puesto |
-    | `deleteById` → **`boolean`** | Leído de las filas afectadas: así el servicio puede devolver 404 |
-    | `existsByNombre` → `boolean` | Para las reglas de negocio, sin traerse el objeto entero |
+    | `findById` → **`Optional<Funko>`** | Que no exista es normal, no un error. **Nunca `null`** |
+    | `save` → **`Funko`** | El mismo funko **con el id ya puesto**. Lo necesita el controlador para la cabecera `Location` |
+    | `deleteById` → **`boolean`** | Leído de las filas afectadas: permite que el servicio devuelva 404 |
+    | `existsByNombre` → `boolean` | Para una regla de negocio, **sin traerse el objeto entero** |
 
-### El `RowMapper`
+### Las dos piezas de JDBC
 
-Convierte una fila del `ResultSet` en un objeto. Es el mapeo de la UT3, aislado en su propia clase.
+**`JdbcClient`** manda la consulta. **`RowMapper`** convierte una fila en un objeto.
 
-```java title="funkos/mappers/FunkoRowMapper.java"
+```java title="funkos/repositories/FunkoRowMapper.java"
 @Component
 public class FunkoRowMapper implements RowMapper<Funko> {
 
     @Override
     public Funko mapRow(ResultSet rs, int rowNum) throws SQLException {
-        return Funko.builder()
-                .id(rs.getLong("id"))
-                .nombre(rs.getString("nombre"))
-                .precio(rs.getBigDecimal("precio"))
-                .cantidad(rs.getInt("cantidad"))
-                .categoria(rs.getString("categoria"))
-                .createdAt(rs.getTimestamp("created_at").toLocalDateTime())
-                .build();
+        return new Funko(
+                rs.getLong("id"),
+                rs.getString("nombre"),
+                rs.getBigDecimal("precio"),
+                rs.getInt("cantidad"),
+                rs.getString("categoria"),
+                rs.getTimestamp("created_at").toLocalDateTime(),
+                rs.getTimestamp("updated_at").toLocalDateTime());
     }
 }
 ```
 
-!!! tip "Uno solo, y reutilizado"
-    Cuando la tabla gane una columna, se toca **un** método. Si el mapeo está copiado dentro de cada consulta, se tocan todas y alguna se olvida.
+**Uno solo, y reutilizado en todas las consultas.** Cuando la tabla gane una columna, se toca un método.
 
-### `JdbcClient`: las seis operaciones
+### La implementación
 
 ```java title="funkos/repositories/FunkosRepositoryJdbc.java"
 @Repository
@@ -114,14 +136,12 @@ public class FunkosRepositoryJdbc implements FunkosRepository {
         this.rowMapper = rowMapper;
     }
 
-    // ── 1 · varias filas
     @Override
     public List<Funko> findAll() {
         return jdbc.sql("SELECT * FROM funkos ORDER BY id")
                    .query(rowMapper).list();
     }
 
-    // ── 2 · cero o una fila → Optional
     @Override
     public Optional<Funko> findById(Long id) {
         return jdbc.sql("SELECT * FROM funkos WHERE id = :id")
@@ -129,7 +149,6 @@ public class FunkosRepositoryJdbc implements FunkosRepository {
                    .query(rowMapper).optional();
     }
 
-    // ── 3 · un valor suelto
     @Override
     public boolean existsByNombre(String nombre) {
         return jdbc.sql("SELECT COUNT(*) FROM funkos WHERE UPPER(nombre) = UPPER(:nombre)")
@@ -137,7 +156,6 @@ public class FunkosRepositoryJdbc implements FunkosRepository {
                    .query(Integer.class).single() > 0;
     }
 
-    // ── 4 · INSERT con id generado
     @Override
     public Funko save(Funko f) {
         var keys = new GeneratedKeyHolder();
@@ -145,38 +163,36 @@ public class FunkosRepositoryJdbc implements FunkosRepository {
                 INSERT INTO funkos (nombre, precio, cantidad, categoria, created_at, updated_at)
                 VALUES (:nombre, :precio, :cantidad, :categoria, :creado, :actualizado)
                 """)
-            .param("nombre", f.getNombre())
-            .param("precio", f.getPrecio())
-            .param("cantidad", f.getCantidad())
-            .param("categoria", f.getCategoria())
-            .param("creado", f.getCreatedAt())
-            .param("actualizado", f.getUpdatedAt())
+            .param("nombre", f.nombre())
+            .param("precio", f.precio())
+            .param("cantidad", f.cantidad())
+            .param("categoria", f.categoria())
+            .param("creado", f.createdAt())
+            .param("actualizado", f.updatedAt())
             .update(keys);
 
-        f.setId(((Number) keys.getKeys().get("id")).longValue());
-        return f;
+        Long id = ((Number) keys.getKeys().get("id")).longValue();
+        return new Funko(id, f.nombre(), f.precio(), f.cantidad(),
+                         f.categoria(), f.createdAt(), f.updatedAt());
     }
 
-    // ── 5 · UPDATE
     @Override
-    public Funko update(Funko f) {
+    public void update(Funko f) {
         jdbc.sql("""
                 UPDATE funkos
                    SET nombre = :nombre, precio = :precio, cantidad = :cantidad,
                        categoria = :categoria, updated_at = :actualizado
                  WHERE id = :id
                 """)
-            .param("nombre", f.getNombre())
-            .param("precio", f.getPrecio())
-            .param("cantidad", f.getCantidad())
-            .param("categoria", f.getCategoria())
-            .param("actualizado", LocalDateTime.now())
-            .param("id", f.getId())
+            .param("nombre", f.nombre())
+            .param("precio", f.precio())
+            .param("cantidad", f.cantidad())
+            .param("categoria", f.categoria())
+            .param("actualizado", f.updatedAt())
+            .param("id", f.id())
             .update();
-        return f;
     }
 
-    // ── 6 · DELETE: devuelve si borró algo
     @Override
     public boolean deleteById(Long id) {
         return jdbc.sql("DELETE FROM funkos WHERE id = :id")
@@ -186,27 +202,27 @@ public class FunkosRepositoryJdbc implements FunkosRepository {
 }
 ```
 
-| Lo que necesitas | Cómo se cierra la cadena |
+### Las seis formas de cerrar una consulta
+
+| Lo que necesitas | Cómo se cierra |
 |---|---|
 | Lista de objetos | `.query(rowMapper).list()` |
 | Cero o uno | `.query(rowMapper).optional()` → **`Optional`** |
 | Uno obligatorio | `.query(rowMapper).single()` |
 | Un número o un texto | `.query(Integer.class).single()` |
 | Escribir | `.update()` → **`int` de filas afectadas** |
-| Escribir y recuperar el id | `.update(keys)` con un `GeneratedKeyHolder` |
+| Escribir y recuperar el id | `.update(keys)` con `GeneratedKeyHolder` |
 
 !!! danger "Los `:param` no son plantillas de texto"
-    Por debajo son `PreparedStatement`: el valor viaja aparte y la base de datos **nunca lo interpreta como SQL**. La inyección SQL de la [UT3](../ut3/03-base-de-datos.md) no es posible por esta vía.
-
-    Lo que **nunca** se hace, aunque sea más corto:
+    Por debajo son `PreparedStatement`: el valor viaja aparte y la base de datos **nunca lo interpreta como SQL**. Lo que no se hace jamás:
 
     ```java
-    jdbc.sql("SELECT * FROM funkos WHERE nombre = '" + nombre + "'")   // ❌
+    jdbc.sql("SELECT * FROM funkos WHERE nombre = '" + nombre + "'")   // ❌ inyección SQL
     ```
 
-### Filtros opcionales y combinables
+### Filtros opcionales
 
-Con tres filtros opcionales hay ocho combinaciones. Un método por cada una es inviable, y los `if` anidados son ilegibles. Se monta el `WHERE` a trozos:
+Tres filtros opcionales son ocho combinaciones. Se monta el `WHERE` a trozos:
 
 ```java
 @Override
@@ -234,57 +250,44 @@ public List<Funko> buscar(Optional<String> categoria, Optional<String> nombre,
 }
 ```
 
-!!! success "Lo que se concatena y lo que no"
+Se concatena **la estructura**; los **valores** van siempre por `params`. El `WHERE 1 = 1` evita llevar la cuenta de cuál es el primer filtro.
+
+### Comprobar y escribir a la vez
+
+Cuando una regla depende del valor actual de la fila, **no se lee, se comprueba y se escribe**:
+
+```java
+@Override
+public int descontarStock(Long id, int cantidad) {
+    return jdbc.sql("""
+            UPDATE funkos SET cantidad = cantidad - :cantidad
+             WHERE id = :id AND cantidad >= :cantidad
+            """)
+        .param("cantidad", cantidad).param("id", id)
+        .update();
+}
+```
+
+!!! danger "Por qué no se hace en tres pasos"
     ```java
-    sql.append(" AND UPPER(categoria) = UPPER(:categoria)");   // ✅ texto FIJO, escrito por ti
-    params.put("categoria", c);                                 // ✅ valor parametrizado
+    var f = repositorio.findById(id).orElseThrow();
+    if (f.cantidad() < cantidad) throw new FunkoConflictException("Sin stock");   // ❌
+    repositorio.actualizarCantidad(id, f.cantidad() - cantidad);
     ```
 
-    Se concatena **la estructura**; los **valores** van siempre por `params`. Y el `WHERE 1 = 1` evita llevar la cuenta de cuál es el primer filtro.
+    Entre el `if` y el `UPDATE` **cabe otra petición**. Las dos leen 5, las dos creen que pueden vender 3, y el stock acaba en **−1**.
 
-### Comprobar y escribir en la misma sentencia
-
-Cuando una regla depende del estado actual de la fila, **no se lee, se comprueba y se escribe**: se hace todo en un `UPDATE` condicionado.
-
-=== "❌ Mal: tres pasos"
-
-    ```java
-    var funko = repositorio.findById(id).orElseThrow();
-    if (funko.getCantidad() < cantidad) throw new StockInsuficienteException(…);
-    repositorio.actualizarStock(id, funko.getCantidad() - cantidad);
-    ```
-
-    Entre el `if` y el `UPDATE` **cabe otra petición** haciendo lo mismo. Las dos leen 5, las dos creen que pueden vender 3, y el stock acaba en **−1**.
-
-    Se llama **condición de carrera**, y en desarrollo nunca se reproduce porque hay un solo usuario.
-
-=== "✅ Bien: una sentencia atómica"
-
-    ```java
-    @Override
-    public int descontarStock(Long id, int cantidad) {
-        return jdbc.sql("""
-                UPDATE funkos SET cantidad = cantidad - :cantidad
-                 WHERE id = :id AND cantidad >= :cantidad
-                """)
-            .param("cantidad", cantidad).param("id", id)
-            .update();
-    }
-    ```
-
-    ```java
-    // en el servicio
-    if (repositorio.descontarStock(id, cantidad) == 0)
-        throw new FunkoConflictException("Stock insuficiente");
-    ```
-
-    La base de datos garantiza que nadie se cuela en medio. Si no había bastante, afecta a **0 filas**, y **ese número es la respuesta**.
+    Con el `UPDATE … WHERE cantidad >= :cantidad` la base de datos lo garantiza, y **las 0 filas afectadas son la respuesta**.
 
 ---
 
 ## 3.2. El servicio
 
-Encapsula la lógica de negocio. El controlador recibe y responde HTTP; el servicio **decide**.
+**Qué hace:** las reglas de negocio. Recibe DTOs, devuelve DTOs, y cuando algo va mal **lanza una excepción**.
+
+**Qué no hace:** nada de HTTP. Ni `ResponseEntity`, ni `HttpStatus`, ni códigos de estado.
+
+### La interfaz
 
 ```java title="funkos/services/FunkosService.java"
 public interface FunkosService {
@@ -298,9 +301,10 @@ public interface FunkosService {
 }
 ```
 
+### La implementación
+
 ```java title="funkos/services/FunkosServiceImpl.java"
 @Service
-@CacheConfig(cacheNames = {"funkos"})
 public class FunkosServiceImpl implements FunkosService {
 
     private static final Logger log = LoggerFactory.getLogger(FunkosServiceImpl.class);
@@ -315,7 +319,13 @@ public class FunkosServiceImpl implements FunkosService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(key = "#id")
+    public List<FunkoResponse> buscar(Optional<String> categoria, Optional<String> nombre,
+                                      Optional<BigDecimal> precioMax) {
+        return mapper.toResponse(repositorio.buscar(categoria, nombre, precioMax));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public FunkoResponse findById(Long id) {
         return repositorio.findById(id)
                 .map(mapper::toResponse)
@@ -324,16 +334,26 @@ public class FunkosServiceImpl implements FunkosService {
 
     @Override
     @Transactional
-    @CacheEvict(allEntries = true)
     public FunkoResponse save(FunkoCreateRequest request) {
         if (repositorio.existsByNombre(request.nombre()))
             throw new FunkoConflictException("Ya existe un funko llamado " + request.nombre());
+
         return mapper.toResponse(repositorio.save(mapper.toModel(request)));
     }
 
     @Override
     @Transactional
-    @CacheEvict(allEntries = true)
+    public FunkoResponse update(Long id, FunkoUpdateRequest request) {
+        var original = repositorio.findById(id)
+                .orElseThrow(() -> new FunkoNotFoundException(id));
+
+        var parcheado = mapper.parchear(original, request);
+        repositorio.update(parcheado);
+        return mapper.toResponse(parcheado);
+    }
+
+    @Override
+    @Transactional
     public void deleteById(Long id) {
         if (!repositorio.deleteById(id))
             throw new FunkoNotFoundException(id);
@@ -341,271 +361,239 @@ public class FunkosServiceImpl implements FunkosService {
 }
 ```
 
-!!! success "Lo que hay que mirar de este fichero es lo que NO contiene"
-    Ni `ResponseEntity`, ni `HttpStatus`, ni `@PathVariable`. **El servicio no sabe que existe HTTP**: recibe DTOs, devuelve DTOs y cuando algo va mal **lanza**.
+!!! success "Los tres patrones que se repiten en todos los servicios"
+    **1 · Leer uno o lanzar 404**
 
-    Por eso en la UT6 este mismo servicio podrá atender un WebSocket y una consulta GraphQL sin cambiar una línea.
+    ```java
+    repositorio.findById(id).orElseThrow(() -> new FunkoNotFoundException(id));
+    ```
 
-!!! danger "El `deleteById` usa lo que devuelve el repositorio"
+    **2 · Comprobar una regla antes de escribir**
+
+    ```java
+    if (repositorio.existsByNombre(request.nombre()))
+        throw new FunkoConflictException("…");
+    ```
+
+    **3 · Usar las filas afectadas para decidir**
+
     ```java
     if (!repositorio.deleteById(id)) throw new FunkoNotFoundException(id);
     ```
 
-    Un `DELETE` de un id que no existe **no lanza nada**: afecta a 0 filas. Sin ese `if`, el cliente recibe un **204** y cree que ha borrado algo. Con él, **404**.
+    El tercero es el que se olvida: un `DELETE` de un id inexistente **no lanza nada**, afecta a 0 filas. Sin ese `if`, el cliente recibe un **204** y cree que ha borrado algo.
 
-### Una interfaz por delante, aunque haya una sola implementación
+!!! info "`@Transactional`, en una línea"
+    - **`readOnly = true`** en las lecturas: queda documentado que ese método no escribe.
+    - **Sin parámetros** en las escrituras.
+    - **Imprescindible** cuando un método hace **dos o más escrituras**: o se hacen las dos, o ninguna.
 
-Es la interfaz de la [UT2](../ut2/03-poo-en-java.md) con Spring eligiendo la implementación. Lo que te da en la práctica: en el test del controlador puedes inyectar un doble del servicio sin levantar nada.
+    Y la trampa: **solo revierte con `RuntimeException`**, y si capturas la excepción dentro del método, **no hay *rollback***.
 
 ---
 
-## 3.3. Excepciones de dominio
+## 3.3. Las excepciones
 
-### La opción rápida: `ResponseStatusException`
+**Tres clases de cuatro líneas, y nada más.** Cada una lleva su código HTTP en una anotación.
 
-```java
-return repositorio.findById(id)
-        .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "No existe el funko " + id));
-```
-
-Funciona y se escribe en una línea. **Y mete `HttpStatus` dentro del servicio**, con lo que ese servicio ya no se puede reutilizar desde un WebSocket. Conviene conocerla porque la verás en mucho código.
-
-### La que usamos: excepciones propias con `@ResponseStatus`
-
-```java title="funkos/exceptions/"
-public abstract class FunkoException extends RuntimeException {
-    protected FunkoException(String mensaje) { super(mensaje); }
-}
-
+```java title="funkos/exceptions/FunkoNotFoundException.java"
 @ResponseStatus(HttpStatus.NOT_FOUND)
-public class FunkoNotFoundException extends FunkoException {
+public class FunkoNotFoundException extends RuntimeException {
     public FunkoNotFoundException(Long id) {
         super("No se ha encontrado el funko con id: " + id);
     }
 }
+```
 
+```java title="funkos/exceptions/FunkoConflictException.java"
 @ResponseStatus(HttpStatus.CONFLICT)
-public class FunkoConflictException extends FunkoException {
+public class FunkoConflictException extends RuntimeException {
     public FunkoConflictException(String mensaje) { super(mensaje); }
 }
+```
 
+```java title="funkos/exceptions/FunkoBadRequestException.java"
 @ResponseStatus(HttpStatus.BAD_REQUEST)
-public class FunkoBadRequestException extends FunkoException {
+public class FunkoBadRequestException extends RuntimeException {
     public FunkoBadRequestException(String mensaje) { super(mensaje); }
 }
 ```
 
-Una base **abstracta** por dominio y una subclase por código de estado.
+!!! success "Cómo funciona, de una vez"
+    1. El **servicio lanza**: `throw new FunkoNotFoundException(id);`
+    2. El **controlador no captura nada**.
+    3. Spring lee el **`@ResponseStatus`** de la clase y responde **404**.
 
-| | Ventaja concreta |
-|---|---|
-| El servicio lanza `new FunkoNotFoundException(id)` | **No menciona HTTP**: la anotación está en la excepción |
-| El controlador no captura nada | Spring lee `@ResponseStatus` y responde 404 |
-| En un test | `assertThrows(FunkoNotFoundException.class, …)`, sin servidor |
-| `catch (FunkoException e)` | Captura todas las del dominio de golpe |
+    Tres cosas que no hay que hacer: ni `try/catch` en el controlador, ni `ResponseEntity.notFound()` repartido por ahí, ni un handler por excepción.
 
-!!! tip "El constructor recibe el dato, no el mensaje montado"
-    `FunkoNotFoundException(Long id)`, no `FunkoNotFoundException(String mensaje)`. Así todos los 404 de la API dicen exactamente lo mismo y nadie se inventa la redacción.
+!!! info "Cuándo usar cada una"
+    | | Cuándo | Código |
+    |---|---|:-:|
+    | `FunkoNotFoundException` | El id no existe | **404** |
+    | `FunkoConflictException` | Está bien escrito pero **choca con el estado actual**: nombre repetido, sin stock, borrar algo en uso | **409** |
+    | `FunkoBadRequestException` | Un dato es inválido **y no lo puede detectar una anotación** | **400** |
 
-### Ver los mensajes
+!!! warning "No uses `ResponseStatusException`"
+    ```java
+    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No existe");   // ❌
+    ```
 
-```properties
-### Desarrollo
-server.error.include-message=always
-server.error.include-binding-errors=always
+    Funciona y se escribe en una línea, pero **mete `HttpStatus` dentro del servicio**. Ese servicio ya no se puede reutilizar desde un WebSocket (UT6), donde los códigos HTTP no significan nada.
 
-### Producción
-server.error.include-message=never
-server.error.include-stacktrace=never
-```
+    Y en el examen: `grep -rn "ResponseStatusException" src/` tiene que estar vacío.
 
-!!! danger "Nunca `include-stacktrace=always`"
-    Una traza en la respuesta dice qué framework usas, con qué versión, qué librerías tienes y cómo se llaman tus clases y tus tablas. Es un mapa para quien busque una vulnerabilidad conocida.
+!!! tip "El constructor recibe el dato, no el mensaje"
+    `new FunkoNotFoundException(id)` y no `new FunkoNotFoundException("No existe el " + id)`.
 
-    **Mensaje genérico al cliente, traza completa al log.**
+    Así **todos** los 404 de la API dicen lo mismo y nadie se inventa la redacción.
 
 ---
 
-## 3.4. DTOs
+## 3.4. Los DTOs
 
-Un DTO es el objeto que viaja entre el controlador y el cliente. **El modelo no sale nunca de la aplicación.**
+**Qué son:** los objetos que viajan entre el controlador y el cliente. Tres `record`, uno por cada cosa que puede pasar.
 
-```java
-// Lo que el cliente RECIBE
+| | Para qué | Lleva `id` y fechas |
+|---|---|:-:|
+| `FunkoResponse` | **Sale** hacia el cliente | Sí |
+| `FunkoCreateRequest` | **Entra** en el POST y el PUT | **No** |
+| `FunkoUpdateRequest` | **Entra** en el PATCH | No, y **todo opcional** |
+
+```java title="funkos/dto/FunkoResponse.java"
 public record FunkoResponse(
-        Long id, String nombre, BigDecimal precio, Integer cantidad,
-        String categoria, LocalDateTime createdAt, LocalDateTime updatedAt) {}
+        Long id,
+        String nombre,
+        BigDecimal precio,
+        Integer cantidad,
+        String categoria,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
+) {}
+```
 
-// Lo que MANDA al crear (POST y PUT): sin id ni fechas
+```java title="funkos/dto/FunkoCreateRequest.java"
 public record FunkoCreateRequest(
-        @NotBlank(message = "El nombre no puede estar vacío")
-        @Size(max = 100) String nombre,
-        @NotNull @DecimalMin("0.0") @Digits(integer = 8, fraction = 2) BigDecimal precio,
-        @NotNull @PositiveOrZero Integer cantidad,
-        @NotBlank @Pattern(regexp = "DISNEY|MARVEL|ANIME|OTROS") String categoria) {}
 
-// Lo que MANDA al actualizar (PATCH): todo opcional
+        @NotBlank(message = "El nombre no puede estar vacío")
+        @Size(max = 100, message = "Máximo 100 caracteres")
+        String nombre,
+
+        @NotNull(message = "El precio es obligatorio")
+        @DecimalMin(value = "0.0", message = "El precio no puede ser negativo")
+        BigDecimal precio,
+
+        @NotNull(message = "La cantidad es obligatoria")
+        @PositiveOrZero(message = "La cantidad no puede ser negativa")
+        Integer cantidad,
+
+        @NotBlank(message = "La categoría no puede estar vacía")
+        @Pattern(regexp = "DISNEY|MARVEL|ANIME|OTROS",
+                 message = "Debe ser DISNEY, MARVEL, ANIME u OTROS")
+        String categoria
+) {}
+```
+
+```java title="funkos/dto/FunkoUpdateRequest.java"
 public record FunkoUpdateRequest(
         @Size(max = 100) String nombre,
         @DecimalMin("0.0") BigDecimal precio,
         @PositiveOrZero Integer cantidad,
-        @Pattern(regexp = "DISNEY|MARVEL|ANIME|OTROS") String categoria) {}
+        @Pattern(regexp = "DISNEY|MARVEL|ANIME|OTROS") String categoria
+) {}
 ```
 
-!!! success "Tres DTOs, y la diferencia son los obligatorios"
-    | | `CreateRequest` | `UpdateRequest` |
-    |---|---|---|
-    | `nombre` | `@NotBlank` + `@Size` | solo `@Size` |
-    | `precio` | `@NotNull` + `@DecimalMin` | solo `@DecimalMin` |
-    | `categoria` | `@NotBlank` + `@Pattern` | solo `@Pattern` |
+!!! success "La única diferencia entre los dos requests"
+    En el de actualización **desaparecen los `@NotNull` y `@NotBlank`**. Las reglas de formato (`@Size`, `@Pattern`, `@DecimalMin`) se quedan.
 
-    En el de actualización **desaparecen los `@NotNull` y `@NotBlank`**, porque en un PATCH `null` significa «este campo no lo cambies». Las reglas de formato se quedan: si mandas un valor, tiene que ser válido.
+    Porque en un PATCH, `null` significa **«este campo no lo cambies»**. Si fuera obligatorio, no podrías mandar solo el precio.
 
-!!! danger "Por qué el modelo no sale nunca"
+!!! danger "Por qué el modelo no sale nunca de la aplicación"
     1. **Filtras datos.** Un `Usuario` tiene `passwordHash`. Devuélvelo tal cual y lo has publicado.
-    2. **El contrato deja de depender de la tabla.** Renombrar una columna no rompe a tus clientes.
-    3. **El DTO de creación sin `id`.** Si lo lleva, un cliente puede mandar `{"id": 1, …}` e intentar sobrescribir otro registro. Es una vulnerabilidad, no estilo.
-    4. **Nunca aceptes del cliente lo que puedas calcular**: el total de un pedido, el precio congelado de una línea, el estado inicial, un código correlativo.
+    2. **El contrato no depende de la tabla.** Renombrar una columna no rompe a tus clientes.
+    3. **El request de creación sin `id`.** Si lo lleva, un cliente puede mandar `{"id": 1, …}` e intentar sobrescribir otro registro.
 
-    Y en la UT5 hay dos razones más: la recursión infinita al serializar y el `LazyInitializationException`.
+    Y la regla que resume todo: **nunca aceptes del cliente un dato que puedas calcular**. El total de un pedido, el precio de una línea, el estado inicial, un código correlativo.
 
 ---
 
 ## 3.5. El mapeador
 
-Convierte entre DTOs y modelos. Tres métodos, porque son tres operaciones distintas.
+**Qué hace:** convertir entre DTOs y modelo. **Tres métodos, porque son tres operaciones distintas.**
 
 ```java title="funkos/mappers/FunkoMapper.java"
 @Component
 public class FunkoMapper {
 
+    /** Modelo → lo que sale hacia el cliente. */
     public FunkoResponse toResponse(Funko f) {
-        return new FunkoResponse(f.getId(), f.getNombre(), f.getPrecio(),
-                f.getCantidad(), f.getCategoria(), f.getCreatedAt(), f.getUpdatedAt());
+        return new FunkoResponse(f.id(), f.nombre(), f.precio(), f.cantidad(),
+                                 f.categoria(), f.createdAt(), f.updatedAt());
     }
 
     public List<FunkoResponse> toResponse(List<Funko> funkos) {
         return funkos.stream().map(this::toResponse).toList();
     }
 
-    /** POST: nuevo. El id y las fechas los pone el servidor. */
+    /** POST: funko nuevo. El id lo pone la base de datos; las fechas, el servidor. */
     public Funko toModel(FunkoCreateRequest r) {
         var ahora = LocalDateTime.now();
-        return Funko.builder()
-                .nombre(r.nombre().trim())
-                .precio(r.precio())
-                .cantidad(r.cantidad())
-                .categoria(r.categoria().toUpperCase())
-                .createdAt(ahora).updatedAt(ahora)
-                .build();
+        return new Funko(
+                null,                              // id: lo asigna la BD
+                r.nombre().trim(),
+                r.precio(),
+                r.cantidad(),
+                r.categoria().toUpperCase(),
+                ahora,                             // createdAt
+                ahora);                            // updatedAt
     }
 
-    /** PUT: reemplaza todo menos el id y la fecha de creación. */
-    public Funko toModelReemplazando(Funko original, FunkoCreateRequest r) {
-        return Funko.builder()
-                .id(original.getId())
-                .nombre(r.nombre().trim())
-                .precio(r.precio())
-                .cantidad(r.cantidad())
-                .categoria(r.categoria().toUpperCase())
-                .createdAt(original.getCreatedAt())
-                .updatedAt(LocalDateTime.now())
-                .build();
+    /** PUT: reemplaza todo. Conserva el id y la fecha de creación. */
+    public Funko reemplazar(Funko original, FunkoCreateRequest r) {
+        return new Funko(
+                original.id(),
+                r.nombre().trim(),
+                r.precio(),
+                r.cantidad(),
+                r.categoria().toUpperCase(),
+                original.createdAt(),
+                LocalDateTime.now());
     }
 
-    /** PATCH: solo cambia lo que llega distinto de null. */
-    public Funko toModelParcheando(Funko original, FunkoUpdateRequest r) {
-        return Funko.builder()
-                .id(original.getId())
-                .nombre(r.nombre()       != null ? r.nombre().trim()           : original.getNombre())
-                .precio(r.precio()       != null ? r.precio()                  : original.getPrecio())
-                .cantidad(r.cantidad()   != null ? r.cantidad()                : original.getCantidad())
-                .categoria(r.categoria() != null ? r.categoria().toUpperCase() : original.getCategoria())
-                .createdAt(original.getCreatedAt())
-                .updatedAt(LocalDateTime.now())
-                .build();
+    /** PATCH: cambia solo lo que llega distinto de null. */
+    public Funko parchear(Funko original, FunkoUpdateRequest r) {
+        return new Funko(
+                original.id(),
+                r.nombre()    != null ? r.nombre().trim()          : original.nombre(),
+                r.precio()    != null ? r.precio()                 : original.precio(),
+                r.cantidad()  != null ? r.cantidad()               : original.cantidad(),
+                r.categoria() != null ? r.categoria().toUpperCase() : original.categoria(),
+                original.createdAt(),
+                LocalDateTime.now());
     }
 }
 ```
 
-!!! danger "PUT y PATCH no pueden llamar al mismo método"
-    | Método | Verbo | Qué hace con lo que no mandas |
+!!! success "Para qué sirve cada método"
+    | Método | Verbo | Qué hace con lo que **no** mandas |
     |---|---|---|
     | `toModel` | POST | No aplica: es nuevo |
-    | `toModelReemplazando` | PUT | **Lo borra** (queda `null`) |
-    | `toModelParcheando` | PATCH | **Lo conserva** |
+    | `reemplazar` | PUT | **Lo borra** (queda `null`) |
+    | `parchear` | PATCH | **Lo conserva** |
 
-    Los `!= null` **son** la semántica del PATCH. Si tu PUT y tu PATCH usan el mismo método, has implementado dos veces el PATCH, y eso resta puntos en la rúbrica.
+    Los `!= null` del `parchear` **son** la semántica del PATCH. Si tu PUT y tu PATCH llaman al mismo método, has implementado dos veces el PATCH.
 
-    Y `createdAt` **nunca** se toca después del `toModel`.
+!!! info "Dos campos que no se tocan nunca"
+    - **`createdAt`** se arrastra del original. Es la fecha en que nació el registro.
+    - **`updatedAt`** se refresca siempre con `LocalDateTime.now()`.
+
+!!! tip "`@Component` y no métodos `static`"
+    Así se inyecta por constructor y se puede sustituir en un test. Es un bean más.
 
 ---
 
-## 3.6. Validación
+## 3.6. La validación
 
-### En el DTO, con anotaciones
-
-```java
-@PostMapping
-public ResponseEntity<FunkoResponse> crear(@Valid @RequestBody FunkoCreateRequest dto) { … }
-//                                          ^^^^^^ sin esto NO SE VALIDA NADA
-```
-
-!!! danger "Sin `@Valid` no hay validación, y nada avisa"
-    El DTO está lleno de `@NotBlank` y `@Min`, el código parece perfecto, y **las anotaciones no se ejecutan**. Un POST con el nombre vacío devuelve un **201 Created** tan contento.
-
-    No hay warning de compilación. No hay log. Solo datos basura en la base de datos.
-
-| | Para qué |
-|---|---|
-| `@NotNull` | No nulo → números, fechas, booleanos |
-| `@NotBlank` | No nulo + no solo espacios → **`String`** |
-| `@NotEmpty` | No nulo + `size > 0` → **colecciones** |
-| `@Size(min=, max=)` | Longitud o tamaño |
-| `@Min` `@Max` | Enteros |
-| `@DecimalMin` `@DecimalMax` `@Digits(integer=, fraction=)` | `BigDecimal` |
-| `@Positive` `@PositiveOrZero` `@Negative` `@NegativeOrZero` | Numéricos |
-| `@Email` `@Pattern(regexp=)` | Texto |
-| `@Past` `@PastOrPresent` `@Future` `@FutureOrPresent` | Fechas |
-| `@AssertTrue` `@AssertFalse` | Validación **de clase**: compara dos campos |
-| **`@Valid`** | **En cascada**: objetos y listas anidadas |
-
-!!! warning "`@NotNull`, `@NotEmpty` y `@NotBlank` no son sinónimos"
-    | Valor | `@NotNull` | `@NotEmpty` | `@NotBlank` |
-    |---|:-:|:-:|:-:|
-    | `null` | ❌ | ❌ | ❌ |
-    | `""` | ✅ | ❌ | ❌ |
-    | `"   "` | ✅ | ✅ | ❌ |
-
-    Un `@NotNull` en un `String` deja pasar `""`, que es el error que llena las tablas de nombres vacíos.
-
-### En cascada, para objetos y listas anidadas
-
-```java
-record PedidoRequest(
-    @NotNull Long clienteId,
-    @NotEmpty @Valid List<LineaRequest> lineas) {}   // ← sin @Valid, las líneas NO se validan
-```
-
-Sin ese `@Valid`, el `@NotEmpty` de la lista sí se ejecuta, pero el `@Min(1)` de cada cantidad **no**: un pedido con `cantidad: -5` pasaría la validación.
-
-### De clase, para reglas que comparan dos campos
-
-```java
-record ReservaRequest(@NotNull LocalTime desde, @NotNull LocalTime hasta) {
-
-    @AssertTrue(message = "La hora de fin debe ser posterior a la de inicio")
-    public boolean isRangoValido() {
-        if (desde == null || hasta == null) return true;   // de eso ya se queja @NotNull
-        return hasta.isAfter(desde);
-    }
-}
-```
-
-El `return true` cuando hay nulos evita **dos mensajes de error para el mismo problema** y un `NullPointerException` dentro del validador.
-
-### Los tres niveles, y los tres se ponen
+Se valida en **tres sitios distintos**, y los tres se ponen.
 
 ```mermaid
 flowchart TB
@@ -617,23 +605,63 @@ flowchart TB
 
 | | Dónde | Qué comprueba | Código |
 |---|---|---|:-:|
-| **Formato** | DTO, anotaciones | Un campo aislado, o dos del mismo objeto | **400** |
-| **Negocio** | **Servicio** | Nombre único, stock suficiente, fechas coherentes | **409** |
+| **Formato** | DTO, con anotaciones | Un campo aislado | **400** |
+| **Negocio** | **Servicio** | Necesita consultar la BD u otros campos | **409** |
 | **Integridad** | **Tabla** | La única que **no se puede saltar** | 409 vía handler |
 
+### 1 · Formato, en el DTO
+
 ```java
-// Negocio: necesita consultar
+@PostMapping
+public ResponseEntity<FunkoResponse> crear(@Valid @RequestBody FunkoCreateRequest dto) { … }
+//                                          ^^^^^^ sin esto NO SE VALIDA NADA
+```
+
+!!! danger "Sin `@Valid` no hay validación, y nada avisa"
+    El DTO lleno de `@NotBlank` y `@Min`, el código perfecto, y **las anotaciones no se ejecutan**. Un POST con el nombre vacío devuelve **201 Created**.
+
+    No hay warning de compilación. No hay log. Solo datos basura en la tabla.
+
+| | Para qué |
+|---|---|
+| `@NotNull` | No nulo → números, fechas, booleanos |
+| `@NotBlank` | No nulo + no solo espacios → **`String`** |
+| `@NotEmpty` | No nulo + `size > 0` → **colecciones** |
+| `@Size(max=)` | Longitud |
+| `@Min` `@Max` | Enteros |
+| `@DecimalMin` `@DecimalMax` | `BigDecimal` |
+| `@Positive` `@PositiveOrZero` | Numéricos |
+| `@Email` `@Pattern(regexp=)` | Texto |
+| `@Past` `@PastOrPresent` `@Future` | Fechas |
+| `@Valid` | **En cascada**: objetos y listas anidadas |
+
+!!! warning "`@NotNull`, `@NotEmpty` y `@NotBlank` no son lo mismo"
+    | Valor | `@NotNull` | `@NotEmpty` | `@NotBlank` |
+    |---|:-:|:-:|:-:|
+    | `null` | ❌ | ❌ | ❌ |
+    | `""` | ✅ | ❌ | ❌ |
+    | `"   "` | ✅ | ✅ | ❌ |
+
+    Un `@NotNull` en un `String` deja pasar `""`. **Para texto, `@NotBlank`.**
+
+### 2 · Negocio, en el servicio
+
+Lo que una anotación no puede comprobar porque necesita la base de datos:
+
+```java
 if (repositorio.existsByNombre(request.nombre()))
     throw new FunkoConflictException("Ya existe un funko llamado " + request.nombre());
 ```
 
 !!! danger "400 no es 409"
     - **400** = «lo que me has mandado está mal escrito».
-    - **409 Conflict** = «está bien escrito, pero choca con el estado actual del sistema».
+    - **409** = «está bien escrito, pero choca con el estado actual».
 
-    Que el nombre no esté vacío no necesita la base de datos. Que no esté repetido, sí. Confundir los dos códigos resta en la rúbrica.
+    Que el nombre no esté vacío no necesita la base de datos. Que no esté repetido, sí.
 
-### El manejador global
+### 3 · El manejador de errores
+
+Una sola clase que convierte los fallos de formato en respuestas útiles.
 
 ```java title="common/GlobalExceptionHandler.java"
 @RestControllerAdvice
@@ -685,16 +713,152 @@ public class GlobalExceptionHandler {
 }
 ```
 
-Un 400 con los errores **campo a campo** es lo que un formulario necesita para pintar el mensaje debajo de cada casilla. Una respuesta que solo dice «datos inválidos» obliga al cliente a adivinar.
+!!! success "Aquí NO van las excepciones del dominio"
+    `FunkoNotFoundException` y `FunkoConflictException` **no necesitan handler**: llevan su `@ResponseStatus` y Spring las traduce solas.
 
-!!! success "Lo que NO está en el handler, y es deliberado"
-    No hay handler para `FunkoNotFoundException` ni para `FunkoConflictException`: **llevan su `@ResponseStatus` y Spring las traduce solas**.
-
-    Aquí solo están los errores que **no son del dominio**: validación, JSON roto, tipo de parámetro incorrecto y violaciones de integridad.
+    En esta clase solo van los errores de **hablar HTTP**: validación, JSON roto, tipo de parámetro malo e integridad de la tabla.
 
 ---
 
-## 3.7. Caché
+## 3.7. El controlador
+
+**Qué hace:** recibir la petición, llamar al servicio y envolver la respuesta. **Tres líneas por método.**
+
+**Qué no hace:** ni un `if` de negocio, ni SQL, ni capturar excepciones.
+
+```java title="funkos/controllers/FunkosRestController.java"
+@RestController
+@RequestMapping("${api.path:/api}/${api.version:v1}/funkos")
+public class FunkosRestController {
+
+    private final FunkosService servicio;
+
+    public FunkosRestController(FunkosService servicio) {
+        this.servicio = servicio;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<FunkoResponse>> buscar(
+            @RequestParam Optional<String> categoria,
+            @RequestParam Optional<String> nombre,
+            @RequestParam Optional<BigDecimal> precioMax) {
+        return ResponseEntity.ok(servicio.buscar(categoria, nombre, precioMax));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<FunkoResponse> findById(@PathVariable Long id) {
+        return ResponseEntity.ok(servicio.findById(id));
+    }
+
+    @PostMapping
+    public ResponseEntity<FunkoResponse> crear(
+            @Valid @RequestBody FunkoCreateRequest funko) {
+        var creado = servicio.save(funko);
+        return ResponseEntity
+                .created(URI.create("/api/v1/funkos/" + creado.id()))
+                .body(creado);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<FunkoResponse> reemplazar(
+            @PathVariable Long id, @Valid @RequestBody FunkoCreateRequest funko) {
+        return ResponseEntity.ok(servicio.replace(id, funko));
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<FunkoResponse> actualizar(
+            @PathVariable Long id, @Valid @RequestBody FunkoUpdateRequest funko) {
+        return ResponseEntity.ok(servicio.update(id, funko));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> borrar(@PathVariable Long id) {
+        servicio.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+```
+
+### Las decisiones que hay que tomar, y qué elegir
+
+**1 · ¿Devolver `ResponseEntity<T>` o `T` directamente?**
+
+=== "`ResponseEntity<T>` ✅"
+
+    ```java
+    @GetMapping("/{id}")
+    public ResponseEntity<FunkoResponse> findById(@PathVariable Long id) {
+        return ResponseEntity.ok(servicio.findById(id));
+    }
+    ```
+
+    Permite elegir el **código** y añadir **cabeceras**. Imprescindible en el POST, que necesita el 201 y el `Location`.
+
+=== "`T` a secas"
+
+    ```java
+    @GetMapping("/{id}")
+    public FunkoResponse findById(@PathVariable Long id) {
+        return servicio.findById(id);
+    }
+    ```
+
+    Más corto, y Spring responde 200. Pero no puedes devolver 201 ni poner cabeceras, así que el POST necesitaría otra forma.
+
+**En este módulo: siempre `ResponseEntity`**, para que todos los métodos se escriban igual.
+
+**2 · ¿Dónde se decide el código de estado?**
+
+| Caso | Quién lo decide |
+|---|---|
+| Éxito (200, 201, 204) | **El controlador**, con `ResponseEntity` |
+| Error del dominio (404, 409) | **La excepción**, con su `@ResponseStatus` |
+| Error de formato (400) | **El `@RestControllerAdvice`** |
+
+El controlador **solo** decide los casos de éxito. Los errores suben solos.
+
+**3 · ¿Qué recibe cada método?**
+
+| Anotación | De dónde | Cuándo |
+|---|---|---|
+| `@PathVariable` | La ruta | **Identifica** el recurso: `/funkos/42` |
+| `@RequestParam` | La query | **Filtra, ordena o pagina**: `?categoria=disney` |
+| `@RequestBody` | El cuerpo | POST, PUT, PATCH |
+
+```java
+@RequestParam Optional<String> categoria         // ← preferido: sin null
+@RequestParam(required = false) String q         // equivalente, con null
+@RequestParam(defaultValue = "0") int page       // con valor por defecto
+```
+
+**4 · ¿Dónde va la cabecera `Location`?**
+
+Solo en el POST, y con la URL del recurso creado:
+
+```java
+return ResponseEntity.created(URI.create("/api/v1/funkos/" + creado.id())).body(creado);
+```
+
+Sin ella, el cliente no sabe dónde está lo que acaba de crear.
+
+**5 · ¿Y el `@Valid`?**
+
+En **todos** los `@RequestBody`. En el PUT va con `FunkoCreateRequest` (reemplaza todo, así que los campos vuelven a ser obligatorios); en el PATCH, con `FunkoUpdateRequest`.
+
+!!! success "La forma de los seis métodos es siempre la misma"
+    ```
+    1 · recibir      @PathVariable / @RequestParam / @Valid @RequestBody
+    2 · delegar      servicio.algo(...)
+    3 · envolver     ResponseEntity.ok(...) / .created(...).body(...) / .noContent().build()
+    ```
+
+    Si un método tiene más de tres líneas, probablemente hay lógica que debería estar en el servicio.
+
+---
+
+## 3.8. La caché
+
+**Qué hace:** guardar en memoria el resultado de un método para no repetir la consulta.
 
 ```xml
 <dependency>
@@ -719,269 +883,113 @@ public class FunkosServiceImpl implements FunkosService {
 
     @CacheEvict(allEntries = true)              // invalida TODO al escribir
     public FunkoResponse save(FunkoCreateRequest dto) { … }
-
-    @CachePut(key = "#result.id")               // ejecuta y guarda el resultado
-    public FunkoResponse actualizar(…) { … }
 }
 ```
 
-| | Qué hace |
+| | Qué significa |
 |---|---|
 | `@Cacheable` | «Si ya lo tengo, devuelvo la caché» |
+| `@CacheEvict` | «Borro la caché» |
 | `@CachePut` | «Lo ejecuto **y** actualizo la caché» |
-| `@CacheEvict` | «Borro de la caché» |
 
-!!! danger "Las tres trampas de la caché, y las tres caen en el examen"
-    **1. Sin `@EnableCaching` no hace nada**, y no avisa. Es el mismo fallo silencioso que el `@Valid` olvidado.
+!!! danger "Las tres trampas, y las tres caen en el examen"
+    **1.** Sin **`@EnableCaching`** no hace nada, y no avisa.
 
-    **2. Todo método que escribe necesita `@CacheEvict(allEntries = true)`.** Si cacheas `findAll()` y creas un funko, la lista cacheada sigue siendo la antigua: el cliente ve datos viejos **y nadie ve ningún error**. Tiene que ser `allEntries` porque un elemento nuevo invalida **todas** las listas, no una entrada.
+    **2.** **Todos** los métodos que escriben necesitan `@CacheEvict(allEntries = true)`. Si cacheas `findAll()` y creas un funko, la lista cacheada sigue siendo la antigua: el cliente ve datos viejos **sin ningún error**. Tiene que ser `allEntries` porque un elemento nuevo invalida **todas** las listas.
 
-    **3. Una llamada interna no pasa por la caché.**
+    **3.** Una llamada **interna** no pasa por la caché:
 
     ```java
-    public FunkoResponse metodoA(Long id) {
-        return findById(id);          // ← NO pasa por la caché
-    }
+    public FunkoResponse metodoA(Long id) { return findById(id); }   // ← NO cachea
     @Cacheable
     public FunkoResponse findById(Long id) { … }
     ```
 
-    Spring envuelve el bean en un **proxy** e intercepta las llamadas **que entran desde fuera**. Un `this.findById(...)` no sale del objeto. Le pasa lo mismo a `@Transactional`.
-
-!!! info "Esta caché es de memoria y de esta instancia"
-    Sin más configuración, Spring usa un `ConcurrentHashMap`: **sin límite de tamaño y sin caducidad**. Para un ejercicio vale; en producción se cambia por Caffeine (una dependencia) o Redis si hay varias instancias.
-
-    Y con dos instancias detrás de un balanceador, **cada una tiene su caché** y pueden contestar cosas distintas.
+    Spring intercepta las llamadas **que entran desde fuera** del bean, con un proxy. A `@Transactional` le pasa lo mismo.
 
 ---
 
-## Pruébalo ahora (15 min)
+## Casos especiales
 
-Sobre el proyecto que montarás en el [tema 5](05-proyectos.md), o sobre cualquier CRUD que tengas:
+Los seis sitios donde esto se rompe, y qué hacer.
 
-1. Quita el `@Valid` del `@RequestBody` y manda un POST con el nombre vacío. ¿Qué código devuelve?
-2. Vuelve a ponerlo y repite. Mira el cuerpo de la respuesta.
-3. Añade `@Cacheable` a `findById` con un `log.info` dentro. Llama dos veces al mismo id. ¿Cuántas veces sale el log?
-4. Con la caché puesta, borra ese funko y vuelve a pedirlo. ¿Qué pasa?
-5. Quita el `if (!repositorio.deleteById(id))` del servicio y borra un id que no exista.
+### 1 · El 500 que debería ser un 404
 
-??? success "Solución de las cinco"
+```java
+return ResponseEntity.ok(repositorio.findById(id).get());        // ❌
+```
 
-    **1. 201 Created.** Sin `@Valid` las anotaciones del DTO son decoración: nadie las ejecuta.
+El `.get()` sobre un `Optional` vacío lanza `NoSuchElementException` → **500**. Y el servidor no ha fallado: el recurso no existe, así que es un **404**.
 
-    **2. 400 Bad Request**, y con el `@RestControllerAdvice` puesto:
+```java
+repositorio.findById(id).orElseThrow(() -> new FunkoNotFoundException(id));   // ✅
+```
 
-    ```json
-    { "status": 400, "error": "Datos de entrada inválidos",
-      "campos": { "nombre": "El nombre no puede estar vacío" } }
-    ```
+### 2 · El `DELETE` que miente
 
-    **3. Una sola vez.** La segunda llamada no entra en el método: el proxy devuelve el valor guardado.
+```java
+public void deleteById(Long id) {
+    repositorio.deleteById(id);                                   // ❌
+}
+```
 
-    **4.** Si el `delete` no tiene `@CacheEvict`, el GET **devuelve el funko borrado**. Y sigue mal aunque pongas `@CacheEvict(key = "#id")`: `findAll()` cacheada también tiene la lista antigua, así que hace falta `allEntries = true`.
+Un `DELETE` de un id inexistente afecta a **0 filas** y no lanza nada. El cliente recibe **204** y cree que ha borrado algo.
 
-    **5. 204 No Content**, y el cliente cree que ha borrado algo que no existía. Debería ser **404**.
+```java
+if (!repositorio.deleteById(id)) throw new FunkoNotFoundException(id);        // ✅
+```
+
+### 3 · El PATCH que borra campos
+
+Si el PATCH llama al mismo método del mapeador que el PUT, mandar `{"precio": 25}` deja el nombre y la categoría en `null`.
+
+```java
+mapper.parchear(original, request)      // ✅ PATCH: conserva lo que no llega
+mapper.reemplazar(original, request)    // ✅ PUT: lo borra, que es lo correcto ahí
+```
+
+### 4 · El `@Valid` olvidado
+
+```java
+public ResponseEntity<FunkoResponse> crear(@RequestBody FunkoCreateRequest dto)   // ❌
+```
+
+Las anotaciones del DTO **no se ejecutan**: un nombre vacío devuelve 201. No hay ningún aviso.
+
+Se detecta con un test que mande un cuerpo inválido y exija un 400:
+
+```java
+mockMvc.perform(post("/api/v1/funkos")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"nombre":"","precio":10.00,"cantidad":1,"categoria":"ANIME"}"""))
+       .andExpect(status().isBadRequest());
+```
+
+### 5 · La caché que devuelve datos borrados
+
+Con `@Cacheable` en `findById` y sin `@CacheEvict` en `deleteById`, borras un funko y el siguiente GET **te lo devuelve**.
+
+```java
+@CacheEvict(allEntries = true)      // en save, replace, update Y delete
+```
+
+### 6 · El stock negativo con dos peticiones a la vez
+
+```java
+if (f.cantidad() < 1) throw new FunkoConflictException("Sin stock");    // ❌
+repositorio.actualizarCantidad(id, f.cantidad() - 1);
+```
+
+Entre el `if` y el `UPDATE` cabe otra petición. En desarrollo nunca falla, porque hay un solo usuario.
+
+```sql
+UPDATE funkos SET cantidad = cantidad - 1 WHERE id = :id AND cantidad >= 1
+```
+
+Si afecta a **0 filas**, no había stock. Una sola sentencia, y la base de datos garantiza que nadie se cuela.
 
 ---
 
-## Ejercicios (con solución)
-
-### E1 — Las cuatro firmas del repositorio
-
-¿Qué devuelve cada uno y por qué?
-
-```java
-?  findById(Long id);
-?  save(Funko f);
-?  deleteById(Long id);
-?  existsByNombre(String nombre);
-```
-
-??? success "Solución"
-
-    ```java
-    Optional<Funko> findById(Long id);
-    Funko           save(Funko f);
-    boolean         deleteById(Long id);
-    boolean         existsByNombre(String nombre);
-    ```
-
-    - **`Optional`** porque que no exista es un resultado normal, no un error. Nunca `null`.
-    - **`Funko`** con el id generado ya puesto: lo necesita el controlador para la cabecera `Location`.
-    - **`boolean`** leído de las filas afectadas: un `DELETE` de un id inexistente afecta a 0 y eso es lo que permite devolver 404.
-    - **`boolean`** para una regla de negocio, sin traerse el objeto entero de la base de datos.
-
-### E2 — El `UPDATE` condicionado
-
-¿Por qué esto está mal y cómo se arregla?
-
-```java
-var funko = repositorio.findById(id).orElseThrow();
-if (funko.getCantidad() < 1) throw new FunkoConflictException("Sin stock");
-repositorio.actualizarCantidad(id, funko.getCantidad() - 1);
-```
-
-??? success "Solución"
-
-    Entre el `if` y el `UPDATE` **cabe otra petición**: las dos leen cantidad 1, las dos pasan la comprobación, y el stock acaba en **−1**.
-
-    ```java
-    // en el repositorio
-    return jdbc.sql("""
-            UPDATE funkos SET cantidad = cantidad - 1
-             WHERE id = :id AND cantidad >= 1
-            """).param("id", id).update();
-
-    // en el servicio
-    if (repositorio.descontarUno(id) == 0)
-        throw new FunkoConflictException("Sin stock");
-    ```
-
-    **Una sola sentencia atómica.** La base de datos garantiza que nadie se cuela, y las **0 filas afectadas** son la señal.
-
-    En desarrollo el primer código funciona perfectamente, porque hay un solo usuario. Por eso es un error que solo se detecta razonando.
-
-### E3 — Tres razones para no devolver el modelo
-
-??? success "Solución"
-
-    1. **Expone datos que no debe**: `passwordHash`, el id interno del proveedor, un campo de borrado lógico.
-    2. **Ata el contrato de la API a la tabla**: renombrar una columna rompe a todos los clientes.
-    3. **No permite dos vistas del mismo dato**, que es lo que hace falta para versionar (`/v1` y `/v2`).
-
-    Y en la UT5 hay dos más: la recursión infinita con relaciones bidireccionales y el `LazyInitializationException`.
-
-### E4 — Por qué el DTO de creación no lleva `id`
-
-??? success "Solución"
-
-    Porque **el id lo asigna el servidor**.
-
-    Si el DTO lo lleva, un cliente puede mandar `{"id": 1, "nombre": "..."}` y, según cómo esté escrito el `save`, **sobrescribir el registro 1** en lugar de crear uno nuevo.
-
-    Mismo razonamiento para `createdAt`: las fechas las pone el servidor con `LocalDateTime.now()`, porque el reloj del cliente no es de fiar.
-
-    **Regla general: nunca aceptes del cliente un dato que puedas calcular.**
-
-### E5 — `ResponseStatusException` o excepción propia
-
-??? success "Solución"
-
-    | | `ResponseStatusException` | Excepción propia |
-    |---|---|---|
-    | Código a escribir | Una línea | Una clase por caso |
-    | ¿El servicio sabe de HTTP? | **Sí** | No |
-    | Testear | Hay que inspeccionar el `HttpStatus` | `assertThrows(FunkoNotFoundException.class, …)` |
-    | Reutilizar en WebSocket / GraphQL | **No se puede** | Sí |
-    | Capturar todo un dominio | No | `catch (FunkoException e)` |
-
-    **Excepción propia**, por la penúltima fila: en la UT6 ese servicio atiende un WebSocket, donde `HttpStatus.NOT_FOUND` no significa nada.
-
-### E6 — Las dos validaciones
-
-Clasifica: (a) el nombre no puede estar vacío · (b) el nombre no puede estar repetido · (c) el precio debe ser positivo · (d) no se puede borrar un funko con stock
-
-??? success "Solución"
-
-    | | Dónde | Cómo | Código |
-    |---|---|---|:-:|
-    | (a) | DTO | `@NotBlank` | 400 |
-    | (b) | **Servicio** | `existsByNombre` → `FunkoConflictException` | **409** |
-    | (c) | DTO | `@PositiveOrZero` | 400 |
-    | (d) | **Servicio** | consulta → excepción | **409** |
-
-    **El criterio:** si para comprobarlo hay que mirar la base de datos u otros campos, no es formato. Las anotaciones solo ven **un campo aislado**.
-
-### E7 — El `@Valid` anidado
-
-```java
-record PedidoRequest(@NotNull Long clienteId, @NotEmpty List<LineaRequest> lineas) {}
-record LineaRequest(@NotNull Long productoId, @NotNull @Min(1) Integer cantidad) {}
-```
-
-Mandas `{"clienteId":1,"lineas":[{"productoId":1,"cantidad":0}]}`. ¿Qué pasa?
-
-??? success "Solución"
-
-    **Pasa la validación**: devuelve 201 con una línea de cantidad 0.
-
-    El `@NotEmpty` de la lista sí se ejecuta, pero **las anotaciones de dentro de cada `LineaRequest` no**. Falta el `@Valid` en cascada:
-
-    ```java
-    record PedidoRequest(@NotNull Long clienteId,
-                         @NotEmpty @Valid List<LineaRequest> lineas) {}
-    ```
-
-    Con él, el error llega identificado por posición:
-
-    ```json
-    { "campos": { "lineas[0].cantidad": "La cantidad mínima es 1" } }
-    ```
-
-    Es el mismo olvido que el `@Valid` del `@RequestBody`, un nivel más abajo y más difícil de ver.
-
-### E8 — La caché que miente
-
-```java
-@Cacheable public List<FunkoResponse> findAll() { … }
-           public FunkoResponse save(FunkoCreateRequest f) { … }
-```
-
-??? success "Solución"
-
-    Creas un funko, pides la lista y **ves la de antes**, sin ningún error.
-
-    ```java
-    @CacheEvict(cacheNames = "funkos", allEntries = true)
-    public FunkoResponse save(FunkoCreateRequest f) { … }
-    ```
-
-    Tiene que ser `allEntries = true`: un elemento nuevo invalida **todas** las listas cacheadas.
-
-    Y la regla general: `save`, `replace`, `update` y `delete`, **los cuatro** con `@CacheEvict`.
-
-### E9 — El PATCH que borra campos
-
-Escribe el método del mapeador que aplica un `FunkoUpdateRequest` sobre un `Funko` existente.
-
-??? success "Solución"
-
-    ```java
-    public Funko toModelParcheando(Funko original, FunkoUpdateRequest r) {
-        return Funko.builder()
-                .id(original.getId())
-                .nombre(r.nombre()       != null ? r.nombre()       : original.getNombre())
-                .precio(r.precio()       != null ? r.precio()       : original.getPrecio())
-                .cantidad(r.cantidad()   != null ? r.cantidad()     : original.getCantidad())
-                .categoria(r.categoria() != null ? r.categoria()    : original.getCategoria())
-                .createdAt(original.getCreatedAt())   // nunca se toca
-                .updatedAt(LocalDateTime.now())       // siempre se refresca
-                .build();
-    }
-    ```
-
-    Los `!= null` **son** la semántica del PATCH: «lo que no me has mandado, déjalo como estaba».
-
-    El límite de este diseño, que conviene saber: **no se puede poner un campo a `null` a propósito**, porque `null` ya significa «no lo cambies». Resolverlo bien requiere JSON Merge Patch y no entra en el módulo.
-
-### E10 — Cómo se detecta un `@Valid` olvidado
-
-??? success "Solución"
-
-    Con un test de la capa web que mande un cuerpo inválido y exija un 400:
-
-    ```java
-    @Test
-    void postConNombreVacioDevuelve400() throws Exception {
-        mockMvc.perform(post("/api/v1/funkos")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {"nombre":"","precio":10.00,"cantidad":1,"categoria":"ANIME"}"""))
-               .andExpect(status().isBadRequest())
-               .andExpect(jsonPath("$.campos.nombre").exists());
-    }
-    ```
-
-    Sin el `@Valid`, este test falla con «expected 400, was 201», que es **exactamente** lo que quieres que ocurra.
-
-    Y es la razón de fondo de tener tests de capa web: detectan en medio segundo algo que probándolo a mano no mirarías nunca, porque ¿quién prueba a mandar un nombre vacío?
+!!! success "Lo siguiente"
+    Todo esto, montado de principio a fin y probado con `curl`, está en **[5. Dos proyectos paso a paso](05-proyectos.md)**. Es donde se aprende: aquí solo está la referencia.

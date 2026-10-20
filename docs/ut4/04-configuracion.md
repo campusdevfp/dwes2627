@@ -388,7 +388,7 @@ target/
 
     Quien clona el repositorio hace `cp .env.example .env`, rellena, y arranca. Y nadie tiene que preguntar por el chat del grupo «¿qué variables hacen falta?», que es cómo las contraseñas acaban en un historial de mensajes.
 
-    En la [rúbrica de los ejercicios prácticos](ejercicios-practicos.md) esto se puntúa.
+    En la [rúbrica del examen práctico](examen.md) esto se puntúa.
 
 ### Hacer que Spring Boot lo lea
 
@@ -625,53 +625,11 @@ public class AlmacenamientoService {
 
 ---
 
-## Pruébalo ahora (15 min)
+## Casos especiales
 
-Sobre el [proyecto A del tema 5](05-proyectos.md):
+Los sitios donde esto se rompe, y qué hacer.
 
-1. Arranca con `PORT=9999` y comprueba el puerto.
-2. Crea `application-prod.properties` con `logging.level.root=WARN` y arranca con el perfil `prod`. ¿Se cargan los cuatro funkos de ejemplo?
-3. Pon `datasource.password=${DB_PASSWORD}` sin valor por defecto y arranca. Lee el error.
-4. Arranca con `--server.port=7777` **y** `SERVER_PORT=8888` a la vez. ¿Qué puerto gana?
-5. Crea un `.env`, añádelo al `.gitignore`, haz `export $(grep -v '^#' .env | xargs)` y arranca.
-
-??? success "Solución de las cinco"
-
-    **1.**
-
-    ```bash
-    PORT=9999 ./mvnw spring-boot:run
-    # Tomcat started on port 9999 (http)
-    ```
-
-    El `${PORT:8080}` del fichero ha encontrado la variable y ha usado su valor.
-
-    **2.** **No se cargan.** El `CommandLineRunner` lleva `@Profile("dev")`, así que con `prod` activo ese bean no se crea y la API arranca vacía. Que es justo lo que quieres.
-
-    **3.**
-
-    ```
-    java.lang.IllegalArgumentException: Could not resolve placeholder
-    'DB_PASSWORD' in value "${DB_PASSWORD}"
-    ```
-
-    **La aplicación no arranca**, y está bien: mejor eso que arrancar con una contraseña vacía o con una por defecto que alguien dejó puesta.
-
-    **4.** Gana **7777**, el argumento de línea de comandos. Es el nivel 1 de la pirámide; la variable de entorno es el 2.
-
-    **5.** Arranca igual que en el punto 1, pero sin escribir las variables en el comando. Comprueba que funciona:
-
-    ```bash
-    git status --short      # el .env NO debe aparecer
-    ```
-
-    Si aparece, el `.gitignore` está mal escrito o el fichero ya estaba *trackeado* (entonces: `git rm --cached .env`).
-
----
-
-## Ejercicios (con solución)
-
-### E1 — `${VAR:defecto}`
+### `${VAR:defecto}`
 
 ¿Qué hace cada una y cuándo usarías cada forma?
 
@@ -680,90 +638,78 @@ a=${PORT:8080}
 b=${DB_PASSWORD}
 ```
 
-??? success "Solución"
+- **(a)** Coge `PORT` del entorno; si no existe, usa `8080`. La aplicación **arranca siempre**.
+- **(b)** Coge `DB_PASSWORD`; si no existe, **la aplicación no arranca**.
 
-    - **(a)** Coge `PORT` del entorno; si no existe, usa `8080`. La aplicación **arranca siempre**.
-    - **(b)** Coge `DB_PASSWORD`; si no existe, **la aplicación no arranca**.
+**El criterio:** valor por defecto en lo **inocuo** (puertos, rutas, tamaños, niveles de log), para que el proyecto funcione recién clonado. Sin valor por defecto en lo **sensible** (contraseñas, claves, tokens), para que un despliegue mal configurado falle en el arranque y no en silencio.
 
-    **El criterio:** valor por defecto en lo **inocuo** (puertos, rutas, tamaños, niveles de log), para que el proyecto funcione recién clonado. Sin valor por defecto en lo **sensible** (contraseñas, claves, tokens), para que un despliegue mal configurado falle en el arranque y no en silencio.
+Arrancar con una contraseña por defecto es peor que no arrancar.
 
-    Arrancar con una contraseña por defecto es peor que no arrancar.
-
-### E2 — Quién gana
+### Quién gana
 
 Tienes `server.port=8080` en `application.properties`, `server.port=9090` en `application-prod.properties`, `SERVER_PORT=7070` en el entorno, y arrancas con `--server.port=6060 --spring.profiles.active=prod`. ¿Qué puerto?
 
-??? success "Solución"
+**6060.**
 
-    **6060.**
+```
+1. --server.port=6060              ← gana
+2. SERVER_PORT=7070
+3. application-prod.properties     9090
+4. application.properties          8080
+```
 
-    ```
-    1. --server.port=6060              ← gana
-    2. SERVER_PORT=7070
-    3. application-prod.properties     9090
-    4. application.properties          8080
-    ```
+La idea de fondo: **cuanto más específico de este arranque concreto, más prioridad**. Un argumento de línea de comandos se refiere a *esta* ejecución; el fichero es lo genérico del proyecto.
 
-    La idea de fondo: **cuanto más específico de este arranque concreto, más prioridad**. Un argumento de línea de comandos se refiere a *esta* ejecución; el fichero es lo genérico del proyecto.
-
-### E3 — Qué va a Git
+### Qué va a Git
 
 Clasifica: (a) `application.properties` · (b) `application-prod.properties` · (c) `.env` · (d) `.env.example` · (e) `compose.yaml` · (f) `target/`
 
-??? success "Solución"
+| | ¿A Git? | Por qué |
+|---|:-:|---|
+| (a) `application.properties` | **Sí** | Configuración común, sin secretos |
+| (b) `application-prod.properties` | **Sí** | Solo tiene `${DB_PASSWORD}`, no la contraseña |
+| (c) `.env` | **No** | Secretos reales |
+| (d) `.env.example` | **Sí** | Claves vacías: documenta qué hace falta |
+| (e) `compose.yaml` | **Sí** | Referencia a `.env`, sin valores |
+| (f) `target/` | **No** | Se regenera con `mvn package` |
 
-    | | ¿A Git? | Por qué |
-    |---|:-:|---|
-    | (a) `application.properties` | **Sí** | Configuración común, sin secretos |
-    | (b) `application-prod.properties` | **Sí** | Solo tiene `${DB_PASSWORD}`, no la contraseña |
-    | (c) `.env` | **No** | Secretos reales |
-    | (d) `.env.example` | **Sí** | Claves vacías: documenta qué hace falta |
-    | (e) `compose.yaml` | **Sí** | Referencia a `.env`, sin valores |
-    | (f) `target/` | **No** | Se regenera con `mvn package` |
+La (b) es la que sorprende, y es el punto del tema: **el fichero de producción se puede publicar porque no contiene producción**, solo describe qué variables necesita.
 
-    La (b) es la que sorprende, y es el punto del tema: **el fichero de producción se puede publicar porque no contiene producción**, solo describe qué variables necesita.
-
-### E4 — `ddl-auto`
+### `ddl-auto`
 
 ¿Por qué `create-drop` en `dev` y `validate` en `prod`?
 
-??? success "Solución"
+- **`create-drop`**: Hibernate **borra y recrea** el esquema al arrancar y lo borra al parar. En desarrollo es ideal: cambias una entidad y la tabla se adapta sin migraciones.
+- **`validate`**: solo **comprueba** que el esquema coincide con las entidades. Si no coincide, **no arranca**, que es exactamente lo que quieres: te avisa antes de empezar a escribir datos en una tabla equivocada.
 
-    - **`create-drop`**: Hibernate **borra y recrea** el esquema al arrancar y lo borra al parar. En desarrollo es ideal: cambias una entidad y la tabla se adapta sin migraciones.
-    - **`validate`**: solo **comprueba** que el esquema coincide con las entidades. Si no coincide, **no arranca**, que es exactamente lo que quieres: te avisa antes de empezar a escribir datos en una tabla equivocada.
+Y lo que nunca: **`create-drop` en producción borra la base de datos entera cada vez que se reinicia la aplicación**. Tampoco `update`: aplica cambios de esquema adivinando, sin control ni vuelta atrás.
 
-    Y lo que nunca: **`create-drop` en producción borra la base de datos entera cada vez que se reinicia la aplicación**. Tampoco `update`: aplica cambios de esquema adivinando, sin control ni vuelta atrás.
+(Lo verás a fondo en la [UT5](../ut5/index.md); el patrón de configuración se decide aquí.)
 
-    (Lo verás a fondo en la [UT5](../ut5/index.md); el patrón de configuración se decide aquí.)
-
-### E5 — `@Value` o `@ConfigurationProperties`
+### `@Value` o `@ConfigurationProperties`
 
 Necesitas leer `funkos.upload.directorio`, `funkos.upload.tamano-maximo` y `funkos.upload.extensiones-permitidas`. ¿Cuál usas?
 
-??? success "Solución"
+**`@ConfigurationProperties`**, por tres razones concretas:
 
-    **`@ConfigurationProperties`**, por tres razones concretas:
+1. **Tipado de verdad.** `extensiones-permitidas=png,jpg,webp` llega como `List<String>`; con `@Value` llega como `String` y lo partes tú.
+2. **Agrupado.** Un objeto que se inyecta entero en vez de tres campos sueltos repartidos por la clase.
+3. **Testeable.** `new FunkosProperties(new Upload("uploads", 1024, List.of("png")), …)` y pruebas el servicio sin levantar Spring.
 
-    1. **Tipado de verdad.** `extensiones-permitidas=png,jpg,webp` llega como `List<String>`; con `@Value` llega como `String` y lo partes tú.
-    2. **Agrupado.** Un objeto que se inyecta entero en vez de tres campos sueltos repartidos por la clase.
-    3. **Testeable.** `new FunkosProperties(new Upload("uploads", 1024, List.of("png")), …)` y pruebas el servicio sin levantar Spring.
+`@Value` se queda para lo suelto: la versión de la API en un endpoint `/info`, y poco más.
 
-    `@Value` se queda para lo suelto: la versión de la API en un endpoint `/info`, y poco más.
-
-### E6 — El secreto en el historial
+### El secreto en el historial
 
 Un compañero ha subido el `.env` con la contraseña de la base de datos. Lo borra y hace commit. ¿Está resuelto?
 
-??? success "Solución"
+**No.** El fichero ya no está en la última versión, pero **sigue en el historial**: `git log -p` lo muestra, y cualquiera con acceso al repositorio lo encuentra.
 
-    **No.** El fichero ya no está en la última versión, pero **sigue en el historial**: `git log -p` lo muestra, y cualquiera con acceso al repositorio lo encuentra.
+Lo que hay que hacer, en este orden:
 
-    Lo que hay que hacer, en este orden:
+1. **Rotar el secreto**: cambiar esa contraseña en la base de datos. El valor filtrado deja de servir. **Esto es lo obligatorio.**
+2. Añadir `.env` al `.gitignore` y `git rm --cached .env`.
+3. Opcionalmente, limpiar el historial con `git filter-repo`. Reescribe todos los hashes y obliga a todo el equipo a reclonar, así que solo vale la pena en un repositorio público reciente.
 
-    1. **Rotar el secreto**: cambiar esa contraseña en la base de datos. El valor filtrado deja de servir. **Esto es lo obligatorio.**
-    2. Añadir `.env` al `.gitignore` y `git rm --cached .env`.
-    3. Opcionalmente, limpiar el historial con `git filter-repo`. Reescribe todos los hashes y obliga a todo el equipo a reclonar, así que solo vale la pena en un repositorio público reciente.
+El orden importa: rotar primero. Mientras la contraseña siga siendo válida, limpiar el historial solo la esconde.
 
-    El orden importa: rotar primero. Mientras la contraseña siga siendo válida, limpiar el historial solo la esconde.
-
-    Y si el repositorio es público en GitHub, asume que ya la tiene alguien: hay bots rastreando commits en busca de claves, y tardan minutos.
+Y si el repositorio es público en GitHub, asume que ya la tiene alguien: hay bots rastreando commits en busca de claves, y tardan minutos.

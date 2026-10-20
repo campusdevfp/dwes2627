@@ -460,212 +460,148 @@ public Page<Categoria> findAll(Optional<String> nombre, Optional<Boolean> isDele
 
 ---
 
-## Pruébalo ahora (12 min)
+## Casos especiales
 
-Sobre el proyecto de Funkos ya con JPA:
+Los sitios donde esto se rompe, y qué hacer.
 
-1. Cambia `findAll()` por `findAll(Pageable)` y pide `GET /funkos?page=0&size=2`. Mira el JSON completo que devuelve.
-2. Pide `?sort=precio,desc` y después `?sort=categoria,asc&sort=precio,desc`.
-3. Pide `?page=999`. ¿Qué devuelve y con qué código?
-4. Pide `?sort=inventado,desc`. Lee el error.
-5. Pide `?size=100000`. ¿Te lo da?
-
-??? success "Solución de las cinco"
-
-    **1.** El `Page` serializado trae mucho más que la lista:
-
-    ```json
-    {
-      "content": [ … ],
-      "pageable": { "pageNumber": 0, "pageSize": 2, … },
-      "totalElements": 4,
-      "totalPages": 2,
-      "last": false,
-      "first": true,
-      "numberOfElements": 2
-    }
-    ```
-
-    `totalElements` y `totalPages` son lo que el cliente necesita para pintar el paginador. Y para calcularlos, Hibernate lanza **dos** consultas: una con `LIMIT`/`OFFSET` y un `SELECT count(*)`.
-
-    **2.** El segundo caso ordena primero por categoría y, dentro de cada una, por precio descendente. Es el comparador encadenado de la UT2, declarado en la URL.
-
-    **3.** **200** con `"content": []`. No es un 404: la colección existe y esa página está vacía. Es el mismo criterio del E7 de la UT4.
-
-    **4.**
-
-    ```
-    org.springframework.data.mapping.PropertyReferenceException:
-    No property 'inventado' found for type 'Funko'
-    ```
-
-    Y sale un **500**, que está mal: el cliente ha mandado algo inválido, así que es un **400**. Se arregla con un `@ExceptionHandler(PropertyReferenceException.class)`.
-
-    **Y hay algo peor:** `?sort=` permite ordenar por **cualquier** campo de la entidad, incluido uno que no publicas en el DTO. Si tu entidad tiene `passwordHash`, un atacante puede ordenar por él y deducir información. En producción se valida la lista de campos ordenables.
-
-    **5.** **Sí, te lo da**, y ahí está el problema: paginar sin tope no sirve de nada.
-
-    ```properties
-    spring.data.web.pageable.max-page-size=100
-    spring.data.web.pageable.default-page-size=20
-    ```
-
-    Con eso, un `size=100000` se recorta a 100 en silencio.
-
----
-
-## Ejercicios (con solución)
-
-### E1 ● — `Page`, `Slice` o `List`
+### `Page`, `Slice` o `List`
 
 ¿Qué devuelve cada uno y cuál cuesta más?
 
-??? success "Solución"
+| | Qué trae | Consultas |
+|---|---|:-:|
+| `List<T>` | Solo los elementos de la página | **1** |
+| `Slice<T>` | Elementos + «¿hay más?» | **1** (pide `size+1`) |
+| `Page<T>` | Elementos + `totalElements` + `totalPages` | **2** |
 
-    | | Qué trae | Consultas |
-    |---|---|:-:|
-    | `List<T>` | Solo los elementos de la página | **1** |
-    | `Slice<T>` | Elementos + «¿hay más?» | **1** (pide `size+1`) |
-    | `Page<T>` | Elementos + `totalElements` + `totalPages` | **2** |
+**`Page` lanza un `SELECT count(*)` extra**, y sobre una tabla grande eso no es gratis.
 
-    **`Page` lanza un `SELECT count(*)` extra**, y sobre una tabla grande eso no es gratis.
+El criterio: si la interfaz tiene un paginador con números («página 3 de 47»), necesitas `Page`. Si es un *scroll* infinito con un botón «cargar más», `Slice` basta y te ahorras la mitad del coste.
 
-    El criterio: si la interfaz tiene un paginador con números («página 3 de 47»), necesitas `Page`. Si es un *scroll* infinito con un botón «cargar más», `Slice` basta y te ahorras la mitad del coste.
-
-### E2 ● — Los parámetros de `Pageable`
+### Los parámetros de `Pageable`
 
 ¿Qué hace cada uno en `?page=2&size=10&sort=precio,desc&sort=nombre,asc`?
 
-??? success "Solución"
+- **`page=2`**: la tercera página, porque **empieza en 0**. Es el error de la primera clase.
+- **`size=10`**: diez elementos por página, así que esta trae los elementos 21 a 30.
+- **`sort` repetido**: ordena por precio descendente y **desempata** por nombre ascendente, en ese orden.
 
-    - **`page=2`**: la tercera página, porque **empieza en 0**. Es el error de la primera clase.
-    - **`size=10`**: diez elementos por página, así que esta trae los elementos 21 a 30.
-    - **`sort` repetido**: ordena por precio descendente y **desempata** por nombre ascendente, en ese orden.
+Spring Boot construye el `Pageable` solo: no hay que leer ningún `@RequestParam`. Basta con poner `Pageable pageable` en la firma del método del controlador.
 
-    Spring Boot construye el `Pageable` solo: no hay que leer ningún `@RequestParam`. Basta con poner `Pageable pageable` en la firma del método del controlador.
-
-### E3 ●● — El N+1 al paginar
+### El N+1 al paginar
 
 Pides una página de 20 funkos con su categoría en `LAZY` y el log muestra 21 consultas. ¿Por qué y cómo se arregla?
 
-??? success "Solución"
+Una consulta para la página y **una por cada funko** para ir a buscar su categoría cuando el mapeador la toca. Es el problema **N+1**.
 
-    Una consulta para la página y **una por cada funko** para ir a buscar su categoría cuando el mapeador la toca. Es el problema **N+1**.
+No se arregla poniendo `EAGER` (eso lo convierte en N+1 siempre, también donde no hace falta). Se arregla pidiendo el `JOIN` explícitamente:
 
-    No se arregla poniendo `EAGER` (eso lo convierte en N+1 siempre, también donde no hace falta). Se arregla pidiendo el `JOIN` explícitamente:
+```java
+@Query(value = "SELECT f FROM Funko f JOIN FETCH f.categoria",
+       countQuery = "SELECT count(f) FROM Funko f")
+Page<Funko> findAllConCategoria(Pageable pageable);
+```
 
-    ```java
-    @Query(value = "SELECT f FROM Funko f JOIN FETCH f.categoria",
-           countQuery = "SELECT count(f) FROM Funko f")
-    Page<Funko> findAllConCategoria(Pageable pageable);
-    ```
+**El `countQuery` es obligatorio** cuando usas `JOIN FETCH` con `Pageable`: sin él, Hibernate intenta contar sobre la consulta con el fetch y avisa de que va a paginar **en memoria** (`firstResult/maxResults specified with collection fetch; applying in memory`), que es exactamente lo que querías evitar.
 
-    **El `countQuery` es obligatorio** cuando usas `JOIN FETCH` con `Pageable`: sin él, Hibernate intenta contar sobre la consulta con el fetch y avisa de que va a paginar **en memoria** (`firstResult/maxResults specified with collection fetch; applying in memory`), que es exactamente lo que querías evitar.
+Alternativa más limpia con una colección: `@EntityGraph(attributePaths = "categoria")` sobre el método.
 
-    Alternativa más limpia con una colección: `@EntityGraph(attributePaths = "categoria")` sobre el método.
-
-### E4 ●● — Criterios combinables
+### Criterios combinables
 
 `?categoria=ANIME&precioMin=10&precioMax=50&nombre=go`, todos opcionales. ¿Con `if` anidados o con `Specification`?
 
-??? success "Solución"
+Con cuatro filtros opcionales hay **16 combinaciones**. Escribir un método de repositorio para cada una es inviable, y los `if` anidados son ilegibles.
 
-    Con cuatro filtros opcionales hay **16 combinaciones**. Escribir un método de repositorio para cada una es inviable, y los `if` anidados son ilegibles.
+```java
+public interface FunkosRepository
+        extends JpaRepository<Funko, Long>, JpaSpecificationExecutor<Funko> { }
+```
 
-    ```java
-    public interface FunkosRepository
-            extends JpaRepository<Funko, Long>, JpaSpecificationExecutor<Funko> { }
-    ```
+```java
+public Page<FunkoResponse> buscar(Optional<String> categoria,
+                                  Optional<Double> precioMin,
+                                  Optional<Double> precioMax,
+                                  Optional<String> nombre,
+                                  Pageable pageable) {
 
-    ```java
-    public Page<FunkoResponse> buscar(Optional<String> categoria,
-                                      Optional<Double> precioMin,
-                                      Optional<Double> precioMax,
-                                      Optional<String> nombre,
-                                      Pageable pageable) {
+    Specification<Funko> spec = Specification.where(null);
 
-        Specification<Funko> spec = Specification.where(null);
+    spec = categoria.map(c -> spec.and((root, q, cb) ->
+                cb.equal(cb.upper(root.get("categoria")), c.toUpperCase())))
+            .orElse(spec);
 
-        spec = categoria.map(c -> spec.and((root, q, cb) ->
-                    cb.equal(cb.upper(root.get("categoria")), c.toUpperCase())))
-                .orElse(spec);
+    spec = precioMin.map(p -> spec.and((root, q, cb) ->
+                cb.greaterThanOrEqualTo(root.get("precio"), p)))
+            .orElse(spec);
 
-        spec = precioMin.map(p -> spec.and((root, q, cb) ->
-                    cb.greaterThanOrEqualTo(root.get("precio"), p)))
-                .orElse(spec);
+    spec = precioMax.map(p -> spec.and((root, q, cb) ->
+                cb.lessThanOrEqualTo(root.get("precio"), p)))
+            .orElse(spec);
 
-        spec = precioMax.map(p -> spec.and((root, q, cb) ->
-                    cb.lessThanOrEqualTo(root.get("precio"), p)))
-                .orElse(spec);
+    spec = nombre.map(n -> spec.and((root, q, cb) ->
+                cb.like(cb.lower(root.get("nombre")), "%" + n.toLowerCase() + "%")))
+            .orElse(spec);
 
-        spec = nombre.map(n -> spec.and((root, q, cb) ->
-                    cb.like(cb.lower(root.get("nombre")), "%" + n.toLowerCase() + "%")))
-                .orElse(spec);
+    return repositorio.findAll(spec, pageable).map(mapper::toResponse);
+}
+```
 
-        return repositorio.findAll(spec, pageable).map(mapper::toResponse);
-    }
-    ```
+Cada filtro **se añade solo si viene**, y la consulta SQL final solo lleva las condiciones presentes. Los `Optional` son los de la UT2 haciendo su trabajo.
 
-    Cada filtro **se añade solo si viene**, y la consulta SQL final solo lleva las condiciones presentes. Los `Optional` son los de la UT2 haciendo su trabajo.
+Y el `.map(mapper::toResponse)` del final: `Page` tiene `map`, así que la paginación se conserva y lo que sale son DTOs, no entidades.
 
-    Y el `.map(mapper::toResponse)` del final: `Page` tiene `map`, así que la paginación se conserva y lo que sale son DTOs, no entidades.
-
-### E5 ●● — El `?sort=` peligroso
+### El `?sort=` peligroso
 
 ¿Qué riesgo tiene dejar `?sort=` abierto a cualquier campo?
 
-??? success "Solución"
+Permite ordenar por **cualquier propiedad de la entidad**, incluidas las que no publicas en el DTO.
 
-    Permite ordenar por **cualquier propiedad de la entidad**, incluidas las que no publicas en el DTO.
+Si la entidad `Usuario` tiene `passwordHash`, `?sort=passwordHash,asc` no devuelve el hash, pero **sí revela el orden relativo** de los hashes, y eso filtra información. Con un campo como `saldo` o `rol`, lo mismo.
 
-    Si la entidad `Usuario` tiene `passwordHash`, `?sort=passwordHash,asc` no devuelve el hash, pero **sí revela el orden relativo** de los hashes, y eso filtra información. Con un campo como `saldo` o `rol`, lo mismo.
+Y aparte, `?sort=inventado` provoca un `PropertyReferenceException` → 500, cuando debería ser 400.
 
-    Y aparte, `?sort=inventado` provoca un `PropertyReferenceException` → 500, cuando debería ser 400.
+Las dos cosas se arreglan validando:
 
-    Las dos cosas se arreglan validando:
+```java
+private static final Set<String> ORDENABLES =
+        Set.of("id", "nombre", "precio", "categoria", "createdAt");
 
-    ```java
-    private static final Set<String> ORDENABLES =
-            Set.of("id", "nombre", "precio", "categoria", "createdAt");
+private Pageable sanear(Pageable p) {
+    var orden = p.getSort().stream()
+            .filter(o -> ORDENABLES.contains(o.getProperty()))
+            .toList();
+    return PageRequest.of(p.getPageNumber(),
+                          Math.min(p.getPageSize(), 100),
+                          Sort.by(orden));
+}
+```
 
-    private Pageable sanear(Pageable p) {
-        var orden = p.getSort().stream()
-                .filter(o -> ORDENABLES.contains(o.getProperty()))
-                .toList();
-        return PageRequest.of(p.getPageNumber(),
-                              Math.min(p.getPageSize(), 100),
-                              Sort.by(orden));
-    }
-    ```
+**Lista blanca, no lista negra.** Un campo nuevo en la entidad no debe quedar ordenable por omisión.
 
-    **Lista blanca, no lista negra.** Un campo nuevo en la entidad no debe quedar ordenable por omisión.
-
-### E6 ●●● — Negociación de contenido
+### Negociación de contenido
 
 Haz que el mismo endpoint devuelva JSON o XML según lo que pida el cliente.
 
-??? success "Solución"
+```xml
+<dependency>
+  <groupId>com.fasterxml.jackson.dataformat</groupId>
+  <artifactId>jackson-dataformat-xml</artifactId>
+</dependency>
+```
 
-    ```xml
-    <dependency>
-      <groupId>com.fasterxml.jackson.dataformat</groupId>
-      <artifactId>jackson-dataformat-xml</artifactId>
-    </dependency>
-    ```
+```java
+@GetMapping(produces = { MediaType.APPLICATION_JSON_VALUE,
+                         MediaType.APPLICATION_XML_VALUE })
+public ResponseEntity<Page<FunkoResponse>> findAll(Pageable pageable) { … }
+```
 
-    ```java
-    @GetMapping(produces = { MediaType.APPLICATION_JSON_VALUE,
-                             MediaType.APPLICATION_XML_VALUE })
-    public ResponseEntity<Page<FunkoResponse>> findAll(Pageable pageable) { … }
-    ```
+```bash
+curl -H "Accept: application/json" localhost:8080/api/v1/funkos
+curl -H "Accept: application/xml"  localhost:8080/api/v1/funkos
+curl -H "Accept: text/csv"         localhost:8080/api/v1/funkos
+# 406 Not Acceptable
+```
 
-    ```bash
-    curl -H "Accept: application/json" localhost:8080/api/v1/funkos
-    curl -H "Accept: application/xml"  localhost:8080/api/v1/funkos
-    curl -H "Accept: text/csv"         localhost:8080/api/v1/funkos
-    # 406 Not Acceptable
-    ```
+**La misma URL y el mismo recurso, dos representaciones.** Es la negociación de contenido de la [UT1](../ut1/index.md), ahora desde el lado del servidor: el cliente dice qué sabe leer en `Accept` y el servidor elige, o contesta **406** si no puede servir ninguno.
 
-    **La misma URL y el mismo recurso, dos representaciones.** Es la negociación de contenido de la [UT1](../ut1/index.md), ahora desde el lado del servidor: el cliente dice qué sabe leer en `Accept` y el servidor elige, o contesta **406** si no puede servir ninguno.
-
-    El `406` es la pieza que se olvida: no es un error del servidor, es «lo que me pides no sé dárselo en ese formato».
+El `406` es la pieza que se olvida: no es un error del servidor, es «lo que me pides no sé dárselo en ese formato».

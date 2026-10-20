@@ -839,134 +839,91 @@ Hazlo en pareja, en 25 minutos, **sin ejecutarlo**. Después se comprueba.
 
 ---
 
-## Pruébalo ahora (12 min)
+## Casos especiales
 
-Sobre el proyecto de la práctica:
+Los sitios donde esto se rompe, y qué hacer.
 
-1. Llama a `GET /funkos/9999` con un id que no existe. ¿Qué código devuelve? ¿Cuál debería devolver?
-2. Manda un POST con el JSON `{"nombre":"X"}` sin la cabecera `Content-Type`. Lee el error.
-3. Manda un POST con un campo que no existe en `Funko`. ¿Falla? ¿Por qué?
-4. Añade `?categoria=DISNEY` en mayúsculas. ¿Funciona el filtro?
-
-??? success "Solución de las cuatro"
-
-    **1.** Con `findById(id).get()` sale un **500**, y el log muestra `NoSuchElementException`. Debería ser un **404**: el servidor funciona perfectamente, el recurso no está.
-
-    ```java
-    return repositorio.findById(id)
-            .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
-    ```
-
-    **2.** **415 Unsupported Media Type.** Spring no sabe que lo que le mandas es JSON, así que no encuentra ningún convertidor capaz de leerlo. El cuerpo no se llega a mirar.
-
-    **3.** **No falla**: Spring Boot configura Jackson con `FAIL_ON_UNKNOWN_PROPERTIES` desactivado, así que el campo de más se ignora en silencio. Es cómodo y a la vez peligroso: un cliente puede mandar `{"nombe":"X"}` con una errata y recibir un 201 con el nombre a `null`.
-
-    Eso se arregla validando, y es el tema 3.
-
-    **4.** Depende de cómo lo hayas escrito. Con `equals` no funciona; hay que normalizar:
-
-    ```java
-    .filter(f -> f.categoria().equalsIgnoreCase(categoria))
-    ```
-
-    Es exactamente el aviso del enunciado: *«cuidado con las letras en mayúscula o minúscula»*.
-
----
-
-## Ejercicios (con solución)
-
-### E1 — `@Controller` o `@RestController`
+### `@Controller` o `@RestController`
 
 ¿Qué devuelve cada uno y qué anotación extra lleva el segundo?
 
-??? success "Solución"
+- `@Controller` devuelve **el nombre de una vista** (o un `ModelAndView`) que una plantilla como Thymeleaf renderiza a HTML.
+- `@RestController` = `@Controller` + **`@ResponseBody`**: lo que devuelve el método **es el cuerpo de la respuesta**, serializado a JSON por Jackson.
 
-    - `@Controller` devuelve **el nombre de una vista** (o un `ModelAndView`) que una plantilla como Thymeleaf renderiza a HTML.
-    - `@RestController` = `@Controller` + **`@ResponseBody`**: lo que devuelve el método **es el cuerpo de la respuesta**, serializado a JSON por Jackson.
+Si pones `@Controller` por error en una API y devuelves un `Producto`, Spring busca una plantilla llamada `Producto` y contesta un 404 o un 500 según la configuración. Es un error que desconcierta porque el código del método parece bien.
 
-    Si pones `@Controller` por error en una API y devuelves un `Producto`, Spring busca una plantilla llamada `Producto` y contesta un 404 o un 500 según la configuración. Es un error que desconcierta porque el código del método parece bien.
-
-### E2 — Los códigos de estado del CRUD
+### Los códigos de estado del CRUD
 
 Completa la tabla.
 
 | Operación | Éxito | El recurso no existe | Datos inválidos |
 |---|---|---|---|
 
-??? success "Solución"
+| Operación | Éxito | No existe | Datos inválidos |
+|---|---|---|---|
+| `GET /productos` | **200** | — (lista vacía, también 200) | — |
+| `GET /productos/{id}` | **200** | **404** | — |
+| `POST /productos` | **201** + `Location` | — | **400** |
+| `PUT /productos/{id}` | **200** | **404** | **400** |
+| `PATCH /productos/{id}` | **200** | **404** | **400** |
+| `DELETE /productos/{id}` | **204** | **404** | — |
 
-    | Operación | Éxito | No existe | Datos inválidos |
-    |---|---|---|---|
-    | `GET /productos` | **200** | — (lista vacía, también 200) | — |
-    | `GET /productos/{id}` | **200** | **404** | — |
-    | `POST /productos` | **201** + `Location` | — | **400** |
-    | `PUT /productos/{id}` | **200** | **404** | **400** |
-    | `PATCH /productos/{id}` | **200** | **404** | **400** |
-    | `DELETE /productos/{id}` | **204** | **404** | — |
+Dos detalles que se fallan:
 
-    Dos detalles que se fallan:
+- Una **lista vacía es un 200**, no un 404. El recurso «colección de productos» existe; lo que está vacío es su contenido.
+- El **201 lleva cabecera `Location`** con la URL del recurso creado. Sin ella, el cliente no sabe dónde está lo que acaba de crear.
 
-    - Una **lista vacía es un 200**, no un 404. El recurso «colección de productos» existe; lo que está vacío es su contenido.
-    - El **201 lleva cabecera `Location`** con la URL del recurso creado. Sin ella, el cliente no sabe dónde está lo que acaba de crear.
-
-### E3 — `@PathVariable` o `@RequestParam`
+### `@PathVariable` o `@RequestParam`
 
 Escribe la firma para: (a) `/productos/42` · (b) `/productos?categoria=movilidad` · (c) `/productos?page=2&size=20`
 
-??? success "Solución"
+```java
+// (a) identifica UN recurso → parte de la ruta
+@GetMapping("/productos/{id}")
+public ResponseEntity<Producto> uno(@PathVariable Long id) { … }
 
-    ```java
-    // (a) identifica UN recurso → parte de la ruta
-    @GetMapping("/productos/{id}")
-    public ResponseEntity<Producto> uno(@PathVariable Long id) { … }
+// (b) filtra una colección → query
+@GetMapping("/productos")
+public ResponseEntity<List<Producto>> filtrar(
+        @RequestParam(required = false) String categoria) { … }
 
-    // (b) filtra una colección → query
-    @GetMapping("/productos")
-    public ResponseEntity<List<Producto>> filtrar(
-            @RequestParam(required = false) String categoria) { … }
+// (c) modifica cómo se presenta → query con valores por defecto
+@GetMapping("/productos")
+public ResponseEntity<List<Producto>> pagina(
+        @RequestParam(defaultValue = "0")  int page,
+        @RequestParam(defaultValue = "10") int size) { … }
+```
 
-    // (c) modifica cómo se presenta → query con valores por defecto
-    @GetMapping("/productos")
-    public ResponseEntity<List<Producto>> pagina(
-            @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "10") int size) { … }
-    ```
+**El criterio:** si el dato **identifica el recurso**, va en la ruta; si **filtra, ordena o pagina** la colección, va en la query. `/productos/movilidad` estaría mal: `movilidad` no es un producto.
 
-    **El criterio:** si el dato **identifica el recurso**, va en la ruta; si **filtra, ordena o pagina** la colección, va en la query. `/productos/movilidad` estaría mal: `movilidad` no es un producto.
-
-### E4 — El 415
+### El 415
 
 Mandas un POST con JSON válido y recibes `415 Unsupported Media Type`. ¿Qué falta?
 
-??? success "Solución"
+La cabecera **`Content-Type: application/json`**.
 
-    La cabecera **`Content-Type: application/json`**.
+```bash
+curl -X POST localhost:8080/api/productos \
+     -H "Content-Type: application/json" \
+     -d '{"nombre":"Casco","precio":35.0}'
+```
 
-    ```bash
-    curl -X POST localhost:8080/api/productos \
-         -H "Content-Type: application/json" \
-         -d '{"nombre":"Casco","precio":35.0}'
-    ```
+`@RequestBody` necesita saber **en qué formato** viene el cuerpo para elegir el convertidor. Sin esa cabecera no hay convertidor que acepte la petición, y por eso el cuerpo no se llega a leer: el error es anterior.
 
-    `@RequestBody` necesita saber **en qué formato** viene el cuerpo para elegir el convertidor. Sin esa cabecera no hay convertidor que acepte la petición, y por eso el cuerpo no se llega a leer: el error es anterior.
+En Postman es el fallo de la primera clase: hay que elegir **Body → raw → JSON**, no «Text».
 
-    En Postman es el fallo de la primera clase: hay que elegir **Body → raw → JSON**, no «Text».
-
-### E5 — PUT frente a PATCH
+### PUT frente a PATCH
 
 ¿Cuál es la diferencia, y qué debería pasar si mandas un PUT con solo el nombre?
 
-??? success "Solución"
+- **PUT reemplaza el recurso entero.** Lo que no mandes, se borra o vuelve a su valor por defecto.
+- **PATCH modifica solo los campos que mandas.** El resto se queda como estaba.
 
-    - **PUT reemplaza el recurso entero.** Lo que no mandes, se borra o vuelve a su valor por defecto.
-    - **PATCH modifica solo los campos que mandas.** El resto se queda como estaba.
+Así que un `PUT /productos/1` con `{"nombre":"Casco nuevo"}` debería dejar el precio a `null` o a `0`, no conservarlo. Si tu PUT conserva los campos que faltan, **has implementado un PATCH y lo has llamado PUT**.
 
-    Así que un `PUT /productos/1` con `{"nombre":"Casco nuevo"}` debería dejar el precio a `null` o a `0`, no conservarlo. Si tu PUT conserva los campos que faltan, **has implementado un PATCH y lo has llamado PUT**.
+Es el error de diseño más común de la unidad, y además rompe una promesa del protocolo: PUT es **idempotente** (mandarlo dos veces deja el mismo estado), y un PUT que fusiona no lo es necesariamente.
 
-    Es el error de diseño más común de la unidad, y además rompe una promesa del protocolo: PUT es **idempotente** (mandarlo dos veces deja el mismo estado), y un PUT que fusiona no lo es necesariamente.
-
-### E6 — El controlador que hace demasiado
+### El controlador que hace demasiado
 
 ```java
 @GetMapping("/productos")
@@ -978,39 +935,35 @@ public ResponseEntity<List<Producto>> listar() {
 
 ¿Qué está mal, aunque funcione?
 
-??? success "Solución"
+El controlador **ha saltado dos capas**: habla SQL directamente.
 
-    El controlador **ha saltado dos capas**: habla SQL directamente.
+Las consecuencias son concretas, no estéticas:
 
-    Las consecuencias son concretas, no estéticas:
+1. **No se puede probar** sin una base de datos levantada.
+2. **No se puede reutilizar.** Cuando en la UT6 quieras servir lo mismo por WebSocket o GraphQL, hay que copiar y pegar la consulta.
+3. **La conexión no se cierra** (falta el `try-with-resources`), así que el pool se agota tras unas cuantas peticiones.
+4. El día que cambie la tabla, hay que buscar el SQL repartido por los controladores.
 
-    1. **No se puede probar** sin una base de datos levantada.
-    2. **No se puede reutilizar.** Cuando en la UT6 quieras servir lo mismo por WebSocket o GraphQL, hay que copiar y pegar la consulta.
-    3. **La conexión no se cierra** (falta el `try-with-resources`), así que el pool se agota tras unas cuantas peticiones.
-    4. El día que cambie la tabla, hay que buscar el SQL repartido por los controladores.
+Lo correcto: `@RestController` → `@Service` → `@Repository`, y el controlador solo traduce entre HTTP y objetos.
 
-    Lo correcto: `@RestController` → `@Service` → `@Repository`, y el controlador solo traduce entre HTTP y objetos.
-
-### E7 — Versionar
+### Versionar
 
 Tu API `/api/productos` está en producción con tres clientes. Te piden cambiar el campo `precio` de número a objeto `{importe, moneda}`. ¿Qué haces?
 
-??? success "Solución"
+**No tocas `/api/v1/productos`: creas `/api/v2/productos`.**
 
-    **No tocas `/api/v1/productos`: creas `/api/v2/productos`.**
+Un cambio de tipo en un campo es **incompatible hacia atrás**: los tres clientes que esperan un número se rompen el día del despliegue, y tú no controlas cuándo se actualizan.
 
-    Un cambio de tipo en un campo es **incompatible hacia atrás**: los tres clientes que esperan un número se rompen el día del despliegue, y tú no controlas cuándo se actualizan.
+```java
+@RestController
+@RequestMapping("/api/v1/productos")
+public class ProductosV1Controller { … }   // devuelve precio: 35.0
 
-    ```java
-    @RestController
-    @RequestMapping("/api/v1/productos")
-    public class ProductosV1Controller { … }   // devuelve precio: 35.0
+@RestController
+@RequestMapping("/api/v2/productos")
+public class ProductosV2Controller { … }   // devuelve precio: {importe, moneda}
+```
 
-    @RestController
-    @RequestMapping("/api/v2/productos")
-    public class ProductosV2Controller { … }   // devuelve precio: {importe, moneda}
-    ```
+Las dos usan **el mismo `@Service`**; lo que cambia es el DTO de salida. Por eso la capa de servicio no debe devolver entidades directamente, que es justo el tema 3.
 
-    Las dos usan **el mismo `@Service`**; lo que cambia es el DTO de salida. Por eso la capa de servicio no debe devolver entidades directamente, que es justo el tema 3.
-
-    Y lo que **sí** se puede hacer sin versionar: **añadir** un campo nuevo. Un cliente que no lo conoce lo ignora.
+Y lo que **sí** se puede hacer sin versionar: **añadir** un campo nuevo. Un cliente que no lo conoce lo ignora.

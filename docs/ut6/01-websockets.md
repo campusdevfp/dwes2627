@@ -304,127 +304,45 @@ void onChange(Notificacion.Tipo tipo, Producto data) {
 !!! note "Nota del Profesor"
     Usar un hilo separado es importante para no afectar al rendimiento de la API. Las notificaciones son "best effort", no críticas.
 
-## 1.3. Práctica de clase, Notificaciones con Websockets
+## Casos especiales
 
-1. Crea un sistema de notificaciones para recibir los cambios sobre Funkos, especialmente cuando se crea un funko nuevo, o se modifica o borra uno existente.
-2. Testea los repositorios, servicios y controladores con la nueva funcionalidad.
+Los sitios donde esto se rompe, y qué hacer.
 
-```mermaid
-graph TB
-    FunkoService["Funko Service<br/>⚙️"]
-    WebSocket["WebSocket Handler<br/>🔌"]
-    Notificacion["Notificación<br/>📢"]
-    Cliente["Cliente Web<br/>👤"]
-
-    subgraph "Práctica de WebSockets"
-        FunkoService
-        WebSocket
-        Notificacion
-        Cliente
-    end
-    
-    FunkoService -->|Cambio| WebSocket
-    WebSocket -->|JSON| Notificacion
-    Notificacion -->|Tiempo Real| Cliente
-    
-```
-
----
-
-## Pruébalo ahora (15 min)
-
-Sobre el proyecto de Funkos de la UT5:
-
-1. Añade el WebSocket en `/ws/v1/funkos`, conéctate con dos pestañas del navegador y crea un funko con `curl`. ¿Lo reciben las dos?
-2. Cierra una pestaña y crea otro funko. ¿Falla el servidor?
-3. Conéctate desde `wscat` o desde la consola del navegador y manda un mensaje **al servidor**. ¿Qué pasa?
-4. Crea un funko dentro de una transacción que luego falle. ¿Se ha enviado la notificación?
-5. Mira las cabeceras del `handshake` con `curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" …`.
-
-??? success "Solución de las cinco"
-
-    **1. Sí, las dos.** El servidor recorre la lista de sesiones abiertas y manda a todas. Eso es *broadcast*, y es el caso de uso típico: un panel abierto en varios sitios que se actualiza solo.
-
-    **2. No falla, pero el log se llena** de `IllegalStateException: The WebSocket session has been closed` si no quitas la sesión al cerrarse. Por eso el `afterConnectionClosed` tiene que hacer `sessions.remove(session)`, y por eso la colección es `CopyOnWriteArrayList` o un `ConcurrentHashMap`: se recorre y se modifica desde hilos distintos.
-
-    **3. Nada, si no has implementado `handleTextMessage`.** El mensaje llega y se descarta. Un WebSocket es **bidireccional**, pero para notificaciones solo usamos una dirección, y eso está bien: menos superficie de ataque.
-
-    **4. Sí, se ha enviado**, y es un bug.
-
-    ```java
-    @Transactional
-    public FunkoResponse save(FunkoCreateRequest r) {
-        var guardado = repositorio.save(…);
-        notificador.enviar(guardado);      // ← si luego falla algo, ya se notificó
-        return mapper.toResponse(guardado);
-    }
-    ```
-
-    El `rollback` deshace el `INSERT`, pero **no deshace el mensaje ya enviado**. Los clientes ven un funko que no existe.
-
-    La solución es notificar **después** de confirmar, con un evento:
-
-    ```java
-    applicationEventPublisher.publishEvent(new FunkoCreadoEvent(guardado));
-
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void alCrear(FunkoCreadoEvent e) { notificador.enviar(e.funko()); }
-    ```
-
-    **5.**
-
-    ```
-    HTTP/1.1 101 Switching Protocols
-    Upgrade: websocket
-    Connection: Upgrade
-    Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
-    ```
-
-    Un WebSocket **empieza siendo HTTP**: el `101 Switching Protocols` es el momento en que la conexión deja de ser petición-respuesta y pasa a ser un canal abierto. Por eso funciona por el puerto 80/443 y atraviesa los *proxies*.
-
----
-
-## Ejercicios (con solución)
-
-### E1 ● — WebSocket, *polling* o SSE
+### WebSocket, *polling* o SSE
 
 Tienes que avisar al cliente de cambios en el servidor. ¿Qué eliges en cada caso?
 
 (a) un panel de stock que cambia cada pocos segundos · (b) un chat · (c) el progreso de un informe que tarda 2 minutos · (d) el precio de unas acciones
 
-??? success "Solución"
+| | Qué usar | Por qué |
+|---|---|---|
+| (a) Panel de stock | **WebSocket** o SSE | Muchos cambios, muchos clientes |
+| (b) Chat | **WebSocket** | Hace falta **bidireccional** |
+| (c) Progreso de un informe | **SSE** | Solo servidor → cliente, y acaba |
+| (d) Precio de acciones | **WebSocket** | Alta frecuencia |
 
-    | | Qué usar | Por qué |
-    |---|---|---|
-    | (a) Panel de stock | **WebSocket** o SSE | Muchos cambios, muchos clientes |
-    | (b) Chat | **WebSocket** | Hace falta **bidireccional** |
-    | (c) Progreso de un informe | **SSE** | Solo servidor → cliente, y acaba |
-    | (d) Precio de acciones | **WebSocket** | Alta frecuencia |
+| | Dirección | Reconexión automática | Complejidad |
+|---|---|:-:|---|
+| *Polling* | Cliente pregunta | — | Mínima, y muy ineficiente |
+| **SSE** | Solo servidor → cliente | **Sí, el navegador** | Baja |
+| **WebSocket** | Bidireccional | No: la haces tú | Media |
 
-    | | Dirección | Reconexión automática | Complejidad |
-    |---|---|:-:|---|
-    | *Polling* | Cliente pregunta | — | Mínima, y muy ineficiente |
-    | **SSE** | Solo servidor → cliente | **Sí, el navegador** | Baja |
-    | **WebSocket** | Bidireccional | No: la haces tú | Media |
+**SSE está infravalorado**: para notificaciones de servidor a cliente (que es el 80 % de los casos) es más simple, va sobre HTTP normal y el navegador reconecta solo. WebSocket solo hace falta cuando el cliente **también** tiene que mandar.
 
-    **SSE está infravalorado**: para notificaciones de servidor a cliente (que es el 80 % de los casos) es más simple, va sobre HTTP normal y el navegador reconecta solo. WebSocket solo hace falta cuando el cliente **también** tiene que mandar.
-
-### E2 ● — El `101`
+### El `101`
 
 ¿Qué significa `HTTP/1.1 101 Switching Protocols`?
 
-??? success "Solución"
+Que el servidor acepta **cambiar de protocolo** en esa misma conexión TCP: deja de ser HTTP petición-respuesta y pasa a ser un canal WebSocket abierto en los dos sentidos.
 
-    Que el servidor acepta **cambiar de protocolo** en esa misma conexión TCP: deja de ser HTTP petición-respuesta y pasa a ser un canal WebSocket abierto en los dos sentidos.
+Dos consecuencias prácticas:
 
-    Dos consecuencias prácticas:
+1. **Va por el puerto 80 o 443**, así que atraviesa cortafuegos y *proxies* como tráfico web normal.
+2. **La conexión no se cierra**, así que el servidor mantiene recursos por cada cliente conectado. Diez mil conexiones abiertas son diez mil sesiones en memoria.
 
-    1. **Va por el puerto 80 o 443**, así que atraviesa cortafuegos y *proxies* como tráfico web normal.
-    2. **La conexión no se cierra**, así que el servidor mantiene recursos por cada cliente conectado. Diez mil conexiones abiertas son diez mil sesiones en memoria.
+Es el único código `1xx` que vas a ver en tu vida.
 
-    Es el único código `1xx` que vas a ver en tu vida.
-
-### E3 ●● — La lista de sesiones
+### La lista de sesiones
 
 ```java
 private final List<WebSocketSession> sesiones = new ArrayList<>();
@@ -432,30 +350,28 @@ private final List<WebSocketSession> sesiones = new ArrayList<>();
 
 ¿Qué está mal?
 
-??? success "Solución"
+**`ArrayList` no es seguro con varios hilos**, y aquí hay varios garantizados: cada conexión entra por un hilo distinto, y el *broadcast* recorre la lista mientras alguien se conecta o se desconecta.
 
-    **`ArrayList` no es seguro con varios hilos**, y aquí hay varios garantizados: cada conexión entra por un hilo distinto, y el *broadcast* recorre la lista mientras alguien se conecta o se desconecta.
+Resultado: `ConcurrentModificationException` (el de la [UT2, E18](../ut2/ejercicios.md)) o, peor, corrupción silenciosa.
 
-    Resultado: `ConcurrentModificationException` (el de la [UT2, E18](../ut2/ejercicios.md)) o, peor, corrupción silenciosa.
+```java
+private final Set<WebSocketSession> sesiones = new CopyOnWriteArraySet<>();
+```
 
-    ```java
-    private final Set<WebSocketSession> sesiones = new CopyOnWriteArraySet<>();
-    ```
+`CopyOnWriteArraySet` copia el array en cada escritura, así que recorrerlo es seguro siempre. Para pocas escrituras y muchas lecturas —que es exactamente este caso— es la elección correcta.
 
-    `CopyOnWriteArraySet` copia el array en cada escritura, así que recorrerlo es seguro siempre. Para pocas escrituras y muchas lecturas —que es exactamente este caso— es la elección correcta.
+Y hay que **quitar la sesión al cerrarse**:
 
-    Y hay que **quitar la sesión al cerrarse**:
+```java
+@Override
+public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+    sesiones.remove(session);
+}
+```
 
-    ```java
-    @Override
-    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        sesiones.remove(session);
-    }
-    ```
+Sin eso, la lista crece para siempre y cada *broadcast* intenta escribir en sesiones muertas.
 
-    Sin eso, la lista crece para siempre y cada *broadcast* intenta escribir en sesiones muertas.
-
-### E4 ●● — Enviar a una sesión cerrada
+### Enviar a una sesión cerrada
 
 ```java
 for (var s : sesiones) {
@@ -465,29 +381,27 @@ for (var s : sesiones) {
 
 Un cliente ha cerrado el navegador. ¿Qué pasa?
 
-??? success "Solución"
+```
+java.lang.IllegalStateException: The WebSocket session has been closed
+```
 
-    ```
-    java.lang.IllegalStateException: The WebSocket session has been closed
-    ```
+Y lo peor: la excepción **corta el bucle**, así que los clientes que vienen después en la lista **no reciben nada**. Un cliente desconectado deja sin notificación a todos los demás.
 
-    Y lo peor: la excepción **corta el bucle**, así que los clientes que vienen después en la lista **no reciben nada**. Un cliente desconectado deja sin notificación a todos los demás.
-
-    ```java
-    for (var s : sesiones) {
-        try {
-            if (s.isOpen()) s.sendMessage(new TextMessage(json));
-            else sesiones.remove(s);
-        } catch (IOException e) {
-            log.warn("No se pudo notificar a {}: {}", s.getId(), e.getMessage());
-            sesiones.remove(s);
-        }
+```java
+for (var s : sesiones) {
+    try {
+        if (s.isOpen()) s.sendMessage(new TextMessage(json));
+        else sesiones.remove(s);
+    } catch (IOException e) {
+        log.warn("No se pudo notificar a {}: {}", s.getId(), e.getMessage());
+        sesiones.remove(s);
     }
-    ```
+}
+```
 
-    **Comprobar `isOpen()` no basta**: entre la comprobación y el envío, la conexión puede caerse. Hace falta el `try` también.
+**Comprobar `isOpen()` no basta**: entre la comprobación y el envío, la conexión puede caerse. Hace falta el `try` también.
 
-### E5 ●● — Notificar antes de confirmar
+### Notificar antes de confirmar
 
 ```java
 @Transactional
@@ -498,123 +412,119 @@ public FunkoResponse save(FunkoCreateRequest r) {
 }
 ```
 
-??? success "Solución"
+Si algo falla **después** del `notificar` pero antes de confirmar, el `rollback` deshace el `INSERT` y **el mensaje ya está enviado**. Los clientes conectados ven un funko que no existe en la base de datos.
 
-    Si algo falla **después** del `notificar` pero antes de confirmar, el `rollback` deshace el `INSERT` y **el mensaje ya está enviado**. Los clientes conectados ven un funko que no existe en la base de datos.
+Y al revés también pasa: notificar fuera de la transacción puede mandar datos de una entidad que aún no es visible para otras conexiones.
 
-    Y al revés también pasa: notificar fuera de la transacción puede mandar datos de una entidad que aún no es visible para otras conexiones.
+```java
+public record FunkoCreadoEvent(FunkoResponse funko) {}
 
-    ```java
-    public record FunkoCreadoEvent(FunkoResponse funko) {}
+// en el servicio
+eventos.publishEvent(new FunkoCreadoEvent(mapper.toResponse(guardado)));
 
-    // en el servicio
-    eventos.publishEvent(new FunkoCreadoEvent(mapper.toResponse(guardado)));
+// en el notificador
+@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+public void alCrear(FunkoCreadoEvent e) {
+    notificar("CREATE", e.funko());
+}
+```
 
-    // en el notificador
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void alCrear(FunkoCreadoEvent e) {
-        notificar("CREATE", e.funko());
-    }
-    ```
+`AFTER_COMMIT` significa exactamente lo que dice: **se ejecuta solo si la transacción se ha confirmado**.
 
-    `AFTER_COMMIT` significa exactamente lo que dice: **se ejecuta solo si la transacción se ha confirmado**.
+Y hay un segundo motivo para los eventos: el servicio deja de conocer al notificador. En la [UT2](../ut2/03-poo-en-java.md) eso era una interfaz inyectada; aquí es un evento, y el acoplamiento es aún menor.
 
-    Y hay un segundo motivo para los eventos: el servicio deja de conocer al notificador. En la [UT2](../ut2/03-poo-en-java.md) eso era una interfaz inyectada; aquí es un evento, y el acoplamiento es aún menor.
-
-### E6 ●●● — El notificador completo
+### El notificador completo
 
 Escribe el `WebSocketHandler` y el notificador que se usa desde el servicio.
 
-??? success "Solución"
+```java title="websockets/FunkosWebSocketHandler.java"
+@Component
+public class FunkosWebSocketHandler extends TextWebSocketHandler {
 
-    ```java title="websockets/FunkosWebSocketHandler.java"
-    @Component
-    public class FunkosWebSocketHandler extends TextWebSocketHandler {
+    private static final Logger log = LoggerFactory.getLogger(FunkosWebSocketHandler.class);
+    private final Set<WebSocketSession> sesiones = new CopyOnWriteArraySet<>();
 
-        private static final Logger log = LoggerFactory.getLogger(FunkosWebSocketHandler.class);
-        private final Set<WebSocketSession> sesiones = new CopyOnWriteArraySet<>();
+    @Override
+    public void afterConnectionEstablished(WebSocketSession session) {
+        sesiones.add(session);
+        log.info("Conectado {} · total: {}", session.getId(), sesiones.size());
+    }
 
-        @Override
-        public void afterConnectionEstablished(WebSocketSession session) {
-            sesiones.add(session);
-            log.info("Conectado {} · total: {}", session.getId(), sesiones.size());
-        }
+    @Override
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        sesiones.remove(session);
+        log.info("Desconectado {} · total: {}", session.getId(), sesiones.size());
+    }
 
-        @Override
-        public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-            sesiones.remove(session);
-            log.info("Desconectado {} · total: {}", session.getId(), sesiones.size());
-        }
+    @Override
+    public void handleTransportError(WebSocketSession session, Throwable e) {
+        log.warn("Error de transporte en {}: {}", session.getId(), e.getMessage());
+        sesiones.remove(session);
+    }
 
-        @Override
-        public void handleTransportError(WebSocketSession session, Throwable e) {
-            log.warn("Error de transporte en {}: {}", session.getId(), e.getMessage());
-            sesiones.remove(session);
-        }
-
-        /** Manda el mensaje a todos los conectados, sin que uno roto afecte al resto. */
-        public void enviarATodos(String mensaje) {
-            for (var s : sesiones) {
-                try {
-                    if (s.isOpen()) s.sendMessage(new TextMessage(mensaje));
-                    else sesiones.remove(s);
-                } catch (IOException e) {
-                    log.warn("No se pudo enviar a {}: {}", s.getId(), e.getMessage());
-                    sesiones.remove(s);
-                }
+    /** Manda el mensaje a todos los conectados, sin que uno roto afecte al resto. */
+    public void enviarATodos(String mensaje) {
+        for (var s : sesiones) {
+            try {
+                if (s.isOpen()) s.sendMessage(new TextMessage(mensaje));
+                else sesiones.remove(s);
+            } catch (IOException e) {
+                log.warn("No se pudo enviar a {}: {}", s.getId(), e.getMessage());
+                sesiones.remove(s);
             }
         }
     }
-    ```
+}
+```
 
-    ```java title="config/WebSocketConfig.java"
-    @Configuration
-    @EnableWebSocket
-    public class WebSocketConfig implements WebSocketConfigurer {
+```java title="config/WebSocketConfig.java"
+@Configuration
+@EnableWebSocket
+public class WebSocketConfig implements WebSocketConfigurer {
 
-        private final FunkosWebSocketHandler handler;
+    private final FunkosWebSocketHandler handler;
 
-        public WebSocketConfig(FunkosWebSocketHandler handler) { this.handler = handler; }
+    public WebSocketConfig(FunkosWebSocketHandler handler) { this.handler = handler; }
 
-        @Override
-        public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-            registry.addHandler(handler, "/ws/v1/funkos")
-                    .setAllowedOrigins("http://localhost:5173");   // CORS, tema 3
-        }
+    @Override
+    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+        registry.addHandler(handler, "/ws/v1/funkos")
+                .setAllowedOrigins("http://localhost:5173");   // CORS, tema 3
     }
-    ```
+}
+```
 
-    ```java title="websockets/FunkosNotificador.java"
-    @Component
-    public class FunkosNotificador {
+```java title="websockets/FunkosNotificador.java"
+@Component
+public class FunkosNotificador {
 
-        private final FunkosWebSocketHandler handler;
-        private final ObjectMapper mapper;
+    private final FunkosWebSocketHandler handler;
+    private final ObjectMapper mapper;
 
-        public FunkosNotificador(FunkosWebSocketHandler handler, ObjectMapper mapper) {
-            this.handler = handler;
-            this.mapper = mapper;
-        }
-
-        @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-        public void alCambiar(FunkoCambiadoEvent evento) throws JsonProcessingException {
-            handler.enviarATodos(mapper.writeValueAsString(
-                    new Notificacion("FUNKO", evento.tipo(), evento.funko(),
-                                     LocalDateTime.now().toString())));
-        }
-
-        public record Notificacion(String entidad, String tipo,
-                                   FunkoResponse datos, String fecha) {}
+    public FunkosNotificador(FunkosWebSocketHandler handler, ObjectMapper mapper) {
+        this.handler = handler;
+        this.mapper = mapper;
     }
-    ```
 
-    ```html title="Para probarlo, en la consola del navegador"
-    const ws = new WebSocket("ws://localhost:8080/ws/v1/funkos");
-    ws.onmessage = e => console.log(JSON.parse(e.data));
-    ```
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void alCambiar(FunkoCambiadoEvent evento) throws JsonProcessingException {
+        handler.enviarATodos(mapper.writeValueAsString(
+                new Notificacion("FUNKO", evento.tipo(), evento.funko(),
+                                 LocalDateTime.now().toString())));
+    }
 
-    **Tres cosas que hacen que esto sea correcto y no solo funcional:**
+    public record Notificacion(String entidad, String tipo,
+                               FunkoResponse datos, String fecha) {}
+}
+```
 
-    1. **`setAllowedOrigins`.** Sin él, cualquier página de internet puede abrir un WebSocket contra tu servidor. Los WebSockets **no están sujetos a la política del mismo origen** del navegador, así que esta línea es la única protección.
-    2. **`@TransactionalEventListener(AFTER_COMMIT)`.** No se notifica nada que no esté confirmado.
-    3. **Se manda el `FunkoResponse`, no la entidad.** Es el DTO de la UT4: ni expone campos de más ni arrastra relaciones perezosas (que aquí serían un `LazyInitializationException` **dentro** del notificador, fuera de toda transacción).
+```html title="Para probarlo, en la consola del navegador"
+const ws = new WebSocket("ws://localhost:8080/ws/v1/funkos");
+ws.onmessage = e => console.log(JSON.parse(e.data));
+```
+
+**Tres cosas que hacen que esto sea correcto y no solo funcional:**
+
+1. **`setAllowedOrigins`.** Sin él, cualquier página de internet puede abrir un WebSocket contra tu servidor. Los WebSockets **no están sujetos a la política del mismo origen** del navegador, así que esta línea es la única protección.
+2. **`@TransactionalEventListener(AFTER_COMMIT)`.** No se notifica nada que no esté confirmado.
+3. **Se manda el `FunkoResponse`, no la entidad.** Es el DTO de la UT4: ni expone campos de más ni arrastra relaciones perezosas (que aquí serían un `LazyInitializationException` **dentro** del notificador, fuera de toda transacción).

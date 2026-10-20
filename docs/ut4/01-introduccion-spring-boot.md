@@ -407,112 +407,33 @@ graph TB
 
 ---
 
-## Pruébalo ahora (15 min)
+## Casos especiales
 
-Crea el proyecto y comprueba a mano lo que acabas de leer.
+Los sitios donde esto se rompe, y qué hacer.
 
-1. Ve a [start.spring.io](https://start.spring.io), elige **Maven**, **Java 25**, **Spring Boot 3.5.x** y añade solo `Spring Web`. Descárgalo y ábrelo.
-2. Arráncalo con `./mvnw spring-boot:run`. ¿En qué puerto se ha levantado? ¿Quién es el servidor web?
-3. Arráncalo otra vez con `./mvnw spring-boot:run -Dspring-boot.run.arguments=--debug` y busca en la salida `CONDITIONS EVALUATION REPORT`.
-4. Crea un `@Service` con un método que devuelva un texto, inyéctalo por constructor en un `@RestController` y comprueba que funciona sin haber escrito ni un `new`.
-5. Añade al servicio un campo `private int contador = 0;` que incremente en cada llamada. Llama diez veces. ¿Qué te dice el resultado sobre el scope?
-
-??? success "Solución de las cinco"
-
-    **1 y 2.** Puerto `8080`, y el servidor es **Tomcat embebido**. En la salida se lee:
-
-    ```
-    Tomcat initialized with port 8080 (http)
-    Tomcat started on port 8080 (http) with context path '/'
-    Started DemoApplication in 1.284 seconds
-    ```
-
-    No has instalado Tomcat: viene dentro de `spring-boot-starter-web`. Eso es el punto 2 de la lista de características: **standalone**.
-
-    **3.** El informe lista, una por una, todas las autoconfiguraciones y **por qué** se han aplicado o no:
-
-    ```
-    Positive matches:
-    -----------------
-       DispatcherServletAutoConfiguration matched:
-          - @ConditionalOnClass found required class 'org.springframework.web.servlet.DispatcherServlet'
-
-    Negative matches:
-    -----------------
-       DataSourceAutoConfiguration:
-          Did not match:
-             - @ConditionalOnClass did not find required class 'javax.sql.DataSource'
-    ```
-
-    Ahí se ve que la «magia» son `@ConditionalOnClass` y compañía: **si la clase está en el classpath, se configura**. Añadir un starter no es más que poner clases en el classpath.
-
-    **4.**
-
-    ```java
-    @Service
-    public class SaludoService {
-        public String saludar(String nombre) {
-            return "Hola, " + nombre;
-        }
-    }
-
-    @RestController
-    public class SaludoController {
-        private final SaludoService servicio;
-
-        public SaludoController(SaludoService servicio) {   // sin @Autowired: no hace falta
-            this.servicio = servicio;
-        }
-
-        @GetMapping("/saludo/{nombre}")
-        public String saludo(@PathVariable String nombre) {
-            return servicio.saludar(nombre);
-        }
-    }
-    ```
-
-    ```bash
-    curl localhost:8080/saludo/Ana
-    # Hola, Ana
-    ```
-
-    **Con un solo constructor, `@Autowired` es opcional desde Spring 4.3.** El código de producción no menciona Spring en ninguna parte salvo las anotaciones.
-
-    **5.** El contador sigue subiendo entre peticiones: `1, 2, 3…`. Hay **una sola instancia** del servicio, porque el scope por defecto es `singleton`.
-
-    Y esa es la trampa: con dos peticiones a la vez, el `contador++` no es atómico y se pierden incrementos. **Los servicios no guardan estado.**
-
----
-
-## Ejercicios (con solución)
-
-### E1 — Las cuatro anotaciones
+### Las cuatro anotaciones
 
 ¿Qué diferencia hay entre `@Component`, `@Service`, `@Repository` y `@Controller`?
 
-??? success "Solución"
+**Para el contenedor, ninguna**: las cuatro registran la clase como bean y `@Component` es la genérica; las otras tres son especializaciones anotadas con `@Component`.
 
-    **Para el contenedor, ninguna**: las cuatro registran la clase como bean y `@Component` es la genérica; las otras tres son especializaciones anotadas con `@Component`.
+Las diferencias son dos:
 
-    Las diferencias son dos:
+- **Semántica**, para quien lee el código: `@Service` lógica de negocio, `@Repository` acceso a datos, `@Controller` web.
+- **Funcional**, en un caso: `@Repository` activa la **traducción de excepciones**. Las `SQLException` del driver se convierten en la jerarquía `DataAccessException` de Spring, que no es comprobada y no ata tu código a JDBC.
 
-    - **Semántica**, para quien lee el código: `@Service` lógica de negocio, `@Repository` acceso a datos, `@Controller` web.
-    - **Funcional**, en un caso: `@Repository` activa la **traducción de excepciones**. Las `SQLException` del driver se convierten en la jerarquía `DataAccessException` de Spring, que no es comprobada y no ata tu código a JDBC.
+`@RestController` es `@Controller` + `@ResponseBody`, y lo verás en el tema 2.
 
-    `@RestController` es `@Controller` + `@ResponseBody`, y lo verás en el tema 2.
-
-### E2 — IoC y DI
+### IoC y DI
 
 Explica la diferencia con una frase cada uno.
 
-??? success "Solución"
+- **IoC** es el **principio**: quien controla la creación de los objetos no es tu código, es el framework.
+- **DI** es la **técnica** concreta con la que Spring aplica ese principio: las dependencias entran por el constructor (o setter, o campo) en lugar de crearse dentro con `new`.
 
-    - **IoC** es el **principio**: quien controla la creación de los objetos no es tu código, es el framework.
-    - **DI** es la **técnica** concreta con la que Spring aplica ese principio: las dependencias entran por el constructor (o setter, o campo) en lugar de crearse dentro con `new`.
+Es la pregunta de examen del tema. Confundirlas es decir «el motor» cuando te preguntan por «la combustión».
 
-    Es la pregunta de examen del tema. Confundirlas es decir «el motor» cuando te preguntan por «la combustión».
-
-### E3 — Por constructor, por setter o por campo
+### Por constructor, por setter o por campo
 
 ```java
 // (a)
@@ -529,17 +450,15 @@ public MiControlador(ProductoService servicio) { this.servicio = servicio; }
 
 ¿Cuál se usa y por qué?
 
-??? success "Solución"
+**La (c), por constructor.** Tres razones, y las tres importan:
 
-    **La (c), por constructor.** Tres razones, y las tres importan:
+1. El campo puede ser **`final`**: el objeto nace completo y nadie puede cambiarle la dependencia después.
+2. **No se puede construir mal.** Con (a) y (b), si olvidas el bean obtienes un objeto a medio hacer y un `NullPointerException` en la primera petición.
+3. **Se puede instanciar en un test sin Spring**: `new MiControlador(mock)`. Con la inyección por campo hace falta reflexión o levantar el contexto entero.
 
-    1. El campo puede ser **`final`**: el objeto nace completo y nadie puede cambiarle la dependencia después.
-    2. **No se puede construir mal.** Con (a) y (b), si olvidas el bean obtienes un objeto a medio hacer y un `NullPointerException` en la primera petición.
-    3. **Se puede instanciar en un test sin Spring**: `new MiControlador(mock)`. Con la inyección por campo hace falta reflexión o levantar el contexto entero.
+Y hay una cuarta, de diseño: si el constructor tiene siete parámetros, **se ve** que la clase hace demasiado. La inyección por campo esconde eso.
 
-    Y hay una cuarta, de diseño: si el constructor tiene siete parámetros, **se ve** que la clase hace demasiado. La inyección por campo esconde eso.
-
-### E4 — El bean que no aparece
+### El bean que no aparece
 
 Arrancas y sale:
 
@@ -550,15 +469,13 @@ of type 'com.example.PedidoService' that could not be found.
 
 Da tres causas posibles.
 
-??? success "Solución"
+1. **Falta la anotación.** `PedidoService` no lleva `@Service` (ni `@Component`), así que Spring no lo ha registrado.
+2. **Está fuera del paquete escaneado.** `@SpringBootApplication` escanea su propio paquete **y los de debajo**. Una clase en `com.otro.cosa` no se encuentra.
+3. **Es una interfaz sin implementación anotada**, o hay **dos** implementaciones y Spring no sabe cuál (ese error es distinto: `required a single bean, but 2 were found`, y se resuelve con `@Primary` o `@Qualifier`).
 
-    1. **Falta la anotación.** `PedidoService` no lleva `@Service` (ni `@Component`), así que Spring no lo ha registrado.
-    2. **Está fuera del paquete escaneado.** `@SpringBootApplication` escanea su propio paquete **y los de debajo**. Una clase en `com.otro.cosa` no se encuentra.
-    3. **Es una interfaz sin implementación anotada**, o hay **dos** implementaciones y Spring no sabe cuál (ese error es distinto: `required a single bean, but 2 were found`, y se resuelve con `@Primary` o `@Qualifier`).
+La (2) es la que más tiempo hace perder, porque el código parece correcto.
 
-    La (2) es la que más tiempo hace perder, porque el código parece correcto.
-
-### E5 — El singleton con estado
+### El singleton con estado
 
 ```java
 @Service
@@ -572,35 +489,31 @@ public class CarritoService {
 
 ¿Qué le pasa a esto en producción?
 
-??? success "Solución"
+**Todos los usuarios comparten el mismo carrito**, porque hay una sola instancia del servicio para toda la aplicación.
 
-    **Todos los usuarios comparten el mismo carrito**, porque hay una sola instancia del servicio para toda la aplicación.
+Y además `ArrayList` no es seguro con varios hilos: dos peticiones simultáneas pueden corromperlo o lanzar un `ArrayIndexOutOfBoundsException` desde dentro del `add`.
 
-    Y además `ArrayList` no es seguro con varios hilos: dos peticiones simultáneas pueden corromperlo o lanzar un `ArrayIndexOutOfBoundsException` desde dentro del `add`.
+El estado por usuario no vive en el servicio: vive **en la base de datos** o en la sesión, y el servicio lo recibe y lo devuelve. Un `@Service` bien escrito es una colección de funciones.
 
-    El estado por usuario no vive en el servicio: vive **en la base de datos** o en la sesión, y el servicio lo recibe y lo devuelve. Un `@Service` bien escrito es una colección de funciones.
-
-### E6 — `@Bean` o `@Component`
+### `@Bean` o `@Component`
 
 Necesitas un bean de `ObjectMapper` configurado con el módulo de `java.time`. ¿Cuál usas?
 
-??? success "Solución"
+**`@Bean` dentro de una `@Configuration`**, porque `ObjectMapper` es una clase de una librería externa: no puedes anotarla.
 
-    **`@Bean` dentro de una `@Configuration`**, porque `ObjectMapper` es una clase de una librería externa: no puedes anotarla.
+```java
+@Configuration
+public class JacksonConfig {
 
-    ```java
-    @Configuration
-    public class JacksonConfig {
-
-        @Bean
-        public ObjectMapper objectMapper() {
-            return new ObjectMapper()
-                    .registerModule(new JavaTimeModule())
-                    .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        }
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
-    ```
+}
+```
 
-    **La regla:** `@Component` para **tus** clases; `@Bean` cuando el objeto lo construyes tú porque la clase no es tuya o necesita configuración.
+**La regla:** `@Component` para **tus** clases; `@Bean` cuando el objeto lo construyes tú porque la clase no es tuya o necesita configuración.
 
-    (En la práctica, para Jackson Spring Boot ya registra el módulo de `java.time` solo. El ejemplo vale igual para un `RestClient`, un `Clock` o un `PasswordEncoder`.)
+(En la práctica, para Jackson Spring Boot ya registra el módulo de `java.time` solo. El ejemplo vale igual para un `RestClient`, un `Clock` o un `PasswordEncoder`.)

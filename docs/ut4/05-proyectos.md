@@ -1,115 +1,65 @@
 # 5. Dos proyectos paso a paso
 
-Dos APIs REST completas, de cero a `.jar`, con **Maven, Spring Web y H2 por JDBC**. La primera es de una tabla; la segunda, de tres tablas relacionadas.
+Dos APIs REST completas con **Maven, Spring Web y H2 por JDBC**. Se teclean de arriba abajo y cada paso deja el proyecto **arrancando**.
 
-| | Proyecto | Tablas | Lo nuevo que enseña |
+| | Proyecto | Tablas | Lo nuevo |
 |:-:|---|:-:|---|
-| **A** | [API de Funkos](#proyecto-a-api-de-funkos) | 1 | Las capas completas, DTOs, validación, excepciones, caché y JDBC con `JdbcClient` |
-| **B** | [API de una tienda](#proyecto-b-api-de-una-tienda) | 3 | Claves ajenas, una operación que toca tres tablas y **`@Transactional` de verdad** |
+| **A** | [API de Funkos](#proyecto-a-api-de-funkos) | 1 | Las ocho capas completas, de cero a `.jar` |
+| **B** | [API de una tienda](#proyecto-b-api-de-una-tienda) | 2 | Clave ajena y **una operación que toca las dos tablas** |
 
-!!! danger "Aquí NO hay JPA ni Hibernate, y es a propósito"
-    En esta unidad hablamos con H2 **a mano**, con SQL que escribes tú, igual que en la [UT3](../ut3/03-base-de-datos.md) pero con Spring poniendo el pegamento (`DataSource`, pool de conexiones, transacciones).
+!!! danger "Aquí no hay JPA ni Hibernate"
+    El SQL lo escribes tú. **JPA es la [UT5](../ut5/index.md)**, y entonces se cambiará solo el repositorio.
 
-    **JPA, las entidades, las relaciones y los repositorios automáticos son la [UT5](../ut5/index.md).** Mezclarlo ahora haría que atribuyeras a Hibernate problemas que son de arquitectura, y la arquitectura es justo lo que se evalúa en el RA5.
+!!! info "Cómo se trabaja"
+    No se lee: se teclea. **`git commit` al final de cada paso**, que es la única forma de volver atrás cuando el paso 8 rompe algo del paso 3.
 
-    Lo que sí ganas: cuando en la UT5 Spring Data te genere un `findByCategoriaIgnoreCase` sin escribir nada, sabrás **exactamente** qué SQL está sustituyendo.
-
-!!! info "Cómo se trabaja esto"
-    No se lee: se teclea. Cada paso deja el proyecto **compilando y arrancando**, así que si algo falla sabes en qué paso fue.
-
-    `git commit` al final de cada paso. Es la única forma de volver atrás cuando el paso 9 rompe algo del paso 4.
+    El orden es el del [tema 3](03-repositorios-servicios-dtos.md): modelo → repositorio → excepciones → DTOs → mapeador → servicio → controlador → errores.
 
 ---
 
-## Lo que compartís los dos proyectos
+# Proyecto A · API de Funkos
 
-### El `pom.xml`
-
-```xml title="pom.xml"
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-                             https://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-
-  <parent>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.5.6</version>
-    <relativePath/>
-  </parent>
-
-  <groupId>es.iesx</groupId>
-  <artifactId>funkos-api</artifactId>
-  <version>1.0.0</version>
-
-  <properties>
-    <java.version>25</java.version>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
-
-  <dependencies>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-validation</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-cache</artifactId>
-    </dependency>
-
-    <!-- JDBC con DataSource, pool y transacciones. NO es JPA -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-jdbc</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.h2database</groupId>
-      <artifactId>h2</artifactId>
-      <scope>runtime</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-devtools</artifactId>
-      <scope>runtime</scope>
-      <optional>true</optional>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-test</artifactId>
-      <scope>test</scope>
-    </dependency>
-  </dependencies>
-
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-maven-plugin</artifactId>
-      </plugin>
-    </plugins>
-  </build>
-</project>
+```
+GET    /api/v1/funkos          ?categoria= &nombre= &precioMax=
+GET    /api/v1/funkos/{id}
+POST   /api/v1/funkos
+PUT    /api/v1/funkos/{id}
+PATCH  /api/v1/funkos/{id}
+DELETE /api/v1/funkos/{id}
 ```
 
-!!! success "`spring-boot-starter-jdbc` frente a `spring-boot-starter-data-jpa`"
-    | | `starter-jdbc` (UT4) | `starter-data-jpa` (UT5) |
-    |---|---|---|
-    | Trae | `DataSource`, HikariCP, `JdbcClient`, transacciones | Todo eso **+ Hibernate + Spring Data** |
-    | El SQL lo escribes | **Tú** | Lo genera Hibernate |
-    | El esquema lo creas | **Tú**, en `schema.sql` | `ddl-auto`, desde las entidades |
-    | El mapeo fila → objeto | **Tú**, con un `RowMapper` | Automático, con `@Entity` |
-    | Lo que aprendes | Qué pasa por debajo | A no repetirte |
+## Paso 1 · Crear el proyecto
 
-    Lo que **ya te da** el starter de JDBC y en la UT3 no tenías: el **pool de conexiones** (HikariCP, configurado solo) y el `@Transactional`.
+```bash
+curl https://start.spring.io/starter.zip \
+  -d type=maven-project -d language=java \
+  -d bootVersion=3.5.6 -d javaVersion=25 \
+  -d groupId=es.iesx -d artifactId=funkos-api \
+  -d packageName=es.iesx.funkos \
+  -d dependencies=web,validation,jdbc,h2,devtools \
+  -o funkos-api.zip
 
-### La configuración
+unzip funkos-api.zip -d funkos-api && cd funkos-api
+./mvnw spring-boot:run
+```
+
+```
+Tomcat started on port 8080 (http)
+Started FunkosApiApplication in 1.412 seconds
+```
+
+!!! info "Las cinco dependencias"
+    | | Para qué |
+    |---|---|
+    | `web` | Tomcat, `@RestController`, Jackson |
+    | `validation` | `@Valid`, `@NotBlank` |
+    | **`jdbc`** | `DataSource`, pool, **`JdbcClient`**, `@Transactional` |
+    | `h2` | La base de datos |
+    | `devtools` | Reinicio al guardar (solo desarrollo) |
+
+    **`jdbc`, no `data-jpa`.** Si pones JPA por error, Hibernate intentará crear las tablas y chocará con tu `schema.sql`.
+
+## Paso 2 · La configuración
 
 ```properties title="src/main/resources/application.properties"
 spring.application.name=funkos-api
@@ -124,101 +74,47 @@ spring.datasource.username=${DB_USER:sa}
 spring.datasource.password=${DB_PASSWORD:}
 spring.datasource.driver-class-name=org.h2.Driver
 
-### Esquema y datos: los creamos NOSOTROS
+### El esquema y los datos los creamos nosotros
 spring.sql.init.mode=always
 spring.sql.init.schema-locations=classpath:schema.sql
 spring.sql.init.data-locations=classpath:data.sql
 
-### Consola web de H2, solo en desarrollo
+### Consola web de H2: http://localhost:8080/h2-console
 spring.h2.console.enabled=true
 spring.h2.console.path=/h2-console
 
-### Errores
 server.error.include-message=always
 server.error.include-binding-errors=always
 server.error.include-stacktrace=never
 
 logging.level.es.iesx=DEBUG
-spring.profiles.active=${SPRING_PROFILES_ACTIVE:dev}
 ```
 
-!!! danger "`file:` y no `mem:`, y el `AUTO_SERVER=TRUE`"
+```gitignore title=".gitignore — añade esto"
+datos/
+```
+
+!!! danger "`file:` y `AUTO_SERVER=TRUE`"
     | URL | Dónde viven los datos |
     |---|---|
-    | `jdbc:h2:mem:funkos` | **En memoria.** Se borran al parar la aplicación |
-    | `jdbc:h2:file:./datos/funkos` | **En un fichero** `datos/funkos.mv.db`. Sobreviven |
+    | `jdbc:h2:mem:funkos` | En memoria: **se borran al parar** |
+    | `jdbc:h2:file:./datos/funkos` | En `datos/funkos.mv.db`: **sobreviven** |
 
-    Usamos **fichero** porque la gracia de la unidad es que los datos persistan. Y `AUTO_SERVER=TRUE` permite que **la consola de H2 y tu aplicación** abran la misma base de datos a la vez; sin él, lo segundo que se conecte falla con `Database may be already in use`.
+    Y `AUTO_SERVER=TRUE` permite que la consola de H2 y tu aplicación abran la base **a la vez**. Sin él, la segunda falla con `Database may be already in use`.
 
-    Añade `datos/` al `.gitignore`: la base de datos no se sube.
-
-!!! warning "`spring.sql.init.mode=always` reejecuta `schema.sql` en cada arranque"
-    Con un fichero persistente, eso significa que tu `schema.sql` **tiene que ser idempotente**: `CREATE TABLE IF NOT EXISTS`, y los `INSERT` de `data.sql` con `MERGE` o condicionados.
-
-    Si no, al segundo arranque falla con `Table "FUNKOS" already exists`. Es el error número uno de este tema.
-
-### La estructura de paquetes
-
-```
-src/main/java/es/iesx/funkos/
-├── FunkosApiApplication.java          ← arranque (paquete RAÍZ)
-├── config/
-│   └── CacheConfig.java
-├── funkos/
-│   ├── controllers/FunkosRestController.java
-│   ├── services/{FunkosService, FunkosServiceImpl}.java
-│   ├── repositories/{FunkosRepository, FunkosRepositoryJdbc}.java
-│   ├── models/Funko.java
-│   ├── dto/{FunkoResponse, FunkoCreateRequest, FunkoUpdateRequest}.java
-│   ├── mappers/{FunkoMapper, FunkoRowMapper}.java
-│   └── exceptions/{FunkoException, FunkoNotFoundException, …}.java
-└── common/GlobalExceptionHandler.java
-```
-
-```
-src/main/resources/
-├── application.properties
-├── application-dev.properties
-├── application-prod.properties
-├── schema.sql
-└── data.sql
-```
-
-!!! tip "Agrupado por *feature*, no por capa"
-    Todo lo de funkos está junto. En el proyecto B, añadir pedidos es **una carpeta nueva** y cero ficheros tocados.
-
-    Y lo que no es negociable: **`FunkosApiApplication` va en el paquete raíz**, porque `@ComponentScan` escanea desde ahí hacia abajo.
-
----
-
-# Proyecto A · API de Funkos
-
-Una tabla, las capas completas y JDBC. Es el proyecto de referencia de la unidad.
-
-```
-GET    /api/v1/funkos          ?categoria= &nombre= &precioMax=
-GET    /api/v1/funkos/{id}
-POST   /api/v1/funkos
-PUT    /api/v1/funkos/{id}
-PATCH  /api/v1/funkos/{id}
-DELETE /api/v1/funkos/{id}
-GET    /api/v1/funkos/estadisticas
-```
-
-## A.1 · El esquema y los datos
+## Paso 3 · El esquema y los datos
 
 ```sql title="src/main/resources/schema.sql"
 CREATE TABLE IF NOT EXISTS funkos (
-    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
-    nombre      VARCHAR(100)  NOT NULL,
-    precio      DECIMAL(10,2) NOT NULL,
-    cantidad    INT           NOT NULL DEFAULT 0,
-    imagen      VARCHAR(500),
-    categoria   VARCHAR(20)   NOT NULL,
-    created_at  TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at  TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    nombre     VARCHAR(100)  NOT NULL,
+    precio     DECIMAL(10,2) NOT NULL,
+    cantidad   INT           NOT NULL DEFAULT 0,
+    categoria  VARCHAR(20)   NOT NULL,
+    created_at TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uk_funko_nombre UNIQUE (nombre),
-    CONSTRAINT ck_funko_precio CHECK (precio >= 0),
+    CONSTRAINT ck_funko_precio   CHECK (precio   >= 0),
     CONSTRAINT ck_funko_cantidad CHECK (cantidad >= 0),
     CONSTRAINT ck_funko_categoria
         CHECK (categoria IN ('DISNEY','MARVEL','ANIME','OTROS'))
@@ -228,38 +124,37 @@ CREATE INDEX IF NOT EXISTS idx_funko_categoria ON funkos (categoria);
 ```
 
 ```sql title="src/main/resources/data.sql"
--- MERGE en vez de INSERT: idempotente, no falla al segundo arranque
-MERGE INTO funkos (id, nombre, precio, cantidad, imagen, categoria) KEY(id) VALUES
-  (1, 'Mickey Mouse', 15.99, 10, 'https://placehold.co/300', 'DISNEY'),
-  (2, 'Stitch',       17.00,  8, 'https://placehold.co/300', 'DISNEY'),
-  (3, 'Spider-Man',   19.99,  5, 'https://placehold.co/300', 'MARVEL'),
-  (4, 'Iron Man',     21.50,  2, 'https://placehold.co/300', 'MARVEL'),
-  (5, 'Goku',         22.50,  3, 'https://placehold.co/300', 'ANIME'),
-  (6, 'Naruto',       18.75,  0, 'https://placehold.co/300', 'ANIME');
+MERGE INTO funkos (id, nombre, precio, cantidad, categoria) KEY(id) VALUES
+  (1, 'Mickey Mouse', 15.99, 10, 'DISNEY'),
+  (2, 'Stitch',       17.00,  8, 'DISNEY'),
+  (3, 'Spider-Man',   19.99,  5, 'MARVEL'),
+  (4, 'Iron Man',     21.50,  2, 'MARVEL'),
+  (5, 'Goku',         22.50,  3, 'ANIME'),
+  (6, 'Naruto',       18.75,  0, 'ANIME');
 
--- la secuencia del AUTO_INCREMENT tiene que quedar por encima
 ALTER TABLE funkos ALTER COLUMN id RESTART WITH 7;
 ```
 
-!!! danger "Las tres cosas de este paso que se olvidan y cuestan una tarde"
-    **1. `CREATE TABLE IF NOT EXISTS`.** Con H2 en fichero, `schema.sql` se ejecuta en cada arranque. Sin el `IF NOT EXISTS`: `Table "FUNKOS" already exists`.
+!!! danger "Las tres cosas que fallan en este paso"
+    **1 · `CREATE TABLE IF NOT EXISTS`.** Con H2 en fichero, `schema.sql` se ejecuta **en cada arranque**. Sin el `IF NOT EXISTS`, al segundo arranque: `Table "FUNKOS" already exists`.
 
-    **2. `MERGE … KEY(id)` en vez de `INSERT`.** Mismo motivo: un `INSERT` con id fijo falla al segundo arranque por la clave primaria duplicada.
+    **2 · `MERGE … KEY(id)` y no `INSERT`.** Mismo motivo: un `INSERT` con id fijo falla al segundo arranque por clave primaria duplicada.
 
-    **3. El `ALTER … RESTART WITH 7`.** Si insertas con ids explícitos, el contador del `AUTO_INCREMENT` **sigue en 1**, así que el primer `POST` intentará usar el id 1 y chocará con Mickey Mouse. Es un error desconcertante porque el código del POST está bien.
+    **3 · El `ALTER … RESTART WITH 7`.** Si insertas con ids explícitos, el contador del `AUTO_INCREMENT` sigue en 1, así que **el primer POST chocará con Mickey Mouse**. Es un error desconcertante porque el código del POST está bien.
 
-!!! success "Las restricciones de la tabla son la tercera capa de validación"
-    Fíjate en el `UNIQUE`, los dos `CHECK` de rango y el `CHECK` de la lista de categorías.
+!!! success "Comprueba antes de seguir"
+    ```bash
+    ./mvnw spring-boot:run
+    # Ctrl+C y otra vez: tiene que arrancar las dos veces sin error
+    ```
 
-    | | Dónde | Cuándo salta | Qué ve el cliente |
-    |---|---|---|---|
-    | `@NotBlank`, `@Positive` | DTO | Al validar la petición | **400** con el campo |
-    | `existsByNombre` | Servicio | Antes de insertar | **409** |
-    | `UNIQUE`, `CHECK` | **Tabla** | Al hacer el `INSERT` | La única que **no se puede saltar** |
+    Y en `http://localhost:8080/h2-console`, con `jdbc:h2:file:./datos/funkos`, usuario `sa` y contraseña vacía:
 
-    La tercera es la red de seguridad para cuando el dato llega por otra vía: un `data.sql`, un script de migración, otro servicio.
+    ```sql
+    SELECT * FROM funkos;
+    ```
 
-## A.2 · El modelo
+## Paso 4 · El modelo
 
 ```java title="funkos/models/Funko.java"
 package es.iesx.funkos.funkos.models;
@@ -267,106 +162,23 @@ package es.iesx.funkos.funkos.models;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-public class Funko {
-    private Long id;
-    private String nombre;
-    private BigDecimal precio;
-    private Integer cantidad;
-    private String imagen;
-    private String categoria;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
-    public Funko() {}
-
-    public static Builder builder() { return new Builder(); }
-
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getNombre() { return nombre; }
-    public BigDecimal getPrecio() { return precio; }
-    public Integer getCantidad() { return cantidad; }
-    public String getImagen() { return imagen; }
-    public String getCategoria() { return categoria; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-
-    public static class Builder {
-        private final Funko f = new Funko();
-        public Builder id(Long v)                 { f.id = v;        return this; }
-        public Builder nombre(String v)           { f.nombre = v;    return this; }
-        public Builder precio(BigDecimal v)       { f.precio = v;    return this; }
-        public Builder cantidad(Integer v)        { f.cantidad = v;  return this; }
-        public Builder imagen(String v)           { f.imagen = v;    return this; }
-        public Builder categoria(String v)        { f.categoria = v; return this; }
-        public Builder createdAt(LocalDateTime v) { f.createdAt = v; return this; }
-        public Builder updatedAt(LocalDateTime v) { f.updatedAt = v; return this; }
-        public Funko build() { return f; }
-    }
-}
-```
-
-!!! info "`BigDecimal` y no `double`, desde el primer día"
-    Es dinero, y `0.1 + 0.2` en `double` da `0.30000000000000004`. Está en la [UT2, E1](../ut2/ejercicios.md), y la columna es `DECIMAL(10,2)` precisamente por eso.
-
-    El `builder` tampoco es decoración: con ocho campos, `new Funko(null, "Casco", …, ahora, ahora)` es ilegible y basta con cambiar dos parámetros de sitio para meter un bug que compila.
-
-## A.3 · Los DTOs
-
-```java title="funkos/dto/FunkoResponse.java"
-public record FunkoResponse(
-        Long id, String nombre, BigDecimal precio, Integer cantidad,
-        String imagen, String categoria,
-        LocalDateTime createdAt, LocalDateTime updatedAt) {}
-```
-
-```java title="funkos/dto/FunkoCreateRequest.java"
-public record FunkoCreateRequest(
-
-        @NotBlank(message = "El nombre no puede estar vacío")
-        @Size(max = 100, message = "El nombre no puede tener más de 100 caracteres")
+public record Funko(
+        Long id,
         String nombre,
-
-        @NotNull(message = "El precio es obligatorio")
-        @DecimalMin(value = "0.0", message = "El precio no puede ser negativo")
-        @Digits(integer = 8, fraction = 2, message = "Como máximo 2 decimales")
         BigDecimal precio,
-
-        @NotNull(message = "La cantidad es obligatoria")
-        @PositiveOrZero(message = "La cantidad no puede ser negativa")
         Integer cantidad,
-
-        @Pattern(regexp = "^https?://.+", message = "La imagen debe ser una URL")
-        String imagen,
-
-        @NotBlank(message = "La categoría no puede estar vacía")
-        @Pattern(regexp = "DISNEY|MARVEL|ANIME|OTROS",
-                 message = "La categoría debe ser DISNEY, MARVEL, ANIME u OTROS")
-        String categoria
+        String categoria,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {}
 ```
 
-```java title="funkos/dto/FunkoUpdateRequest.java"
-public record FunkoUpdateRequest(
-        @Size(max = 100) String nombre,
-        @DecimalMin("0.0") @Digits(integer = 8, fraction = 2) BigDecimal precio,
-        @PositiveOrZero Integer cantidad,
-        @Pattern(regexp = "^https?://.+") String imagen,
-        @Pattern(regexp = "DISNEY|MARVEL|ANIME|OTROS") String categoria) {}
-```
+**Un fichero, siete líneas.** El `record` trae el constructor, los captadores (`f.nombre()`), `equals`, `hashCode` y `toString`.
 
-!!! success "Tres DTOs, y la diferencia está en los `@NotNull`"
-    | | `CreateRequest` | `UpdateRequest` |
-    |---|---|---|
-    | `nombre` | `@NotBlank` + `@Size` | solo `@Size` |
-    | `precio` | `@NotNull` + `@DecimalMin` | solo `@DecimalMin` |
-    | `categoria` | `@NotBlank` + `@Pattern` | solo `@Pattern` |
+!!! info "Y `BigDecimal`, no `double`"
+    Es dinero: `0.1 + 0.2` en `double` da `0.30000000000000004`. La columna es `DECIMAL(10,2)` por lo mismo.
 
-    En el de actualización **desaparecen los obligatorios**, porque en un PATCH `null` significa «este campo no lo cambies». Las reglas de formato se quedan: si mandas un valor, tiene que ser válido.
-
-    Y el `CreateRequest` **no lleva `id` ni fechas**: las pone el servidor. Si llevara `id`, un cliente podría mandar `{"id": 1, …}` e intentar sobrescribir otro registro.
-
-## A.4 · El repositorio con `JdbcClient`
+## Paso 5 · El repositorio
 
 ```java title="funkos/repositories/FunkosRepository.java"
 package es.iesx.funkos.funkos.repositories;
@@ -376,20 +188,19 @@ import java.math.BigDecimal;
 import java.util.*;
 
 public interface FunkosRepository {
-    List<Funko>     findAll();
-    List<Funko>     buscar(Optional<String> categoria, Optional<String> nombre,
-                           Optional<BigDecimal> precioMax);
-    Optional<Funko> findById(Long id);
-    boolean         existsByNombre(String nombre);
-    Funko           save(Funko funko);
-    Funko           update(Funko funko);
-    boolean         deleteById(Long id);
+    List<Funko>       buscar(Optional<String> categoria, Optional<String> nombre,
+                             Optional<BigDecimal> precioMax);
+    Optional<Funko>   findById(Long id);
+    boolean           existsByNombre(String nombre);
+    Funko             save(Funko funko);
+    void              update(Funko funko);
+    boolean           deleteById(Long id);
     Map<String, Long> contarPorCategoria();
 }
 ```
 
-```java title="funkos/mappers/FunkoRowMapper.java"
-package es.iesx.funkos.funkos.mappers;
+```java title="funkos/repositories/FunkoRowMapper.java"
+package es.iesx.funkos.funkos.repositories;
 
 import es.iesx.funkos.funkos.models.Funko;
 import org.springframework.jdbc.core.RowMapper;
@@ -398,22 +209,19 @@ import org.springframework.stereotype.Component;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-/** Convierte una fila del ResultSet en un Funko. Es el mapeo de la UT3, aislado. */
 @Component
 public class FunkoRowMapper implements RowMapper<Funko> {
 
     @Override
     public Funko mapRow(ResultSet rs, int rowNum) throws SQLException {
-        return Funko.builder()
-                .id(rs.getLong("id"))
-                .nombre(rs.getString("nombre"))
-                .precio(rs.getBigDecimal("precio"))
-                .cantidad(rs.getInt("cantidad"))
-                .imagen(rs.getString("imagen"))
-                .categoria(rs.getString("categoria"))
-                .createdAt(rs.getTimestamp("created_at").toLocalDateTime())
-                .updatedAt(rs.getTimestamp("updated_at").toLocalDateTime())
-                .build();
+        return new Funko(
+                rs.getLong("id"),
+                rs.getString("nombre"),
+                rs.getBigDecimal("precio"),
+                rs.getInt("cantidad"),
+                rs.getString("categoria"),
+                rs.getTimestamp("created_at").toLocalDateTime(),
+                rs.getTimestamp("updated_at").toLocalDateTime());
     }
 }
 ```
@@ -421,16 +229,13 @@ public class FunkoRowMapper implements RowMapper<Funko> {
 ```java title="funkos/repositories/FunkosRepositoryJdbc.java"
 package es.iesx.funkos.funkos.repositories;
 
-import es.iesx.funkos.funkos.mappers.FunkoRowMapper;
 import es.iesx.funkos.funkos.models.Funko;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Repository
 public class FunkosRepositoryJdbc implements FunkosRepository {
@@ -443,13 +248,6 @@ public class FunkosRepositoryJdbc implements FunkosRepository {
         this.rowMapper = rowMapper;
     }
 
-    @Override
-    public List<Funko> findAll() {
-        return jdbc.sql("SELECT * FROM funkos ORDER BY id")
-                   .query(rowMapper).list();
-    }
-
-    /** Filtros opcionales y combinables, montando el WHERE a trozos. */
     @Override
     public List<Funko> buscar(Optional<String> categoria, Optional<String> nombre,
                               Optional<BigDecimal> precioMax) {
@@ -491,45 +289,39 @@ public class FunkosRepositoryJdbc implements FunkosRepository {
     public Funko save(Funko f) {
         var keys = new GeneratedKeyHolder();
         jdbc.sql("""
-                INSERT INTO funkos (nombre, precio, cantidad, imagen, categoria,
-                                    created_at, updated_at)
-                VALUES (:nombre, :precio, :cantidad, :imagen, :categoria, :creado, :actualizado)
+                INSERT INTO funkos (nombre, precio, cantidad, categoria, created_at, updated_at)
+                VALUES (:nombre, :precio, :cantidad, :categoria, :creado, :actualizado)
                 """)
-            .param("nombre", f.getNombre())
-            .param("precio", f.getPrecio())
-            .param("cantidad", f.getCantidad())
-            .param("imagen", f.getImagen())
-            .param("categoria", f.getCategoria())
-            .param("creado", f.getCreatedAt())
-            .param("actualizado", f.getUpdatedAt())
+            .param("nombre", f.nombre())
+            .param("precio", f.precio())
+            .param("cantidad", f.cantidad())
+            .param("categoria", f.categoria())
+            .param("creado", f.createdAt())
+            .param("actualizado", f.updatedAt())
             .update(keys);
 
-        f.setId(((Number) keys.getKeys().get("id")).longValue());
-        return f;
+        Long id = ((Number) keys.getKeys().get("id")).longValue();
+        return new Funko(id, f.nombre(), f.precio(), f.cantidad(),
+                         f.categoria(), f.createdAt(), f.updatedAt());
     }
 
     @Override
-    public Funko update(Funko f) {
-        int filas = jdbc.sql("""
+    public void update(Funko f) {
+        jdbc.sql("""
                 UPDATE funkos
                    SET nombre = :nombre, precio = :precio, cantidad = :cantidad,
-                       imagen = :imagen, categoria = :categoria, updated_at = :actualizado
+                       categoria = :categoria, updated_at = :actualizado
                  WHERE id = :id
                 """)
-            .param("nombre", f.getNombre())
-            .param("precio", f.getPrecio())
-            .param("cantidad", f.getCantidad())
-            .param("imagen", f.getImagen())
-            .param("categoria", f.getCategoria())
-            .param("actualizado", LocalDateTime.now())
-            .param("id", f.getId())
+            .param("nombre", f.nombre())
+            .param("precio", f.precio())
+            .param("cantidad", f.cantidad())
+            .param("categoria", f.categoria())
+            .param("actualizado", f.updatedAt())
+            .param("id", f.id())
             .update();
-
-        if (filas == 0) throw new IllegalStateException("No se actualizó ninguna fila");
-        return f;
     }
 
-    /** Devuelve si borró algo, leído de las filas afectadas. */
     @Override
     public boolean deleteById(Long id) {
         return jdbc.sql("DELETE FROM funkos WHERE id = :id")
@@ -539,143 +331,225 @@ public class FunkosRepositoryJdbc implements FunkosRepository {
 
     @Override
     public Map<String, Long> contarPorCategoria() {
-        return jdbc.sql("""
+        var filas = jdbc.sql("""
                 SELECT categoria, COUNT(*) AS total
                   FROM funkos
                  GROUP BY categoria
                  ORDER BY categoria
                 """)
             .query((rs, n) -> Map.entry(rs.getString("categoria"), rs.getLong("total")))
-            .list().stream()
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
-                                      (a, b) -> a, LinkedHashMap::new));
+            .list();
+
+        var resultado = new LinkedHashMap<String, Long>();
+        filas.forEach(e -> resultado.put(e.getKey(), e.getValue()));
+        return resultado;
     }
 }
 ```
 
-!!! success "Compara esto con la UT3 y verás qué pone Spring"
+!!! success "Compara con la UT3"
     | | UT3, a mano | UT4, con `JdbcClient` |
     |---|---|---|
-    | Abrir la conexión | `DriverManager.getConnection(...)` + `try-with-resources` | **Spring**, de un pool |
-    | Parámetros | `ps.setString(1, ...)` **numerados desde 1** | `:nombre`, **con nombre** |
-    | Recorrer el `ResultSet` | `while (rs.next()) { … }` | `RowMapper` + `.list()` |
-    | Cero o un resultado | `rs.next() ? … : null` | **`.optional()` → `Optional`** |
-    | Id generado | `Statement.RETURN_GENERATED_KEYS` + `getGeneratedKeys()` | `GeneratedKeyHolder` |
-    | Cerrar | A mano, y si se olvida se agota el pool | **Spring** |
+    | Abrir la conexión | `DriverManager` + `try-with-resources` | **Spring**, de un pool |
+    | Parámetros | `ps.setString(1, …)` desde 1 | `:nombre`, con nombre |
+    | Recorrer el `ResultSet` | `while (rs.next())` | `RowMapper` + `.list()` |
+    | Cero o uno | `rs.next() ? … : null` | **`.optional()`** |
+    | Cerrar | A mano | **Spring** |
 
-    El SQL sigue siendo **tuyo**, y los `:param` siguen siendo `PreparedStatement` por debajo: **la inyección SQL de la [UT3, E22](../ut3/ejercicios.md) no es posible por esta vía**.
+    El SQL sigue siendo tuyo, y los `:param` siguen siendo `PreparedStatement`: **la inyección SQL no es posible por esta vía**.
 
-!!! danger "Lo único peligroso del método `buscar`"
-    Fíjate en que los **valores** van en `params` y lo que se concatena es **solo texto fijo escrito por ti**:
+## Paso 6 · Las excepciones
 
-    ```java
-    sql.append(" AND UPPER(categoria) = UPPER(:categoria)");   // ✅ texto fijo
-    params.put("categoria", c);                                 // ✅ valor parametrizado
-    ```
+Tres ficheros de cuatro líneas:
 
-    Lo que **nunca** se hace, aunque sea más corto:
+```java title="funkos/exceptions/FunkoNotFoundException.java"
+package es.iesx.funkos.funkos.exceptions;
 
-    ```java
-    sql.append(" AND categoria = '" + c + "'");                 // ❌ inyección SQL
-    ```
-
-    Y el `WHERE 1 = 1` es un truco para que todos los filtros empiecen por `AND` y no haya que llevar la cuenta de cuál es el primero.
-
-!!! tip "`JdbcTemplate` es el clásico, `JdbcClient` el moderno"
-    `JdbcClient` existe desde Spring 6.1 / Boot 3.2 y es una fachada más legible sobre `JdbcTemplate`. Si encuentras tutoriales con `jdbcTemplate.query(sql, rowMapper, param1, param2)`, es lo mismo con parámetros posicionales.
-
-    En el examen vale cualquiera de los dos, pero con `JdbcClient` se lee mejor **qué parámetro es cuál**, y eso evita el bug clásico de intercambiar dos.
-
-## A.5 · Las excepciones, el mapeador y el servicio
-
-```java title="funkos/exceptions/"
-public abstract class FunkoException extends RuntimeException {
-    protected FunkoException(String mensaje) { super(mensaje); }
-}
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
 @ResponseStatus(HttpStatus.NOT_FOUND)
-public class FunkoNotFoundException extends FunkoException {
+public class FunkoNotFoundException extends RuntimeException {
     public FunkoNotFoundException(Long id) {
         super("No se ha encontrado el funko con id: " + id);
     }
 }
+```
 
+```java title="funkos/exceptions/FunkoConflictException.java"
 @ResponseStatus(HttpStatus.CONFLICT)
-public class FunkoConflictException extends FunkoException {
+public class FunkoConflictException extends RuntimeException {
     public FunkoConflictException(String mensaje) { super(mensaje); }
 }
+```
 
+```java title="funkos/exceptions/FunkoBadRequestException.java"
 @ResponseStatus(HttpStatus.BAD_REQUEST)
-public class FunkoBadRequestException extends FunkoException {
+public class FunkoBadRequestException extends RuntimeException {
     public FunkoBadRequestException(String mensaje) { super(mensaje); }
 }
 ```
 
+El servicio lanza, el controlador no captura, y Spring lee el `@ResponseStatus`.
+
+## Paso 7 · Los DTOs
+
+```java title="funkos/dto/FunkoResponse.java"
+package es.iesx.funkos.funkos.dto;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+public record FunkoResponse(
+        Long id,
+        String nombre,
+        BigDecimal precio,
+        Integer cantidad,
+        String categoria,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
+) {}
+```
+
+```java title="funkos/dto/FunkoCreateRequest.java"
+package es.iesx.funkos.funkos.dto;
+
+import jakarta.validation.constraints.*;
+import java.math.BigDecimal;
+
+public record FunkoCreateRequest(
+
+        @NotBlank(message = "El nombre no puede estar vacío")
+        @Size(max = 100, message = "Máximo 100 caracteres")
+        String nombre,
+
+        @NotNull(message = "El precio es obligatorio")
+        @DecimalMin(value = "0.0", message = "El precio no puede ser negativo")
+        BigDecimal precio,
+
+        @NotNull(message = "La cantidad es obligatoria")
+        @PositiveOrZero(message = "La cantidad no puede ser negativa")
+        Integer cantidad,
+
+        @NotBlank(message = "La categoría no puede estar vacía")
+        @Pattern(regexp = "DISNEY|MARVEL|ANIME|OTROS",
+                 message = "Debe ser DISNEY, MARVEL, ANIME u OTROS")
+        String categoria
+) {}
+```
+
+```java title="funkos/dto/FunkoUpdateRequest.java"
+public record FunkoUpdateRequest(
+        @Size(max = 100) String nombre,
+        @DecimalMin("0.0") BigDecimal precio,
+        @PositiveOrZero Integer cantidad,
+        @Pattern(regexp = "DISNEY|MARVEL|ANIME|OTROS") String categoria
+) {}
+```
+
+```java title="funkos/dto/EstadisticasResponse.java"
+public record EstadisticasResponse(
+        int total,
+        Map<String, Long> porCategoria,
+        BigDecimal valorInventario,
+        long sinStock,
+        String masCaro
+) {}
+```
+
+**En el `UpdateRequest` desaparecen los obligatorios**, porque en un PATCH `null` significa «no lo cambies». Y el `CreateRequest` **no lleva `id` ni fechas**: las pone el servidor.
+
+## Paso 8 · El mapeador
+
 ```java title="funkos/mappers/FunkoMapper.java"
+package es.iesx.funkos.funkos.mappers;
+
+import es.iesx.funkos.funkos.dto.*;
+import es.iesx.funkos.funkos.models.Funko;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
 @Component
 public class FunkoMapper {
 
     public FunkoResponse toResponse(Funko f) {
-        return new FunkoResponse(f.getId(), f.getNombre(), f.getPrecio(),
-                f.getCantidad(), f.getImagen(), f.getCategoria(),
-                f.getCreatedAt(), f.getUpdatedAt());
+        return new FunkoResponse(f.id(), f.nombre(), f.precio(), f.cantidad(),
+                                 f.categoria(), f.createdAt(), f.updatedAt());
     }
 
     public List<FunkoResponse> toResponse(List<Funko> funkos) {
         return funkos.stream().map(this::toResponse).toList();
     }
 
-    /** POST: nuevo. El id y las fechas los pone el servidor. */
+    /** POST: nuevo. El id lo pone la BD; las fechas, el servidor. */
     public Funko toModel(FunkoCreateRequest r) {
         var ahora = LocalDateTime.now();
-        return Funko.builder()
-                .nombre(r.nombre().trim())
-                .precio(r.precio())
-                .cantidad(r.cantidad())
-                .imagen(r.imagen() != null ? r.imagen() : "https://placehold.co/300")
-                .categoria(r.categoria().toUpperCase())
-                .createdAt(ahora).updatedAt(ahora)
-                .build();
+        return new Funko(
+                null,
+                r.nombre().trim(),
+                r.precio(),
+                r.cantidad(),
+                r.categoria().toUpperCase(),
+                ahora,
+                ahora);
     }
 
     /** PUT: reemplaza todo menos el id y la fecha de creación. */
-    public Funko toModelReemplazando(Funko original, FunkoCreateRequest r) {
-        return Funko.builder()
-                .id(original.getId())
-                .nombre(r.nombre().trim())
-                .precio(r.precio())
-                .cantidad(r.cantidad())
-                .imagen(r.imagen())
-                .categoria(r.categoria().toUpperCase())
-                .createdAt(original.getCreatedAt())
-                .updatedAt(LocalDateTime.now())
-                .build();
+    public Funko reemplazar(Funko original, FunkoCreateRequest r) {
+        return new Funko(
+                original.id(),
+                r.nombre().trim(),
+                r.precio(),
+                r.cantidad(),
+                r.categoria().toUpperCase(),
+                original.createdAt(),
+                LocalDateTime.now());
     }
 
-    /** PATCH: solo cambia lo que llega distinto de null. */
-    public Funko toModelParcheando(Funko original, FunkoUpdateRequest r) {
-        return Funko.builder()
-                .id(original.getId())
-                .nombre(r.nombre()       != null ? r.nombre().trim()           : original.getNombre())
-                .precio(r.precio()       != null ? r.precio()                  : original.getPrecio())
-                .cantidad(r.cantidad()   != null ? r.cantidad()                : original.getCantidad())
-                .imagen(r.imagen()       != null ? r.imagen()                  : original.getImagen())
-                .categoria(r.categoria() != null ? r.categoria().toUpperCase() : original.getCategoria())
-                .createdAt(original.getCreatedAt())
-                .updatedAt(LocalDateTime.now())
-                .build();
+    /** PATCH: cambia solo lo que llega distinto de null. */
+    public Funko parchear(Funko original, FunkoUpdateRequest r) {
+        return new Funko(
+                original.id(),
+                r.nombre()    != null ? r.nombre().trim()           : original.nombre(),
+                r.precio()    != null ? r.precio()                  : original.precio(),
+                r.cantidad()  != null ? r.cantidad()                : original.cantidad(),
+                r.categoria() != null ? r.categoria().toUpperCase() : original.categoria(),
+                original.createdAt(),
+                LocalDateTime.now());
     }
 }
 ```
 
-!!! success "Tres métodos porque son tres operaciones distintas"
-    | Método | Verbo | Qué hace con lo que no mandas |
-    |---|---|---|
-    | `toModel` | POST | No aplica: es nuevo |
-    | `toModelReemplazando` | PUT | **Lo borra** (queda `null`) |
-    | `toModelParcheando` | PATCH | **Lo conserva** |
+!!! danger "`reemplazar` y `parchear` tienen que ser dos métodos distintos"
+    | | Qué hace con lo que **no** mandas |
+    |---|---|
+    | `reemplazar` (PUT) | **Lo borra** |
+    | `parchear` (PATCH) | **Lo conserva** |
 
-    Si tu PUT y tu PATCH llaman al mismo método, **has implementado dos veces el PATCH**. Es el error de diseño más común de la unidad y resta puntos en la rúbrica.
+    Si el PATCH llama a `reemplazar`, mandar `{"precio": 25}` deja el nombre en `null`. Es el error de diseño más común de la unidad.
+
+## Paso 9 · El servicio
+
+```java title="funkos/services/FunkosService.java"
+package es.iesx.funkos.funkos.services;
+
+import es.iesx.funkos.funkos.dto.*;
+import java.math.BigDecimal;
+import java.util.*;
+
+public interface FunkosService {
+    List<FunkoResponse> buscar(Optional<String> categoria, Optional<String> nombre,
+                               Optional<BigDecimal> precioMax);
+    FunkoResponse findById(Long id);
+    FunkoResponse save(FunkoCreateRequest funko);
+    FunkoResponse replace(Long id, FunkoCreateRequest funko);
+    FunkoResponse update(Long id, FunkoUpdateRequest funko);
+    void deleteById(Long id);
+    EstadisticasResponse estadisticas();
+}
+```
 
 ```java title="funkos/services/FunkosServiceImpl.java"
 package es.iesx.funkos.funkos.services;
@@ -683,9 +557,9 @@ package es.iesx.funkos.funkos.services;
 import es.iesx.funkos.funkos.dto.*;
 import es.iesx.funkos.funkos.exceptions.*;
 import es.iesx.funkos.funkos.mappers.FunkoMapper;
+import es.iesx.funkos.funkos.models.Funko;
 import es.iesx.funkos.funkos.repositories.FunkosRepository;
 import org.slf4j.*;
-import org.springframework.cache.annotation.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -693,7 +567,6 @@ import java.math.BigDecimal;
 import java.util.*;
 
 @Service
-@CacheConfig(cacheNames = {"funkos"})
 public class FunkosServiceImpl implements FunkosService {
 
     private static final Logger log = LoggerFactory.getLogger(FunkosServiceImpl.class);
@@ -716,9 +589,7 @@ public class FunkosServiceImpl implements FunkosService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(key = "#id")
     public FunkoResponse findById(Long id) {
-        log.debug("findById {}", id);
         return repositorio.findById(id)
                 .map(mapper::toResponse)
                 .orElseThrow(() -> new FunkoNotFoundException(id));
@@ -726,37 +597,38 @@ public class FunkosServiceImpl implements FunkosService {
 
     @Override
     @Transactional
-    @CacheEvict(allEntries = true)
     public FunkoResponse save(FunkoCreateRequest request) {
         if (repositorio.existsByNombre(request.nombre()))
             throw new FunkoConflictException(
                     "Ya existe un funko con el nombre: " + request.nombre());
+
         return mapper.toResponse(repositorio.save(mapper.toModel(request)));
     }
 
     @Override
     @Transactional
-    @CacheEvict(allEntries = true)
     public FunkoResponse replace(Long id, FunkoCreateRequest request) {
         var original = repositorio.findById(id)
                 .orElseThrow(() -> new FunkoNotFoundException(id));
-        return mapper.toResponse(
-                repositorio.update(mapper.toModelReemplazando(original, request)));
+
+        var nuevo = mapper.reemplazar(original, request);
+        repositorio.update(nuevo);
+        return mapper.toResponse(nuevo);
     }
 
     @Override
     @Transactional
-    @CacheEvict(allEntries = true)
     public FunkoResponse update(Long id, FunkoUpdateRequest request) {
         var original = repositorio.findById(id)
                 .orElseThrow(() -> new FunkoNotFoundException(id));
-        return mapper.toResponse(
-                repositorio.update(mapper.toModelParcheando(original, request)));
+
+        var parcheado = mapper.parchear(original, request);
+        repositorio.update(parcheado);
+        return mapper.toResponse(parcheado);
     }
 
     @Override
     @Transactional
-    @CacheEvict(allEntries = true)
     public void deleteById(Long id) {
         if (!repositorio.deleteById(id))
             throw new FunkoNotFoundException(id);
@@ -765,72 +637,61 @@ public class FunkosServiceImpl implements FunkosService {
     @Override
     @Transactional(readOnly = true)
     public EstadisticasResponse estadisticas() {
-        var todos = repositorio.findAll();
-        return new EstadisticasResponse(
-                todos.size(),
-                repositorio.contarPorCategoria(),
-                todos.stream().map(f -> f.getPrecio()
-                        .multiply(BigDecimal.valueOf(f.getCantidad())))
-                     .reduce(BigDecimal.ZERO, BigDecimal::add),
-                todos.stream().filter(f -> f.getCantidad() == 0).count(),
-                todos.stream()
-                     .max(Comparator.comparing(f -> f.getPrecio()))
-                     .map(f -> f.getNombre()).orElse("—"));
+        var todos = repositorio.buscar(Optional.empty(), Optional.empty(), Optional.empty());
+
+        var valor = BigDecimal.ZERO;
+        for (var f : todos)
+            valor = valor.add(f.precio().multiply(BigDecimal.valueOf(f.cantidad())));
+
+        var masCaro = todos.stream()
+                .max(Comparator.comparing(Funko::precio))
+                .map(Funko::nombre)
+                .orElse("—");
+
+        var sinStock = todos.stream().filter(f -> f.cantidad() == 0).count();
+
+        return new EstadisticasResponse(todos.size(), repositorio.contarPorCategoria(),
+                                        valor, sinStock, masCaro);
     }
 }
 ```
 
-```java title="funkos/dto/EstadisticasResponse.java"
-public record EstadisticasResponse(
-        int total,
-        Map<String, Long> porCategoria,
-        BigDecimal valorInventario,
-        long sinStock,
-        String masCaro) {}
-```
+!!! success "Lee este fichero y mira lo que NO hay"
+    Ni `ResponseEntity`, ni `HttpStatus`, ni `@PathVariable`. **El servicio no sabe que existe HTTP.**
 
-!!! danger "Los cuatro detalles que marcan la diferencia en este fichero"
-    **1. El `@Service` no contiene ni una palabra de HTTP.** Ni `ResponseEntity`, ni `HttpStatus`, ni `@PathVariable`. Es el criterio que más puntos vale en la rúbrica.
+    Y el `deleteById`: `if (!repositorio.deleteById(id)) throw …`. Sin ese `if`, borrar un id inexistente devuelve **204** y el cliente cree que ha borrado algo.
 
-    **2. `deleteById` usa el valor que devuelve el repositorio.**
-
-    ```java
-    if (!repositorio.deleteById(id)) throw new FunkoNotFoundException(id);
-    ```
-
-    El `DELETE` de un id que no existe **no lanza nada**: afecta a 0 filas. Sin ese `if`, el cliente recibe un **204** y cree que ha borrado algo. Con él, **404**.
-
-    **3. `@CacheEvict(allEntries = true)` en los CUATRO métodos de escritura.** No solo en `save`. Un `update` también deja obsoleta la lista completa.
-
-    **4. `@Transactional(readOnly = true)` en las lecturas.** Con JDBC también sirve: el driver puede optimizar y queda documentado que ese método no escribe.
-
-!!! info "El método `estadisticas` es la UT2 entera en diez líneas"
-    `contarPorCategoria` lo resuelve **la base de datos** con un `GROUP BY` (que es lo correcto: no traigas 10.000 filas para contarlas en Java), y el resto son `map`, `reduce`, `filter` y `max` con `Optional`, del [tema 4 de la UT2](../ut2/04-colecciones-y-funcional.md).
-
-    El `reduce(BigDecimal.ZERO, BigDecimal::add)` en vez de `mapToDouble(...).sum()`: es dinero.
-
-## A.6 · El controlador y el manejador de errores
+## Paso 10 · El controlador
 
 ```java title="funkos/controllers/FunkosRestController.java"
+package es.iesx.funkos.funkos.controllers;
+
+import es.iesx.funkos.funkos.dto.*;
+import es.iesx.funkos.funkos.services.FunkosService;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+import java.net.URI;
+import java.util.*;
+
 @RestController
 @RequestMapping("${api.path:/api}/${api.version:v1}/funkos")
 public class FunkosRestController {
 
     private final FunkosService servicio;
 
-    public FunkosRestController(FunkosService servicio) { this.servicio = servicio; }
+    public FunkosRestController(FunkosService servicio) {
+        this.servicio = servicio;
+    }
 
     @GetMapping
-    public ResponseEntity<List<FunkoResponse>> findAll(
+    public ResponseEntity<List<FunkoResponse>> buscar(
             @RequestParam Optional<String> categoria,
             @RequestParam Optional<String> nombre,
             @RequestParam Optional<BigDecimal> precioMax) {
         return ResponseEntity.ok(servicio.buscar(categoria, nombre, precioMax));
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<FunkoResponse> findById(@PathVariable Long id) {
-        return ResponseEntity.ok(servicio.findById(id));
     }
 
     @GetMapping("/estadisticas")
@@ -838,8 +699,13 @@ public class FunkosRestController {
         return ResponseEntity.ok(servicio.estadisticas());
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<FunkoResponse> findById(@PathVariable Long id) {
+        return ResponseEntity.ok(servicio.findById(id));
+    }
+
     @PostMapping
-    public ResponseEntity<FunkoResponse> create(
+    public ResponseEntity<FunkoResponse> crear(
             @Valid @RequestBody FunkoCreateRequest funko) {
         var creado = servicio.save(funko);
         return ResponseEntity
@@ -848,53 +714,62 @@ public class FunkosRestController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<FunkoResponse> replace(
+    public ResponseEntity<FunkoResponse> reemplazar(
             @PathVariable Long id, @Valid @RequestBody FunkoCreateRequest funko) {
         return ResponseEntity.ok(servicio.replace(id, funko));
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<FunkoResponse> update(
+    public ResponseEntity<FunkoResponse> actualizar(
             @PathVariable Long id, @Valid @RequestBody FunkoUpdateRequest funko) {
         return ResponseEntity.ok(servicio.update(id, funko));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> borrar(@PathVariable Long id) {
         servicio.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 }
 ```
 
+!!! warning "`/estadisticas` va ANTES de `/{id}`"
+    Si `/{id}` estuviera primero, Spring intentaría convertir `"estadisticas"` en un `Long` y devolvería un **400**.
+
+    Las rutas fijas siempre antes que las variables.
+
+## Paso 11 · El manejador de errores
+
 ```java title="common/GlobalExceptionHandler.java"
+package es.iesx.funkos.common;
+
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import java.util.*;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-
-    /** 400 con los errores campo a campo. */
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Map<String, Object> validacion(MethodArgumentNotValidException ex) {
         Map<String, String> campos = new LinkedHashMap<>();
         ex.getBindingResult().getFieldErrors()
           .forEach(e -> campos.put(e.getField(), e.getDefaultMessage()));
-        return Map.of(
-                "timestamp", LocalDateTime.now().toString(),
-                "status", 400,
-                "error", "Datos de entrada inválidos",
-                "campos", campos);
+        return Map.of("status", 400, "error", "Datos de entrada inválidos", "campos", campos);
     }
 
-    /** 400 cuando el JSON no se puede ni leer. */
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public Map<String, Object> jsonIlegible(HttpMessageNotReadableException ex) {
         return Map.of("status", 400, "error", "El cuerpo no es un JSON valido");
     }
 
-    /** 400 cuando /funkos/abc intenta ser un Long. */
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public Map<String, Object> tipoMalo(MethodArgumentTypeMismatchException ex) {
@@ -902,40 +777,16 @@ public class GlobalExceptionHandler {
                 "error", "El parametro '%s' no tiene el tipo esperado".formatted(ex.getName()));
     }
 
-    /** 409 cuando salta una restriccion de la tabla (UNIQUE, CHECK, FK). */
     @ResponseStatus(HttpStatus.CONFLICT)
     @ExceptionHandler(DataIntegrityViolationException.class)
     public Map<String, Object> integridad(DataIntegrityViolationException ex) {
-        log.warn("Violacion de integridad: {}", ex.getMostSpecificCause().getMessage());
         return Map.of("status", 409,
                 "error", "La operacion viola una restriccion de la base de datos");
     }
 }
 ```
 
-!!! success "Lo que NO está en el handler, y es deliberado"
-    No hay un handler para `FunkoNotFoundException` ni para `FunkoConflictException`. **No hacen falta**: llevan su `@ResponseStatus` y Spring las traduce solas.
-
-    Aquí solo están los errores que **no son del dominio**: validación, JSON roto, tipo de parámetro incorrecto y violaciones de integridad de la base de datos.
-
-!!! tip "El handler de `DataIntegrityViolationException` es la red de seguridad"
-    Tu servicio comprueba el nombre repetido **antes** de insertar. Pero entre esa comprobación y el `INSERT` cabe otra petición haciendo lo mismo, y entonces salta el `UNIQUE` de la tabla.
-
-    Sin este handler eso es un **500**; con él, un **409** correcto. Es el E23 de la [UT3](../ut3/ejercicios.md) llevado a Spring.
-
-    Fíjate también en el `getMostSpecificCause()`: la excepción de Spring envuelve la del driver, y el mensaje útil está en la de dentro.
-
-## A.7 · Probar el proyecto A
-
-```java title="FunkosApiApplication.java"
-@SpringBootApplication
-@EnableCaching                    // sin esto, @Cacheable NO hace nada
-public class FunkosApiApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(FunkosApiApplication.class, args);
-    }
-}
-```
+## Paso 12 · Probarlo
 
 ```bash
 ./mvnw spring-boot:run
@@ -970,8 +821,7 @@ public class FunkosApiApplication {
 
     # Estadísticas
     curl -s localhost:8080/api/v1/funkos/estadisticas | jq
-    # { "total": 7, "porCategoria": {"ANIME":3,"DISNEY":2,"MARVEL":2},
-    #   "valorInventario": 622.72, "sinStock": 1, "masCaro": "Pikachu" }
+    # { "total": 7, "porCategoria": {"ANIME":3,"DISNEY":2,"MARVEL":2}, … }
 
     curl -i -X DELETE localhost:8080/api/v1/funkos/7
     # HTTP/1.1 204
@@ -982,7 +832,7 @@ public class FunkosApiApplication {
     ```bash
     # 404
     curl -i localhost:8080/api/v1/funkos/9999
-    # HTTP/1.1 404 · "No se ha encontrado el funko con id: 9999"
+    # 404 · "No se ha encontrado el funko con id: 9999"
 
     # 400 con los campos señalados
     curl -s -X POST localhost:8080/api/v1/funkos \
@@ -991,26 +841,21 @@ public class FunkosApiApplication {
     # {
     #   "nombre": "El nombre no puede estar vacío",
     #   "precio": "El precio no puede ser negativo",
-    #   "categoria": "La categoría debe ser DISNEY, MARVEL, ANIME u OTROS"
+    #   "categoria": "Debe ser DISNEY, MARVEL, ANIME u OTROS"
     # }
 
     # 409: nombre repetido
     curl -i -X POST localhost:8080/api/v1/funkos \
       -H "Content-Type: application/json" \
       -d '{"nombre":"Goku","precio":10.00,"cantidad":1,"categoria":"ANIME"}'
-    # HTTP/1.1 409
+    # 409
 
-    # 400: el id no es un número
-    curl -i localhost:8080/api/v1/funkos/abc       # 400
-
-    # 415: falta el Content-Type
+    curl -i localhost:8080/api/v1/funkos/abc                            # 400
     curl -i -X POST localhost:8080/api/v1/funkos -d '{"nombre":"X"}'    # 415
-
-    # 404 en DELETE
     curl -i -X DELETE localhost:8080/api/v1/funkos/9999                 # 404
     ```
 
-=== "Que persiste de verdad"
+=== "Que persiste"
 
     ```bash
     curl -X POST localhost:8080/api/v1/funkos \
@@ -1024,21 +869,7 @@ public class FunkosApiApplication {
     # 1   ← el fichero datos/funkos.mv.db lo ha guardado
     ```
 
-    Y se puede mirar por dentro: **`http://localhost:8080/h2-console`**, con
-    `jdbc:h2:file:./datos/funkos`, usuario `sa` y contraseña vacía.
-
-    ```sql
-    SELECT categoria, COUNT(*), SUM(precio * cantidad) FROM funkos GROUP BY categoria;
-    ```
-
-!!! danger "La consola de H2 se apaga en producción"
-    ```properties title="application-prod.properties"
-    spring.h2.console.enabled=false
-    ```
-
-    Es **una consola SQL abierta en tu servidor**. Dejarla accesible es regalar la base de datos.
-
-## A.8 · Los tests
+## Paso 13 · Los tests y el `.jar`
 
 ```java title="src/test/java/.../FunkosServiceImplTest.java"
 @ExtendWith(MockitoExtension.class)
@@ -1047,6 +878,11 @@ class FunkosServiceImplTest {
     @Mock FunkosRepository repositorio;
     @Spy  FunkoMapper mapper = new FunkoMapper();
     @InjectMocks FunkosServiceImpl servicio;
+
+    private Funko unFunko(Long id, String nombre, String precio, int cantidad) {
+        var ahora = LocalDateTime.now();
+        return new Funko(id, nombre, new BigDecimal(precio), cantidad, "ANIME", ahora, ahora);
+    }
 
     @Test
     void findByIdQueNoExisteLanzaNotFound() {
@@ -1062,9 +898,9 @@ class FunkosServiceImplTest {
     void saveConNombreRepetidoLanzaConflictYNoInserta() {
         when(repositorio.existsByNombre("Goku")).thenReturn(true);
 
-        var req = new FunkoCreateRequest("Goku", new BigDecimal("10.00"), 1, null, "ANIME");
+        var request = new FunkoCreateRequest("Goku", new BigDecimal("10.00"), 1, "ANIME");
 
-        assertThrows(FunkoConflictException.class, () -> servicio.save(req));
+        assertThrows(FunkoConflictException.class, () -> servicio.save(request));
         verify(repositorio, never()).save(any());
     }
 
@@ -1077,15 +913,11 @@ class FunkosServiceImplTest {
 
     @Test
     void elPatchConservaLosCamposQueNoLlegan() {
-        var original = Funko.builder().id(1L).nombre("Goku")
-                .precio(new BigDecimal("22.50")).cantidad(3)
-                .categoria("ANIME").createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now()).build();
+        var original = unFunko(1L, "Goku", "22.50", 3);
         when(repositorio.findById(1L)).thenReturn(Optional.of(original));
-        when(repositorio.update(any())).thenAnswer(i -> i.getArgument(0));
 
         var r = servicio.update(1L, new FunkoUpdateRequest(
-                null, new BigDecimal("30.00"), null, null, null));
+                null, new BigDecimal("30.00"), null, null));
 
         assertEquals("Goku", r.nombre());                       // conservado
         assertEquals(3, r.cantidad());                          // conservado
@@ -1123,9 +955,9 @@ class FunkosRestControllerTest {
 
     @Test
     void elPostDevuelve201ConLocation() throws Exception {
+        var ahora = LocalDateTime.now();
         when(servicio.save(any())).thenReturn(new FunkoResponse(
-                7L, "Pikachu", new BigDecimal("20.00"), 7, null, "ANIME",
-                LocalDateTime.now(), LocalDateTime.now()));
+                7L, "Pikachu", new BigDecimal("20.00"), 7, "ANIME", ahora, ahora));
 
         mockMvc.perform(post("/api/v1/funkos")
                     .contentType(MediaType.APPLICATION_JSON)
@@ -1145,760 +977,577 @@ logging.level.root=WARN
 
 ```bash
 ./mvnw clean package
-java -jar target/funkos-api-1.0.0.jar
+java -jar target/funkos-api-0.0.1-SNAPSHOT.jar
 ```
 
-!!! success "Los dos tipos de test y para qué sirve cada uno"
+!!! success "Los dos tipos de test"
     | | Mockito | `@SpringBootTest` + `MockMvc` |
     |---|---|---|
     | Qué prueba | Las reglas del servicio | La capa HTTP |
     | Levanta Spring | **No** | Sí |
     | Tarda | milisegundos | ~2 s |
-    | Detecta | un 409 que falta, un PATCH que borra campos | **`@Valid` olvidado**, rutas, códigos, `Location` |
+    | Detecta | un 409 que falta, el PATCH que borra campos | **`@Valid` olvidado**, rutas, códigos, `Location` |
 
-    El `@Valid` olvidado **solo** lo caza el segundo. Por eso van los dos, y por eso el test del PATCH de arriba es el que más vale: comprueba la semántica, no que el método no explote.
+    El `@Valid` olvidado **solo** lo caza el segundo.
 
 !!! info "`@MockitoBean`, no `@MockBean`"
-    `@MockBean` está obsoleta desde Spring Boot 3.4. Con 3.5 toca `@MockitoBean`, del paquete `org.springframework.test.context.bean.override.mockito`.
+    `@MockBean` está obsoleta desde Spring Boot 3.4.
 
 ---
 
 # Proyecto B · API de una tienda
 
-Tres tablas relacionadas, y una operación que toca las tres a la vez. Es donde `@Transactional` deja de ser una anotación que se copia.
+Dos tablas con clave ajena, y una operación que toca las dos. Es donde `@Transactional` deja de ser una anotación que se copia.
 
 ```
-GET    /api/v1/clientes        ?nombre=       CRUD completo
-GET    /api/v1/clientes/{id}
-GET    /api/v1/clientes/{id}/pedidos
+GET    /api/v1/categorias        CRUD
+GET    /api/v1/categorias/{id}/productos
 
-GET    /api/v1/productos       ?categoria= &conStock=    CRUD completo
+GET    /api/v1/productos         ?categoria= &nombre= &conStock=
 GET    /api/v1/productos/{id}
-PATCH  /api/v1/productos/{id}/stock
-
-GET    /api/v1/pedidos         ?clienteId= &estado=
-GET    /api/v1/pedidos/{id}                   ← con sus líneas
-POST   /api/v1/pedidos                        ← crea Y descuenta stock
-POST   /api/v1/pedidos/{id}/cancelar          ← cancela Y devuelve stock
-GET    /api/v1/pedidos/estadisticas
+POST   /api/v1/productos
+PATCH  /api/v1/productos/{id}
+DELETE /api/v1/productos/{id}
+POST   /api/v1/productos/{id}/venta      ← toca las DOS tablas
 ```
 
-!!! danger "La única regla que importa de este proyecto"
-    **Crear un pedido de tres líneas toca tres productos. O se descuentan los tres, o ninguno.**
-
-    Si falta stock en el tercero, los dos primeros **no pueden quedar descontados**. Eso es una transacción, y es lo que el proyecto A no podía enseñar porque solo tenía una tabla.
-
-## B.1 · El esquema
+## Paso 1 · El esquema
 
 ```sql title="src/main/resources/schema.sql"
-CREATE TABLE IF NOT EXISTS clientes (
-    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
-    nif        VARCHAR(9)   NOT NULL,
-    nombre     VARCHAR(100) NOT NULL,
-    email      VARCHAR(150) NOT NULL,
-    ciudad     VARCHAR(80),
-    activo     BOOLEAN      NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uk_cliente_nif   UNIQUE (nif),
-    CONSTRAINT uk_cliente_email UNIQUE (email)
+CREATE TABLE IF NOT EXISTS categorias (
+    id                BIGINT AUTO_INCREMENT PRIMARY KEY,
+    nombre            VARCHAR(40) NOT NULL,
+    unidades_vendidas INT         NOT NULL DEFAULT 0,
+    CONSTRAINT uk_categoria_nombre UNIQUE (nombre),
+    CONSTRAINT ck_categoria_vendidas CHECK (unidades_vendidas >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS productos (
-    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
-    sku        VARCHAR(20)   NOT NULL,
-    nombre     VARCHAR(150)  NOT NULL,
-    categoria  VARCHAR(40)   NOT NULL,
-    precio     DECIMAL(10,2) NOT NULL,
-    stock      INT           NOT NULL DEFAULT 0,
-    created_at TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    sku          VARCHAR(20)   NOT NULL,
+    nombre       VARCHAR(150)  NOT NULL,
+    precio       DECIMAL(10,2) NOT NULL,
+    stock        INT           NOT NULL DEFAULT 0,
+    categoria_id BIGINT        NOT NULL,
+    created_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uk_producto_sku UNIQUE (sku),
+    CONSTRAINT fk_producto_categoria
+        FOREIGN KEY (categoria_id) REFERENCES categorias (id),
     CONSTRAINT ck_producto_precio CHECK (precio >= 0),
     CONSTRAINT ck_producto_stock  CHECK (stock  >= 0)
 );
 
-CREATE TABLE IF NOT EXISTS pedidos (
-    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
-    codigo     VARCHAR(20)   NOT NULL,
-    cliente_id BIGINT        NOT NULL,
-    estado     VARCHAR(20)   NOT NULL DEFAULT 'PENDIENTE',
-    total      DECIMAL(12,2) NOT NULL DEFAULT 0,
-    fecha      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uk_pedido_codigo UNIQUE (codigo),
-    CONSTRAINT fk_pedido_cliente FOREIGN KEY (cliente_id) REFERENCES clientes (id),
-    CONSTRAINT ck_pedido_estado
-        CHECK (estado IN ('PENDIENTE','PAGADO','ENVIADO','ENTREGADO','CANCELADO'))
-);
+CREATE INDEX IF NOT EXISTS idx_producto_categoria ON productos (categoria_id);
+```
 
-CREATE TABLE IF NOT EXISTS lineas_pedido (
-    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    pedido_id       BIGINT        NOT NULL,
-    producto_id     BIGINT        NOT NULL,
-    cantidad        INT           NOT NULL,
-    precio_unitario DECIMAL(10,2) NOT NULL,
-    CONSTRAINT fk_linea_pedido   FOREIGN KEY (pedido_id)   REFERENCES pedidos (id)
-        ON DELETE CASCADE,
-    CONSTRAINT fk_linea_producto FOREIGN KEY (producto_id) REFERENCES productos (id),
-    CONSTRAINT ck_linea_cantidad CHECK (cantidad > 0)
-);
+```sql title="src/main/resources/data.sql"
+MERGE INTO categorias (id, nombre, unidades_vendidas) KEY(id) VALUES
+  (1, 'INFORMATICA', 0),
+  (2, 'PAPELERIA',   0),
+  (3, 'MOBILIARIO',  0);
 
-CREATE INDEX IF NOT EXISTS idx_pedido_cliente ON pedidos (cliente_id);
-CREATE INDEX IF NOT EXISTS idx_pedido_estado  ON pedidos (estado);
-CREATE INDEX IF NOT EXISTS idx_linea_pedido   ON lineas_pedido (pedido_id);
+MERGE INTO productos (id, sku, nombre, precio, stock, categoria_id) KEY(id) VALUES
+  (1, 'SKU-001', 'Teclado mecánico', 79.90, 10, 1),
+  (2, 'SKU-002', 'Ratón vertical',   45.50,  3, 1),
+  (3, 'SKU-003', 'Monitor 27"',     229.00,  1, 1),
+  (4, 'SKU-004', 'Cuaderno A4',       4.95, 50, 2),
+  (5, 'SKU-005', 'Silla de oficina', 149.00, 0, 3);
+
+ALTER TABLE categorias ALTER COLUMN id RESTART WITH 4;
+ALTER TABLE productos  ALTER COLUMN id RESTART WITH 6;
 ```
 
 ```mermaid
 erDiagram
-    CLIENTES  ||--o{ PEDIDOS       : "hace"
-    PEDIDOS   ||--|{ LINEAS_PEDIDO : "contiene"
-    PRODUCTOS ||--o{ LINEAS_PEDIDO : "aparece en"
-
-    CLIENTES {
+    CATEGORIAS ||--o{ PRODUCTOS : "1:N"
+    CATEGORIAS {
         bigint id PK
-        varchar nif UK
-        varchar email UK
+        varchar nombre UK
+        int unidades_vendidas
     }
     PRODUCTOS {
         bigint id PK
         varchar sku UK
         decimal precio
         int stock
-    }
-    PEDIDOS {
-        bigint id PK
-        varchar codigo UK
-        bigint cliente_id FK
-        varchar estado
-        decimal total
-    }
-    LINEAS_PEDIDO {
-        bigint id PK
-        bigint pedido_id FK
-        bigint producto_id FK
-        int cantidad
-        decimal precio_unitario
+        bigint categoria_id FK
     }
 ```
 
-!!! success "Las cuatro decisiones del esquema, y por qué cada una"
-    **1. `precio_unitario` en la línea, no solo en el producto.** Se **copia** del producto al crear el pedido. Si mañana sube el precio, **el pedido histórico no cambia**. Una factura de hace un año no puede recalcularse sola.
+!!! success "Las tres decisiones del esquema"
+    **1 · `fk_producto_categoria` sin cascada.** Borrar una categoría que tiene productos **tiene que fallar**, y la base de datos lo impide. Eso se traduce en un 409.
 
-    **2. `ON DELETE CASCADE` solo en `lineas_pedido`.** Borrar un pedido borra sus líneas, porque **una línea no existe sin su pedido**. En cambio `fk_linea_producto` **no** tiene cascada: borrar un producto que está en pedidos tiene que fallar, y la base de datos lo impide.
+    **2 · `CHECK (stock >= 0)`.** La última defensa contra vender más de lo que hay. Aunque tu código tenga un bug, el stock no queda negativo.
 
-    **3. `CHECK (stock >= 0)`.** Es la última defensa contra vender más de lo que hay. Aunque tu código tenga un bug, **la base de datos no deja que el stock quede negativo**.
+    **3 · `unidades_vendidas` en la categoría.** Es el contador que hace que la venta toque **dos tablas**, que es el punto del proyecto.
 
-    **4. `total` guardado en el pedido.** Es un dato derivado, y guardarlo es redundante — pero el total de una factura es un **hecho histórico**, no un cálculo. Lo pone el servidor; nunca se acepta del cliente.
+## Paso 2 · Los modelos
 
-!!! danger "El `ON DELETE CASCADE` que NO está"
-    `fk_linea_producto FOREIGN KEY (producto_id) REFERENCES productos (id)` sin cascada significa que un `DELETE FROM productos WHERE id = 3` **falla** si ese producto aparece en algún pedido.
-
-    Eso es lo que quieres, y en tu código se traduce así:
-
-    ```java
-    @ExceptionHandler(DataIntegrityViolationException.class)   // → 409 Conflict
-    ```
-
-    Si hubieras puesto cascada, borrar un producto **borraría líneas de facturas emitidas**. No se arregla con un `undo`.
-
-## B.2 · Los modelos y los DTOs
-
-```java title="pedidos/models/"
-public enum EstadoPedido { PENDIENTE, PAGADO, ENVIADO, ENTREGADO, CANCELADO }
-
-public class Pedido {
-    private Long id;
-    private String codigo;
-    private Long clienteId;
-    private EstadoPedido estado;
-    private BigDecimal total;
-    private LocalDateTime fecha;
-    private List<LineaPedido> lineas = new ArrayList<>();
-    // constructor vacío, builder, getters…
-}
-
-public class LineaPedido {
-    private Long id;
-    private Long pedidoId;
-    private Long productoId;
-    private Integer cantidad;
-    private BigDecimal precioUnitario;
-
-    public BigDecimal subtotal() {
-        return precioUnitario.multiply(BigDecimal.valueOf(cantidad));
-    }
-    // constructor vacío, builder, getters…
-}
+```java title="categorias/models/Categoria.java"
+public record Categoria(
+        Long id,
+        String nombre,
+        Integer unidadesVendidas
+) {}
 ```
 
-```java title="pedidos/dto/"
-/** Lo que el cliente MANDA: solo el cliente y qué quiere comprar. */
-public record PedidoCreateRequest(
+```java title="productos/models/Producto.java"
+public record Producto(
+        Long id,
+        String sku,
+        String nombre,
+        BigDecimal precio,
+        Integer stock,
+        Long categoriaId,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
+) {}
+```
 
-        @NotNull(message = "El cliente es obligatorio")
-        @Positive Long clienteId,
+!!! info "`categoriaId`, no `Categoria categoria`"
+    El modelo guarda **el id de la clave ajena**, no el objeto entero. Es lo que hay en la columna.
 
-        @NotEmpty(message = "El pedido debe tener al menos una línea")
-        @Size(max = 50, message = "Como máximo 50 líneas por pedido")
-        @Valid List<LineaRequest> lineas
+    Cuando el controlador necesite devolver el **nombre** de la categoría, el repositorio hace un `JOIN` y el DTO lo lleva. Sin JPA no hay navegación automática, y aquí eso es una ventaja: **se ve exactamente qué consulta se lanza**.
+
+## Paso 3 · Los DTOs
+
+```java title="productos/dto/"
+/** Sale hacia el cliente: con el NOMBRE de la categoría, no su id. */
+public record ProductoResponse(
+        Long id,
+        String sku,
+        String nombre,
+        BigDecimal precio,
+        Integer stock,
+        String categoria,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {}
 
-public record LineaRequest(
-        @NotNull @Positive Long productoId,
-        @NotNull @Min(value = 1, message = "La cantidad mínima es 1")
-                 @Max(value = 100, message = "La cantidad máxima es 100") Integer cantidad
+/** Entra en el POST: la categoría se indica por NOMBRE. */
+public record ProductoCreateRequest(
+
+        @NotBlank @Pattern(regexp = "SKU-\\d{3}", message = "El SKU debe ser SKU-nnn")
+        String sku,
+
+        @NotBlank @Size(max = 150) String nombre,
+
+        @NotNull @DecimalMin(value = "0.0", message = "El precio no puede ser negativo")
+        BigDecimal precio,
+
+        @NotNull @PositiveOrZero Integer stock,
+
+        @NotBlank(message = "La categoría es obligatoria") String categoria
 ) {}
 
-/** Lo que el cliente RECIBE: con el total y los nombres ya resueltos. */
-public record PedidoResponse(
-        Long id, String codigo, ClienteResumen cliente, String estado,
-        BigDecimal total, LocalDateTime fecha, List<LineaResponse> lineas) {}
+public record ProductoUpdateRequest(
+        @Size(max = 150) String nombre,
+        @DecimalMin("0.0") BigDecimal precio,
+        @PositiveOrZero Integer stock,
+        String categoria
+) {}
 
-public record ClienteResumen(Long id, String nombre, String email) {}
-
-public record LineaResponse(
-        Long productoId, String sku, String nombre,
-        Integer cantidad, BigDecimal precioUnitario, BigDecimal subtotal) {}
+/** El cuerpo de la venta. */
+public record VentaRequest(
+        @NotNull @Min(value = 1, message = "La cantidad mínima es 1") Integer cantidad
+) {}
 ```
 
-!!! danger "Lo que el `PedidoCreateRequest` NO lleva, y es lo importante"
-    No lleva **`total`**, no lleva **`precioUnitario`**, no lleva **`estado`** y no lleva **`codigo`**.
+## Paso 4 · Los repositorios
 
-    | Campo | Quién lo pone | Qué pasa si lo acepta el cliente |
-    |---|---|---|
-    | `total` | **El servidor**, sumando | Te compran por 0,01 € |
-    | `precioUnitario` | **El servidor**, del producto | Igual |
-    | `estado` | **El servidor**: siempre `PENDIENTE` | Se crean pedidos ya `PAGADO` |
-    | `codigo` | **El servidor**, correlativo | Códigos duplicados o adivinables |
+```java title="productos/repositories/ProductosRepository.java"
+public interface ProductosRepository {
+    List<ProductoConCategoria> buscar(Optional<String> categoria, Optional<String> nombre,
+                                      Optional<Boolean> conStock);
+    Optional<ProductoConCategoria> findById(Long id);
+    boolean   existsBySku(String sku);
+    long      contarPorCategoria(Long categoriaId);
+    Producto  save(Producto producto);
+    void      update(Producto producto);
+    boolean   deleteById(Long id);
 
-    **La regla general: nunca aceptes del cliente un dato que puedas calcular.** Es una vulnerabilidad, no una cuestión de estilo.
+    /** Descuenta SOLO si hay suficiente. Devuelve las filas afectadas. */
+    int descontarStock(Long id, int cantidad);
+}
+```
 
-!!! tip "El `@Valid` dentro de la lista"
-    ```java
-    @Valid List<LineaRequest> lineas
-    ```
+```java title="productos/repositories/ProductoConCategoria.java"
+/** Lo que devuelve el JOIN: el producto y el nombre de su categoría. */
+public record ProductoConCategoria(Producto producto, String categoriaNombre) {}
+```
 
-    **Sin ese `@Valid`, las anotaciones de dentro de cada `LineaRequest` no se ejecutan.** El `@NotEmpty` de la lista sí, pero el `@Min(1)` de cada cantidad, no: un pedido con `cantidad: -5` pasaría la validación.
+```java title="productos/repositories/ProductoConCategoriaRowMapper.java"
+@Component
+public class ProductoConCategoriaRowMapper implements RowMapper<ProductoConCategoria> {
 
-    Es el mismo olvido que el `@Valid` del `@RequestBody`, un nivel más abajo y aún más difícil de ver.
+    @Override
+    public ProductoConCategoria mapRow(ResultSet rs, int rowNum) throws SQLException {
+        var producto = new Producto(
+                rs.getLong("id"),
+                rs.getString("sku"),
+                rs.getString("nombre"),
+                rs.getBigDecimal("precio"),
+                rs.getInt("stock"),
+                rs.getLong("categoria_id"),
+                rs.getTimestamp("created_at").toLocalDateTime(),
+                rs.getTimestamp("updated_at").toLocalDateTime());
 
-## B.3 · El repositorio de pedidos
+        return new ProductoConCategoria(producto, rs.getString("categoria_nombre"));
+    }
+}
+```
 
-```java title="pedidos/repositories/PedidosRepositoryJdbc.java"
+```java title="productos/repositories/ProductosRepositoryJdbc.java (lo relevante)"
 @Repository
-public class PedidosRepositoryJdbc implements PedidosRepository {
+public class ProductosRepositoryJdbc implements ProductosRepository {
+
+    private static final String SELECT_CON_CATEGORIA = """
+            SELECT p.*, c.nombre AS categoria_nombre
+              FROM productos p
+              JOIN categorias c ON c.id = p.categoria_id
+            """;
 
     private final JdbcClient jdbc;
+    private final ProductoConCategoriaRowMapper rowMapper;
 
-    public PedidosRepositoryJdbc(JdbcClient jdbc) { this.jdbc = jdbc; }
-
-    /** Código correlativo por año: PED-2026-000123 */
-    @Override
-    public String siguienteCodigo() {
-        int anio = LocalDate.now().getYear();
-        Long ultimo = jdbc.sql("""
-                SELECT COALESCE(MAX(CAST(SUBSTRING(codigo, 10) AS BIGINT)), 0)
-                  FROM pedidos
-                 WHERE codigo LIKE :patron
-                """)
-            .param("patron", "PED-" + anio + "-%")
-            .query(Long.class).single();
-        return "PED-%d-%06d".formatted(anio, ultimo + 1);
+    public ProductosRepositoryJdbc(JdbcClient jdbc, ProductoConCategoriaRowMapper rowMapper) {
+        this.jdbc = jdbc;
+        this.rowMapper = rowMapper;
     }
 
     @Override
-    public Pedido save(Pedido p) {
-        var keys = new GeneratedKeyHolder();
-        jdbc.sql("""
-                INSERT INTO pedidos (codigo, cliente_id, estado, total, fecha)
-                VALUES (:codigo, :clienteId, :estado, :total, :fecha)
-                """)
-            .param("codigo", p.getCodigo())
-            .param("clienteId", p.getClienteId())
-            .param("estado", p.getEstado().name())
-            .param("total", p.getTotal())
-            .param("fecha", p.getFecha())
-            .update(keys);
+    public List<ProductoConCategoria> buscar(Optional<String> categoria,
+                                             Optional<String> nombre,
+                                             Optional<Boolean> conStock) {
+        var sql = new StringBuilder(SELECT_CON_CATEGORIA).append(" WHERE 1 = 1");
+        var params = new HashMap<String, Object>();
 
-        p.setId(((Number) keys.getKeys().get("id")).longValue());
+        categoria.ifPresent(c -> {
+            sql.append(" AND UPPER(c.nombre) = UPPER(:categoria)");
+            params.put("categoria", c);
+        });
+        nombre.ifPresent(n -> {
+            sql.append(" AND LOWER(p.nombre) LIKE LOWER(:nombre)");
+            params.put("nombre", "%" + n + "%");
+        });
+        conStock.filter(Boolean::booleanValue).ifPresent(x -> sql.append(" AND p.stock > 0"));
+        sql.append(" ORDER BY p.id");
 
-        for (var l : p.getLineas()) {
-            jdbc.sql("""
-                    INSERT INTO lineas_pedido (pedido_id, producto_id, cantidad, precio_unitario)
-                    VALUES (:pedidoId, :productoId, :cantidad, :precio)
-                    """)
-                .param("pedidoId", p.getId())
-                .param("productoId", l.getProductoId())
-                .param("cantidad", l.getCantidad())
-                .param("precio", l.getPrecioUnitario())
-                .update();
-        }
-        return p;
-    }
-
-    /** El pedido con su cliente y sus líneas, en DOS consultas y sin N+1. */
-    @Override
-    public Optional<PedidoCompleto> findCompletoById(Long id) {
-        var pedido = jdbc.sql("""
-                SELECT p.*, c.nombre AS cliente_nombre, c.email AS cliente_email
-                  FROM pedidos p
-                  JOIN clientes c ON c.id = p.cliente_id
-                 WHERE p.id = :id
-                """)
-            .param("id", id)
-            .query(new PedidoConClienteRowMapper()).optional();
-
-        if (pedido.isEmpty()) return Optional.empty();
-
-        var lineas = jdbc.sql("""
-                SELECT l.*, pr.sku, pr.nombre
-                  FROM lineas_pedido l
-                  JOIN productos pr ON pr.id = l.producto_id
-                 WHERE l.pedido_id = :id
-                 ORDER BY l.id
-                """)
-            .param("id", id)
-            .query(new LineaConProductoRowMapper()).list();
-
-        return pedido.map(p -> new PedidoCompleto(p, lineas));
+        return jdbc.sql(sql.toString()).params(params).query(rowMapper).list();
     }
 
     @Override
-    public int cambiarEstado(Long id, EstadoPedido nuevo) {
-        return jdbc.sql("UPDATE pedidos SET estado = :estado WHERE id = :id")
-                   .param("estado", nuevo.name()).param("id", id)
-                   .update();
+    public Optional<ProductoConCategoria> findById(Long id) {
+        return jdbc.sql(SELECT_CON_CATEGORIA + " WHERE p.id = :id")
+                   .param("id", id)
+                   .query(rowMapper).optional();
+    }
+
+    @Override
+    public long contarPorCategoria(Long categoriaId) {
+        return jdbc.sql("SELECT COUNT(*) FROM productos WHERE categoria_id = :id")
+                   .param("id", categoriaId)
+                   .query(Long.class).single();
+    }
+
+    /** La pieza central del proyecto. */
+    @Override
+    public int descontarStock(Long id, int cantidad) {
+        return jdbc.sql("""
+                UPDATE productos
+                   SET stock = stock - :cantidad, updated_at = CURRENT_TIMESTAMP
+                 WHERE id = :id AND stock >= :cantidad
+                """)
+            .param("cantidad", cantidad).param("id", id)
+            .update();
     }
 }
 ```
 
-```java title="productos/repositories/ProductosRepositoryJdbc.java (los dos métodos clave)"
-/** Descuenta stock SOLO si hay suficiente. Devuelve las filas afectadas. */
-@Override
-public int descontarStock(Long productoId, int cantidad) {
-    return jdbc.sql("""
-            UPDATE productos
-               SET stock = stock - :cantidad
-             WHERE id = :id AND stock >= :cantidad
-            """)
-        .param("cantidad", cantidad).param("id", productoId)
-        .update();
-}
+```java title="categorias/repositories/CategoriasRepository.java"
+public interface CategoriasRepository {
+    List<Categoria>     findAll();
+    Optional<Categoria> findById(Long id);
+    Optional<Categoria> findByNombre(String nombre);
+    Categoria           save(Categoria categoria);
+    boolean             deleteById(Long id);
 
-@Override
-public int devolverStock(Long productoId, int cantidad) {
-    return jdbc.sql("UPDATE productos SET stock = stock + :cantidad WHERE id = :id")
-               .param("cantidad", cantidad).param("id", productoId)
-               .update();
+    /** Suma unidades al contador de la categoría. */
+    int sumarVendidas(Long id, int cantidad);
 }
 ```
 
-!!! danger "El `AND stock >= :cantidad` del `UPDATE` es la pieza central del proyecto"
-    Compara las dos formas de descontar stock:
+!!! success "El `JOIN` está en una constante"
+    `SELECT_CON_CATEGORIA` se reutiliza en `buscar` y en `findById`. Si mañana hay que añadir una columna al `SELECT`, se toca **un sitio**.
 
+## Paso 5 · La venta: la operación que toca dos tablas
+
+```java title="productos/services/ProductosServiceImpl.java (el método clave)"
+/**
+ * Vende unidades de un producto: descuenta su stock y suma al contador
+ * de su categoría. Las dos cosas, o ninguna.
+ */
+@Override
+@Transactional
+public ProductoResponse vender(Long id, VentaRequest request) {
+
+    // 1 · el producto tiene que existir
+    var actual = repositorio.findById(id)
+            .orElseThrow(() -> new ProductoNotFoundException(id));
+
+    // 2 · descontar stock, de forma atómica
+    if (repositorio.descontarStock(id, request.cantidad()) == 0)
+        throw new ProductoConflictException(
+                "Stock insuficiente de %s: piden %d, hay %d"
+                        .formatted(actual.producto().nombre(),
+                                   request.cantidad(),
+                                   actual.producto().stock()));
+
+    // 3 · sumar al contador de la categoría
+    categoriasRepository.sumarVendidas(actual.producto().categoriaId(), request.cantidad());
+
+    log.info("Vendidas {} unidades de {}", request.cantidad(), actual.producto().sku());
+
+    // 4 · devolver el estado nuevo
+    return mapper.toResponse(repositorio.findById(id).orElseThrow());
+}
+```
+
+!!! danger "El `@Transactional` es todo el proyecto en una anotación"
+    Sigue el camino de una venta que falla en el paso 3:
+
+    ```
+    1 · el producto existe                       OK
+    2 · descontar stock        → UPDATE ejecutado
+    3 · sumar a la categoría   → falla
+    ───────────────────────────────────────────────
+    ROLLBACK: el UPDATE del paso 2 se deshace
+    ```
+
+    **Sin `@Transactional`**, cada `update()` se confirma solo: el stock se queda descontado y el contador sin subir. **Has perdido stock sin vender nada, y nadie recibe ningún error.**
+
+!!! danger "Y el `AND stock >= :cantidad` evita el stock negativo"
     === "❌ Mal: comprobar y después restar"
 
         ```java
-        var producto = repositorio.findById(id).orElseThrow();
-        if (producto.getStock() < cantidad)
-            throw new StockInsuficienteException(...);
-        repositorio.actualizarStock(id, producto.getStock() - cantidad);
+        var p = repositorio.findById(id).orElseThrow();
+        if (p.producto().stock() < cantidad)
+            throw new ProductoConflictException("Sin stock");
+        repositorio.actualizarStock(id, p.producto().stock() - cantidad);
         ```
 
-        Entre el `if` y el `UPDATE` **cabe otra petición** haciendo lo mismo. Las dos leen stock 5, las dos creen que pueden vender 3, y el stock acaba en **-1**.
+        Entre el `if` y el `UPDATE` **cabe otra petición**. Las dos leen stock 5, las dos creen que pueden vender 3, y el stock acaba en **−1**.
 
-        Se llama **condición de carrera**, y en desarrollo nunca se reproduce porque hay un solo usuario.
+        En desarrollo nunca se reproduce, porque hay un solo usuario.
 
-    === "✅ Bien: comprobar y restar en la misma sentencia"
+    === "✅ Bien: una sola sentencia"
 
         ```java
-        int filas = repositorio.descontarStock(id, cantidad);
-        if (filas == 0) throw new StockInsuficienteException(...);
+        if (repositorio.descontarStock(id, cantidad) == 0)
+            throw new ProductoConflictException("Stock insuficiente…");
         ```
 
-        El `UPDATE … WHERE stock >= :cantidad` es **una sola operación atómica**: la base de datos garantiza que nadie se cuela en medio.
+        El `UPDATE … WHERE stock >= :cantidad` es **atómico**: la base de datos garantiza que nadie se cuela. Si no había bastante, afecta a **0 filas**.
 
-        Si no había bastante, afecta a **0 filas** y eso es la señal. **El valor que devuelve `update()` es la respuesta**, igual que en el [E20 de la UT3](../ut3/ejercicios.md).
+### Y las otras dos reglas
 
-    Y aún así el `CHECK (stock >= 0)` del esquema sigue ahí, por si algún día alguien escribe un `UPDATE` sin el `WHERE`.
+```java
+@Override
+@Transactional
+public ProductoResponse save(ProductoCreateRequest request) {
+    if (repositorio.existsBySku(request.sku()))
+        throw new ProductoConflictException("Ya existe un producto con el SKU " + request.sku());
 
-!!! tip "`findCompletoById` hace dos consultas, no N+1"
-    Una para el pedido con su cliente (un `JOIN`) y **una** para todas sus líneas con sus productos (otro `JOIN`). Dos consultas, independientemente de cuántas líneas tenga el pedido.
+    var categoria = categoriasRepository.findByNombre(request.categoria())
+            .orElseThrow(() -> new ProductoBadRequestException(
+                    "La categoría " + request.categoria() + " no existe"));
 
-    Lo que **no** se hace: traer el pedido, recorrer las líneas y pedir el producto de cada una. Eso son 1 + N consultas, y es el problema que reaparecerá en la [UT5](../ut5/04-proyectos.md) con JPA y en la UT6 con GraphQL.
-
-## B.4 · El servicio con la transacción
-
-```java title="pedidos/services/PedidosServiceImpl.java"
-@Service
-public class PedidosServiceImpl implements PedidosService {
-
-    private static final Logger log = LoggerFactory.getLogger(PedidosServiceImpl.class);
-
-    private final PedidosRepository pedidos;
-    private final ProductosRepository productos;
-    private final ClientesRepository clientes;
-    private final PedidoMapper mapper;
-
-    public PedidosServiceImpl(PedidosRepository pedidos, ProductosRepository productos,
-                              ClientesRepository clientes, PedidoMapper mapper) {
-        this.pedidos = pedidos;
-        this.productos = productos;
-        this.clientes = clientes;
-        this.mapper = mapper;
-    }
-
-    /**
-     * Crea el pedido y descuenta el stock de TODAS sus líneas.
-     * Si falla una, no se descuenta ninguna y no se crea el pedido.
-     */
-    @Override
-    @Transactional
-    public PedidoResponse crear(PedidoCreateRequest request) {
-
-        // 1 · el cliente tiene que existir y estar activo
-        var cliente = clientes.findById(request.clienteId())
-                .orElseThrow(() -> new ClienteNotFoundException(request.clienteId()));
-        if (!cliente.isActivo())
-            throw new PedidoConflictException(
-                    "El cliente %s está desactivado".formatted(cliente.getNombre()));
-
-        // 2 · agrupar líneas repetidas del mismo producto
-        var cantidadPorProducto = request.lineas().stream()
-                .collect(Collectors.groupingBy(LineaRequest::productoId, TreeMap::new,
-                         Collectors.summingInt(LineaRequest::cantidad)));
-
-        var lineas = new ArrayList<LineaPedido>();
-        var total = BigDecimal.ZERO;
-
-        // 3 · por cada producto: existe, descontar stock, copiar el precio
-        for (var e : cantidadPorProducto.entrySet()) {
-            Long productoId = e.getKey();
-            int cantidad = e.getValue();
-
-            var producto = productos.findById(productoId)
-                    .orElseThrow(() -> new ProductoNotFoundException(productoId));
-
-            if (productos.descontarStock(productoId, cantidad) == 0)
-                throw new StockInsuficienteException(
-                        "Stock insuficiente de %s (sku %s): piden %d, hay %d"
-                                .formatted(producto.getNombre(), producto.getSku(),
-                                           cantidad, producto.getStock()));
-
-            lineas.add(LineaPedido.builder()
-                    .productoId(productoId)
-                    .cantidad(cantidad)
-                    .precioUnitario(producto.getPrecio())      // ← SE COPIA el precio
-                    .build());
-
-            total = total.add(producto.getPrecio()
-                    .multiply(BigDecimal.valueOf(cantidad)));
-        }
-
-        // 4 · guardar el pedido, con el total que hemos calculado NOSOTROS
-        var pedido = Pedido.builder()
-                .codigo(pedidos.siguienteCodigo())
-                .clienteId(cliente.getId())
-                .estado(EstadoPedido.PENDIENTE)
-                .total(total.setScale(2, RoundingMode.HALF_UP))
-                .fecha(LocalDateTime.now())
-                .lineas(lineas)
-                .build();
-
-        var guardado = pedidos.save(pedido);
-        log.info("Pedido {} creado para el cliente {} por {} €",
-                 guardado.getCodigo(), cliente.getNombre(), guardado.getTotal());
-
-        return mapper.toResponse(pedidos.findCompletoById(guardado.getId()).orElseThrow());
-    }
-
-    /** Cancela y DEVUELVE el stock. Solo desde PENDIENTE o PAGADO. */
-    @Override
-    @Transactional
-    public PedidoResponse cancelar(Long id) {
-        var completo = pedidos.findCompletoById(id)
-                .orElseThrow(() -> new PedidoNotFoundException(id));
-
-        var estado = completo.pedido().getEstado();
-        if (estado != EstadoPedido.PENDIENTE && estado != EstadoPedido.PAGADO)
-            throw new PedidoConflictException(
-                    "No se puede cancelar un pedido en estado " + estado);
-
-        for (var l : completo.lineas())
-            productos.devolverStock(l.getProductoId(), l.getCantidad());
-
-        pedidos.cambiarEstado(id, EstadoPedido.CANCELADO);
-        return mapper.toResponse(pedidos.findCompletoById(id).orElseThrow());
-    }
-
-    /** Transiciones permitidas: PENDIENTE → PAGADO → ENVIADO → ENTREGADO */
-    @Override
-    @Transactional
-    public PedidoResponse cambiarEstado(Long id, EstadoPedido nuevo) {
-        var completo = pedidos.findCompletoById(id)
-                .orElseThrow(() -> new PedidoNotFoundException(id));
-        var actual = completo.pedido().getEstado();
-
-        if (!TRANSICIONES.getOrDefault(actual, Set.of()).contains(nuevo))
-            throw new PedidoConflictException(
-                    "No se puede pasar de %s a %s".formatted(actual, nuevo));
-
-        pedidos.cambiarEstado(id, nuevo);
-        return mapper.toResponse(pedidos.findCompletoById(id).orElseThrow());
-    }
-
-    private static final Map<EstadoPedido, Set<EstadoPedido>> TRANSICIONES = Map.of(
-            EstadoPedido.PENDIENTE, Set.of(EstadoPedido.PAGADO, EstadoPedido.CANCELADO),
-            EstadoPedido.PAGADO,    Set.of(EstadoPedido.ENVIADO, EstadoPedido.CANCELADO),
-            EstadoPedido.ENVIADO,   Set.of(EstadoPedido.ENTREGADO),
-            EstadoPedido.ENTREGADO, Set.of(),
-            EstadoPedido.CANCELADO, Set.of());
+    return mapper.toResponse(repositorio.findById(
+            repositorio.save(mapper.toModel(request, categoria.id())).id()).orElseThrow());
 }
 ```
 
-!!! danger "El `@Transactional` del método `crear` es toda la unidad en una anotación"
-    Sigue el camino de un pedido de tres líneas donde **falla la tercera**:
+```java title="categorias/services/CategoriasServiceImpl.java"
+@Override
+@Transactional
+public void deleteById(Long id) {
+    categoriasRepository.findById(id)
+            .orElseThrow(() -> new CategoriaNotFoundException(id));
 
-    ```
-    1 · cliente OK
-    2 · producto A: descuenta 2  →  UPDATE ejecutado
-    3 · producto B: descuenta 1  →  UPDATE ejecutado
-    4 · producto C: filas == 0   →  StockInsuficienteException
-    ──────────────────────────────────────────────────────────
-    ROLLBACK: los UPDATE de A y B se deshacen. Ningún INSERT.
-    ```
+    long productos = productosRepository.contarPorCategoria(id);
+    if (productos > 0)
+        throw new CategoriaConflictException(
+                "No se puede borrar la categoría: tiene %d productos".formatted(productos));
 
-    **Sin `@Transactional`**, cada `update()` se confirma solo: A y B se quedan descontados y el pedido no existe. Has perdido tres unidades de stock sin vender nada, y nadie recibe ningún error.
-
-    Compruébalo: quita la anotación, provoca el fallo y mira el stock antes y después.
-
-!!! warning "Las tres trampas de `@Transactional`, y todas aparecen aquí"
-    **1. Solo revierte con `RuntimeException`.** `StockInsuficienteException` hereda de `RuntimeException` (vía `PedidoException`), así que va bien. Si heredara de `Exception`, **la transacción se confirmaría** con el trabajo a medias.
-
-    **2. Si capturas la excepción dentro, no hay *rollback*.**
-
-    ```java
-    @Transactional
-    public PedidoResponse crear(...) {
-        try { … }
-        catch (StockInsuficienteException e) { log.error("ups"); }  // ← SE CONFIRMA
-    }
-    ```
-
-    La excepción tiene que **salir** del método transaccional.
-
-    **3. Funciona por proxy.** `this.crear(...)` llamado desde otro método del mismo bean **no abre transacción**. Es lo mismo que le pasa a `@Cacheable`.
-
-!!! success "El `groupingBy` del paso 2 arregla un bug que no se ve"
-    Si el cliente manda dos líneas del mismo producto:
-
-    ```json
-    { "clienteId": 1, "lineas": [
-        { "productoId": 3, "cantidad": 2 },
-        { "productoId": 3, "cantidad": 2 }
-    ]}
-    ```
-
-    Sin agrupar, se hacen **dos** `descontarStock(3, 2)`. Si había 3 unidades, el primero pasa (quedan 1) y el segundo falla: **error correcto por casualidad**. Pero si había 4, pasan los dos y el pedido sale con **dos líneas del mismo producto**, que luego no cuadra en la factura.
-
-    `Collectors.groupingBy(…, summingInt(…))` lo convierte en un único `descontarStock(3, 4)`. Es el [`groupingBy` de la UT2](../ut2/04-colecciones-y-funcional.md) resolviendo un problema de negocio, no un informe.
-
-## B.5 · Probar el proyecto B
-
-```sql title="src/main/resources/data.sql (extracto)"
-MERGE INTO clientes (id, nif, nombre, email, ciudad) KEY(id) VALUES
-  (1, '12345678Z', 'Ana Pérez',  'ana@correo.es',   'Madrid'),
-  (2, '87654321X', 'Bruno Díaz', 'bruno@correo.es', 'Getafe');
-
-MERGE INTO productos (id, sku, nombre, categoria, precio, stock) KEY(id) VALUES
-  (1, 'SKU-001', 'Teclado mecánico', 'informatica', 79.90, 10),
-  (2, 'SKU-002', 'Ratón vertical',   'informatica', 45.50,  3),
-  (3, 'SKU-003', 'Monitor 27"',      'informatica', 229.00, 1),
-  (4, 'SKU-004', 'Alfombrilla XL',   'accesorios',  19.99, 50);
-
-ALTER TABLE clientes  ALTER COLUMN id RESTART WITH 3;
-ALTER TABLE productos ALTER COLUMN id RESTART WITH 5;
+    categoriasRepository.deleteById(id);
+}
 ```
 
-=== "Un pedido que funciona"
+## Paso 6 · El mapeador con dos tablas
 
-    ```bash
-    curl -s -X POST localhost:8080/api/v1/pedidos \
-      -H "Content-Type: application/json" \
-      -d '{"clienteId":1,"lineas":[
-             {"productoId":1,"cantidad":2},
-             {"productoId":4,"cantidad":1}]}' | jq
-    ```
+```java title="productos/mappers/ProductoMapper.java"
+@Component
+public class ProductoMapper {
 
-    ```json
-    {
-      "id": 1,
-      "codigo": "PED-2026-000001",
-      "cliente": { "id": 1, "nombre": "Ana Pérez", "email": "ana@correo.es" },
-      "estado": "PENDIENTE",
-      "total": 179.79,
-      "lineas": [
-        { "sku": "SKU-001", "nombre": "Teclado mecánico",
-          "cantidad": 2, "precioUnitario": 79.90, "subtotal": 159.80 },
-        { "sku": "SKU-004", "nombre": "Alfombrilla XL",
-          "cantidad": 1, "precioUnitario": 19.99, "subtotal": 19.99 }
-      ]
+    /** El JOIN ya trae el nombre de la categoría: lo pasamos al DTO. */
+    public ProductoResponse toResponse(ProductoConCategoria pc) {
+        var p = pc.producto();
+        return new ProductoResponse(p.id(), p.sku(), p.nombre(), p.precio(),
+                                    p.stock(), pc.categoriaNombre(),
+                                    p.createdAt(), p.updatedAt());
     }
-    ```
+
+    public List<ProductoResponse> toResponse(List<ProductoConCategoria> lista) {
+        return lista.stream().map(this::toResponse).toList();
+    }
+
+    /** POST: recibe el id de la categoría ya resuelto por el servicio. */
+    public Producto toModel(ProductoCreateRequest r, Long categoriaId) {
+        var ahora = LocalDateTime.now();
+        return new Producto(
+                null,
+                r.sku().trim().toUpperCase(),
+                r.nombre().trim(),
+                r.precio(),
+                r.stock(),
+                categoriaId,
+                ahora,
+                ahora);
+    }
+
+    /** PATCH: conserva lo que no llega. La categoría también viene resuelta. */
+    public Producto parchear(Producto original, ProductoUpdateRequest r, Long categoriaId) {
+        return new Producto(
+                original.id(),
+                original.sku(),                                   // el SKU no se cambia
+                r.nombre() != null ? r.nombre().trim() : original.nombre(),
+                r.precio() != null ? r.precio()        : original.precio(),
+                r.stock()  != null ? r.stock()         : original.stock(),
+                categoriaId,
+                original.createdAt(),
+                LocalDateTime.now());
+    }
+}
+```
+
+!!! info "Quién resuelve el nombre de la categoría"
+    El cliente manda `"categoria": "INFORMATICA"`. **El servicio** lo busca y obtiene el id; **el mapeador** solo recibe el `Long` ya resuelto.
+
+    Así el mapeador no necesita repositorios: sigue siendo una clase que solo convierte datos.
+
+## Paso 7 · Probar el proyecto B
+
+=== "Una venta correcta"
 
     ```bash
-    # El stock ha bajado
-    curl -s localhost:8080/api/v1/productos/1 | jq .stock    # 8
-    curl -s localhost:8080/api/v1/productos/4 | jq .stock    # 49
+    curl -s localhost:8080/api/v1/productos/1 | jq '{nombre, stock, categoria}'
+    # { "nombre": "Teclado mecánico", "stock": 10, "categoria": "INFORMATICA" }
+
+    curl -s -X POST localhost:8080/api/v1/productos/1/venta \
+      -H "Content-Type: application/json" -d '{"cantidad":3}' | jq '{nombre, stock}'
+    # { "nombre": "Teclado mecánico", "stock": 7 }
+
+    curl -s localhost:8080/api/v1/categorias | jq '.[] | select(.nombre=="INFORMATICA")'
+    # { "id": 1, "nombre": "INFORMATICA", "unidadesVendidas": 3 }
     ```
+
+    **Las dos tablas han cambiado con una sola petición.**
 
 === "La transacción, comprobada"
 
     ```bash
     # Antes
-    curl -s localhost:8080/api/v1/productos | jq '[.[] | {id, stock}]'
-    # [{"id":1,"stock":8},{"id":2,"stock":3},{"id":3,"stock":1},{"id":4,"stock":49}]
+    curl -s localhost:8080/api/v1/productos | jq '[.[] | {sku, stock}]'
+    curl -s localhost:8080/api/v1/categorias | jq '[.[] | {nombre, unidadesVendidas}]'
 
-    # Pedido de TRES líneas donde la TERCERA no tiene stock
-    curl -i -X POST localhost:8080/api/v1/pedidos \
-      -H "Content-Type: application/json" \
-      -d '{"clienteId":1,"lineas":[
-             {"productoId":1,"cantidad":1},
-             {"productoId":4,"cantidad":1},
-             {"productoId":3,"cantidad":5}]}'
+    # Venta de más unidades de las que hay
+    curl -i -X POST localhost:8080/api/v1/productos/3/venta \
+      -H "Content-Type: application/json" -d '{"cantidad":5}'
+    # 409 · "Stock insuficiente de Monitor 27\": piden 5, hay 1"
+
+    # Después: NINGUNA de las dos tablas ha cambiado
+    curl -s localhost:8080/api/v1/productos | jq '[.[] | {sku, stock}]'
+    curl -s localhost:8080/api/v1/categorias | jq '[.[] | {nombre, unidadesVendidas}]'
     ```
 
-    ```
-    HTTP/1.1 409
-    "Stock insuficiente de Monitor 27\" (sku SKU-003): piden 5, hay 1"
-    ```
-
-    ```bash
-    # Después: EL STOCK NO HA CAMBIADO EN NINGUNO
-    curl -s localhost:8080/api/v1/productos | jq '[.[] | {id, stock}]'
-    # [{"id":1,"stock":8},{"id":2,"stock":3},{"id":3,"stock":1},{"id":4,"stock":49}]
-
-    # Y el pedido no existe
-    curl -s localhost:8080/api/v1/pedidos | jq length    # 1, el de antes
-    ```
-
-    **Ese par de salidas idénticas es el resultado de aprendizaje de este proyecto.**
-
-=== "Cancelar y devolver stock"
-
-    ```bash
-    curl -s localhost:8080/api/v1/productos/1 | jq .stock          # 8
-
-    curl -s -X POST localhost:8080/api/v1/pedidos/1/cancelar | jq '{codigo, estado}'
-    # { "codigo": "PED-2026-000001", "estado": "CANCELADO" }
-
-    curl -s localhost:8080/api/v1/productos/1 | jq .stock          # 10 ← devuelto
-
-    # Y no se puede cancelar dos veces
-    curl -i -X POST localhost:8080/api/v1/pedidos/1/cancelar
-    # HTTP/1.1 409 · "No se puede cancelar un pedido en estado CANCELADO"
-    ```
+    **Esos dos pares de salidas idénticas son el resultado de aprendizaje del proyecto.**
 
 === "Los errores"
 
     ```bash
-    # 404: cliente que no existe
-    curl -i -X POST localhost:8080/api/v1/pedidos \
+    # 409: borrar una categoría con productos
+    curl -i -X DELETE localhost:8080/api/v1/categorias/1
+    # 409 · "No se puede borrar la categoría: tiene 3 productos"
+
+    # 400: categoría que no existe
+    curl -i -X POST localhost:8080/api/v1/productos \
       -H "Content-Type: application/json" \
-      -d '{"clienteId":999,"lineas":[{"productoId":1,"cantidad":1}]}'     # 404
+      -d '{"sku":"SKU-010","nombre":"Mesa","precio":99.00,"stock":2,"categoria":"COCINA"}'
+    # 400
 
-    # 400: pedido sin líneas
-    curl -s -X POST localhost:8080/api/v1/pedidos \
+    # 400: SKU con formato malo
+    curl -s -X POST localhost:8080/api/v1/productos \
       -H "Content-Type: application/json" \
-      -d '{"clienteId":1,"lineas":[]}' | jq .campos
-    # { "lineas": "El pedido debe tener al menos una línea" }
+      -d '{"sku":"ABC","nombre":"Mesa","precio":99.00,"stock":2,"categoria":"PAPELERIA"}' \
+      | jq .campos
+    # { "sku": "El SKU debe ser SKU-nnn" }
 
-    # 400: cantidad 0 → lo caza el @Valid de DENTRO de la lista
-    curl -s -X POST localhost:8080/api/v1/pedidos \
-      -H "Content-Type: application/json" \
-      -d '{"clienteId":1,"lineas":[{"productoId":1,"cantidad":0}]}' | jq .campos
-    # { "lineas[0].cantidad": "La cantidad mínima es 1" }
+    # 400: cantidad 0 en la venta
+    curl -s -X POST localhost:8080/api/v1/productos/1/venta \
+      -H "Content-Type: application/json" -d '{"cantidad":0}' | jq .campos
+    # { "cantidad": "La cantidad mínima es 1" }
 
-    # 409: transición de estado inválida
-    curl -i -X PATCH localhost:8080/api/v1/pedidos/2/estado \
-      -H "Content-Type: application/json" -d '{"estado":"ENTREGADO"}'
-    # HTTP/1.1 409 · "No se puede pasar de PENDIENTE a ENTREGADO"
-
-    # 409: borrar un producto que está en un pedido (lo impide la FK)
-    curl -i -X DELETE localhost:8080/api/v1/productos/1
-    # HTTP/1.1 409 · "La operacion viola una restriccion de la base de datos"
+    # 409: vender un producto sin stock
+    curl -i -X POST localhost:8080/api/v1/productos/5/venta \
+      -H "Content-Type: application/json" -d '{"cantidad":1}'
+    # 409
     ```
 
-## B.6 · Los tests de la transacción
+## Paso 8 · El test de la transacción
 
 ```java
 @SpringBootTest
 @ActiveProfiles("test")
-class PedidosTransaccionTest {
+class VentaTransaccionTest {
 
-    @Autowired PedidosService pedidos;
+    @Autowired ProductosService servicio;
     @Autowired ProductosRepository productos;
+    @Autowired CategoriasRepository categorias;
 
     @Test
-    void siFallaUnaLineaNoSeDescuentaNingunStock() {
-        var antes = productos.findAll().stream()
-                .collect(Collectors.toMap(Producto::getId, Producto::getStock));
+    void siFallaLaVentaNoCambiaNingunaDeLasDosTablas() {
+        var stockAntes = productos.findById(3L).orElseThrow().producto().stock();
+        var vendidasAntes = categorias.findById(1L).orElseThrow().unidadesVendidas();
 
-        var request = new PedidoCreateRequest(1L, List.of(
-                new LineaRequest(1L, 1),      // hay stock
-                new LineaRequest(4L, 1),      // hay stock
-                new LineaRequest(3L, 999)));  // NO hay stock
+        assertThrows(ProductoConflictException.class,
+                () -> servicio.vender(3L, new VentaRequest(999)));
 
-        assertThrows(StockInsuficienteException.class, () -> pedidos.crear(request));
-
-        var despues = productos.findAll().stream()
-                .collect(Collectors.toMap(Producto::getId, Producto::getStock));
-
-        assertEquals(antes, despues, "El rollback debe dejar el stock intacto");
+        assertEquals(stockAntes,
+                productos.findById(3L).orElseThrow().producto().stock(),
+                "El stock no puede haber cambiado");
+        assertEquals(vendidasAntes,
+                categorias.findById(1L).orElseThrow().unidadesVendidas(),
+                "El contador de la categoría no puede haber cambiado");
     }
 
     @Test
-    void cancelarDevuelveElStock() {
-        var stockInicial = productos.findById(1L).orElseThrow().getStock();
+    void unaVentaCorrectaCambiaLasDosTablas() {
+        var stockAntes = productos.findById(1L).orElseThrow().producto().stock();
+        var vendidasAntes = categorias.findById(1L).orElseThrow().unidadesVendidas();
 
-        var pedido = pedidos.crear(new PedidoCreateRequest(1L,
-                List.of(new LineaRequest(1L, 2))));
-        assertEquals(stockInicial - 2, productos.findById(1L).orElseThrow().getStock());
+        servicio.vender(1L, new VentaRequest(2));
 
-        pedidos.cancelar(pedido.id());
-        assertEquals(stockInicial, productos.findById(1L).orElseThrow().getStock());
-    }
-
-    @Test
-    void elPrecioSeCongelaEnLaLinea() {
-        var pedido = pedidos.crear(new PedidoCreateRequest(1L,
-                List.of(new LineaRequest(1L, 1))));
-        var precioEnLaLinea = pedido.lineas().get(0).precioUnitario();
-
-        productos.actualizarPrecio(1L, new BigDecimal("999.00"));
-
-        var releido = pedidos.findById(pedido.id());
-        assertEquals(precioEnLaLinea, releido.lineas().get(0).precioUnitario(),
-                "El precio del pedido histórico no puede cambiar");
-    }
-
-    @Test
-    void noSePuedeSaltarUnEstado() {
-        var pedido = pedidos.crear(new PedidoCreateRequest(1L,
-                List.of(new LineaRequest(4L, 1))));
-
-        assertThrows(PedidoConflictException.class,
-                () -> pedidos.cambiarEstado(pedido.id(), EstadoPedido.ENTREGADO));
+        assertEquals(stockAntes - 2,
+                productos.findById(1L).orElseThrow().producto().stock());
+        assertEquals(vendidasAntes + 2,
+                categorias.findById(1L).orElseThrow().unidadesVendidas());
     }
 }
 ```
 
-!!! success "El primer test es el que vale la unidad"
-    ```java
-    assertEquals(antes, despues, "El rollback debe dejar el stock intacto");
-    ```
-
-    Compara **el mapa entero de stocks** antes y después de un fallo. Es la única forma de demostrar que la transacción funciona, y lo que un `curl` solo te deja ver a ojo.
-
-    Quita el `@Transactional` del servicio y este test se pone rojo. Eso es exactamente lo que un test tiene que hacer.
+!!! success "El primer test es el que vale el proyecto"
+    Comprueba **las dos tablas** antes y después de un fallo. Quita el `@Transactional` del servicio y este test se pone rojo: eso es exactamente lo que un test tiene que hacer.
 
 ---
 
@@ -1906,43 +1555,39 @@ class PedidosTransaccionTest {
 
 ```mermaid
 flowchart TB
-    Cliente["curl / Postman"] -->|HTTP + JSON| C["@RestController<br/>filtros, códigos, Location"]
+    Cliente["curl / Postman"] -->|HTTP + JSON| C["@RestController"]
     C -->|DTOs| S["@Service<br/>reglas + @Transactional"]
-    S --> R1["@Repository<br/>JdbcClient"]
-    S --> R2["@Repository<br/>JdbcClient"]
-    R1 --> BD[("H2 en fichero<br/>datos/tienda.mv.db")]
+    S --> R1["@Repository productos"]
+    S --> R2["@Repository categorias"]
+    R1 --> BD[("H2 en fichero")]
     R2 --> BD
-
-    S -.->|FunkoNotFoundException<br/>StockInsuficienteException| G["@RestControllerAdvice"]
+    S -.->|excepciones con @ResponseStatus| G["@RestControllerAdvice"]
     G -.->|400 / 404 / 409| Cliente
-    MAP["@Component Mapper<br/>+ RowMapper"] -.-> S
 ```
 
-!!! success "Checklist de los dos proyectos"
+!!! success "Comprueba los dos proyectos"
     **Comunes**
 
     - [ ] `./mvnw clean package` en verde, con los tests
+    - [ ] Arranca **dos veces seguidas** sin error (`IF NOT EXISTS` y `MERGE`)
     - [ ] Los datos **sobreviven** a parar y arrancar
-    - [ ] `schema.sql` con `IF NOT EXISTS` y `data.sql` con `MERGE`: arranca dos veces seguidas sin error
-    - [ ] El `ALTER … RESTART WITH` puesto: el primer POST no choca
     - [ ] GET de un id inexistente → **404**, no 500
-    - [ ] POST inválido → **400** con los campos
+    - [ ] POST inválido → **400 con los campos**
     - [ ] DELETE de un id inexistente → **404**, no 204
-    - [ ] POST correcto → **201** con cabecera `Location`
-    - [ ] El PATCH conserva lo que no mandas; el PUT **no**
+    - [ ] POST correcto → **201** con `Location`
+    - [ ] El PATCH conserva lo que no mandas
     - [ ] El `@Service` no contiene la palabra `ResponseEntity`
-    - [ ] Ni una sola concatenación de valores en el SQL
+    - [ ] Ni una concatenación de valores en el SQL
+    - [ ] **Ningún patrón builder**: `record` y `new`
 
     **Solo el proyecto B**
 
-    - [ ] Un pedido con una línea sin stock → **409 y el stock no cambia en ninguna**
-    - [ ] Cancelar **devuelve** el stock, y solo se puede una vez
-    - [ ] El `precioUnitario` queda congelado en la línea
-    - [ ] Las transiciones de estado se respetan → 409 si no
-    - [ ] Borrar un producto que está en un pedido → **409** (lo impide la FK)
-    - [ ] `cantidad: 0` dentro de la lista → **400** (el `@Valid` anidado)
+    - [ ] Una venta correcta cambia **las dos tablas**
+    - [ ] Una venta sin stock → **409 y ninguna de las dos cambia**
+    - [ ] Borrar una categoría con productos → **409**
+    - [ ] El `ProductoResponse` lleva el **nombre** de la categoría, no su id
 
-!!! info "Y en la UT5 se cambia una sola capa"
-    Los `FunkosRepositoryJdbc` y `PedidosRepositoryJdbc` desaparecen; en su lugar, interfaces que extienden `JpaRepository` y entidades con `@Entity`.
+!!! info "En la UT5 se cambia una sola capa"
+    Los `…RepositoryJdbc` y los `RowMapper` desaparecen; en su lugar, interfaces que extienden `JpaRepository` y los modelos pasan a ser `@Entity`.
 
-    **Controlador, servicio, DTOs, mapeador, excepciones y tests de capa web no se tocan.** Eso es lo que compras con las capas, y solo se nota el día que cambias una.
+    **Controlador, servicio, DTOs, mapeador, excepciones y tests de capa web no se tocan.**

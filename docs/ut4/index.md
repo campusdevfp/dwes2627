@@ -18,7 +18,7 @@
 
 | | |
 |---|---|
-| [**Ejercicios prácticos**](ejercicios-practicos.md) | Tres enunciados del formato del examen, con la rúbrica |
+| [**Examen práctico**](examen.md) | Tres enunciados del formato del examen, con la rúbrica |
 | [**Chuleta**](chuleta.md) | Referencia en una página · **[PDF para el examen](../pdf/chuleta-ut4.pdf)** |
 
 !!! note "Base de datos sí, JPA no"
@@ -32,7 +32,7 @@
 
 **Se te da** el `pom.xml`, el `application.properties`, el `schema.sql`, el `data.sql` y la clase de arranque. **Escribes tú** el modelo, los DTOs, el `RowMapper`, el repositorio, el mapeador, las excepciones, el servicio, el controlador, el manejador global y los tests.
 
-Es un enunciado **del mismo formato y tamaño** que los [ejercicios prácticos](ejercicios-practicos.md), con otro dominio.
+Es un enunciado **del mismo formato y tamaño** que los del [examen práctico](examen.md), con otro dominio.
 
 ### La rúbrica
 
@@ -45,7 +45,7 @@ Es un enunciado **del mismo formato y tamaño** que los [ejercicios prácticos](
 | 5 | Persistencia con JDBC | 1,0 |
 | 6 | Tests | 1,0 |
 
-Se aprueba con **5,0**. Cada ítem se comprueba con un comando o una petición concreta: la rúbrica completa, con las penalizaciones, está en [Ejercicios prácticos](ejercicios-practicos.md).
+Se aprueba con **5,0**. Cada ítem se comprueba con un comando o una petición concreta: la rúbrica completa, con las penalizaciones, está en [Examen práctico](examen.md).
 
 !!! danger "El bloque 1 no puede quedar en 0"
     El RA5 es literalmente *«separar el código de presentación de la lógica de negocio»*. Un proyecto que funciona con la lógica en el controlador **no demuestra el resultado de aprendizaje**, por bien que responda.

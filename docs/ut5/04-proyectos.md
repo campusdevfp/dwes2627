@@ -1,38 +1,22 @@
 # 4. Dos proyectos paso a paso
 
-Los **dos proyectos de la UT4**, migrados a Spring Data JPA. Mismas APIs, mismas reglas, **H2 en fichero** — y una fracción del código.
+Los **dos proyectos de la UT4**, migrados a Spring Data JPA. Mismas APIs, **H2 en fichero**, y una fracción del código.
 
-| | Proyecto | Entidades | Lo nuevo que enseña |
+| | Proyecto | Entidades | Lo nuevo |
 |:-:|---|:-:|---|
-| **A** | [Funkos y categorías](#proyecto-a-funkos-y-categorias) | 2 | Entidades, una relación 1:N, repositorios sin implementar, paginación y `Specification` |
-| **B** | [La tienda](#proyecto-b-la-tienda) | 4 | Relaciones en las dos direcciones, `cascade`, `orphanRemoval`, el N+1 y `@Version` |
+| **A** | [Funkos y categorías](#proyecto-a-funkos-y-categorias) | 2 | Entidades, relación 1:N, repositorios sin cuerpo, borrado lógico, paginación |
+| **B** | [La tienda](#proyecto-b-la-tienda) | 2 | El N+1 medido, la transacción de dos entidades y `@Version` |
 
-!!! danger "La promesa de la UT4, cobrada"
-    Antes de empezar, abre tu proyecto de la [UT4](../ut4/05-proyectos.md) y cuenta qué vas a tener que **tocar**:
+!!! success "Lo primero que vas a hacer"
+    Borrar `FunkosRepositoryJdbc` y `FunkoRowMapper` de la [UT4](../ut4/05-proyectos.md) y poner en su lugar una interfaz **sin cuerpo**.
 
-    | | ¿Se toca? |
+    | | Líneas del repositorio |
     |---|:-:|
-    | `FunkosRestController` | **No** |
-    | `FunkosServiceImpl` | No (solo para añadir la paginación, en A.6) |
-    | `FunkoResponse`, `FunkoCreateRequest`, `FunkoUpdateRequest` | **No** |
-    | `FunkoMapper` | Casi no |
-    | `GlobalExceptionHandler` | **No** |
-    | Tests de capa web | **No** |
-    | `Funko` | Sí: pasa a ser `@Entity` |
-    | `FunkoRowMapper` | **Se borra** |
-    | `FunkosRepositoryJdbc` | **Se borra** |
-    | `schema.sql` | Se borra en `dev`; se conserva para `prod` |
-
-    **Haz la cuenta y escríbela.** Es el argumento más convincente de todo el trimestre, y dura un minuto.
-
-!!! success "El código que desaparece"
-    | | Líneas del repositorio de funkos |
-    |---|:-:|
-    | UT3 · JDBC a mano con `DriverManager` | ~120 |
+    | UT3 · JDBC a mano | ~120 |
     | UT4 · `JdbcClient` + `RowMapper` | ~95 |
     | **UT5 · Spring Data JPA** | **0** |
 
-    Cero. La interfaz declara los métodos y **Spring Data escribe la implementación en el arranque**.
+    Y comprobar que **el controlador, el servicio, los DTOs y los tests de capa web no se tocan**.
 
 ---
 
@@ -41,11 +25,8 @@ Los **dos proyectos de la UT4**, migrados a Spring Data JPA. Mismas APIs, mismas
 ### Las dependencias
 
 ```xml title="pom.xml — los cambios respecto a la UT4"
-<!-- FUERA: ya no hace falta, lo trae data-jpa -->
-<!-- <dependency>
-       <groupId>org.springframework.boot</groupId>
-       <artifactId>spring-boot-starter-jdbc</artifactId>
-     </dependency> -->
+<!-- FUERA: lo trae data-jpa dentro -->
+<!-- spring-boot-starter-jdbc -->
 
 <!-- DENTRO -->
 <dependency>
@@ -61,24 +42,12 @@ Los **dos proyectos de la UT4**, migrados a Spring Data JPA. Mismas APIs, mismas
 </dependency>
 ```
 
-```bash
-./mvnw dependency:tree | grep -E "hibernate|spring-data|jdbc|h2"
-```
-
-```
-+- org.springframework.boot:spring-boot-starter-data-jpa:jar:3.5.6
-|  +- org.springframework.boot:spring-boot-starter-jdbc:jar:3.5.6     ← lo trae dentro
-|  +- org.hibernate.orm:hibernate-core:jar:6.6.x
-|  \- org.springframework.data:spring-data-jpa:jar:3.4.x
-+- com.h2database:h2:jar:2.3.x
-```
-
-!!! info "Quién es quién, en una línea cada uno"
+!!! info "Quién es quién"
     - **JPA** es la **especificación**: un estándar de Java, solo interfaces y anotaciones.
-    - **Hibernate** es la **implementación** que Spring Boot trae por defecto. **Es quien escribe el SQL** que en la UT4 escribías tú.
-    - **Spring Data JPA** es una capa **encima** de JPA que te genera los repositorios a partir del nombre de los métodos.
+    - **Hibernate** es la **implementación** que Spring Boot trae. **Es quien escribe el SQL** que en la UT4 escribías tú.
+    - **Spring Data JPA** es una capa encima que **genera los repositorios** a partir del nombre de los métodos.
 
-    Cuando en el log sale `Hibernate: select …`, estás viendo al de en medio trabajando. Y ese SQL es, literalmente, el que escribiste a mano en la UT4: compáralos.
+    Cuando en el log sale `Hibernate: select …`, es el de en medio trabajando. Y ese SQL es el que escribiste a mano en la UT4: compáralos.
 
 ### La configuración
 
@@ -93,9 +62,8 @@ api.version=v1
 spring.datasource.url=${DB_URL:jdbc:h2:file:./datos/funkos;AUTO_SERVER=TRUE}
 spring.datasource.username=${DB_USER:sa}
 spring.datasource.password=${DB_PASSWORD:}
-spring.datasource.driver-class-name=org.h2.Driver
 
-### JPA · lo IMPORTANTE de este fichero
+### Lo IMPORTANTE de este fichero
 spring.jpa.open-in-view=false
 
 spring.h2.console.enabled=true
@@ -112,31 +80,24 @@ spring.profiles.active=${SPRING_PROFILES_ACTIVE:dev}
 === "dev"
 
     ```properties title="application-dev.properties"
-    ### Hibernate crea el esquema desde las entidades
     spring.jpa.hibernate.ddl-auto=update
     spring.jpa.show-sql=true
     spring.jpa.properties.hibernate.format_sql=true
 
-    ### data.sql, después de que Hibernate cree las tablas
     spring.jpa.defer-datasource-initialization=true
     spring.sql.init.mode=always
     spring.sql.init.data-locations=classpath:data.sql
-
-    logging.level.org.hibernate.SQL=DEBUG
     ```
 
 === "prod"
 
     ```properties title="application-prod.properties"
-    ### El esquema YA existe: Hibernate solo lo comprueba
     spring.jpa.hibernate.ddl-auto=validate
     spring.jpa.show-sql=false
-
     spring.sql.init.mode=never
     spring.h2.console.enabled=false
 
     logging.level.root=WARN
-    logging.level.es.iesx=INFO
     server.error.include-message=never
     server.error.include-stacktrace=never
     ```
@@ -151,39 +112,40 @@ spring.profiles.active=${SPRING_PROFILES_ACTIVE:dev}
     logging.level.root=WARN
     ```
 
-!!! danger "`update` en `dev` y no `create-drop`, porque la base de datos es un FICHERO"
-    | Valor | Qué hace | Con H2 en fichero |
-    |---|---|---|
-    | `create-drop` | Borra y crea al arrancar, borra al parar | **Pierdes los datos en cada reinicio** |
-    | `create` | Borra y crea al arrancar | Igual de malo |
-    | `update` | Añade lo que falta, **nunca borra** | ✅ para desarrollo con fichero |
-    | `validate` | Solo comprueba; si no cuadra, **no arranca** | ✅ para producción |
-    | `none` | Nada | Producción con migraciones |
+### Las opciones de `ddl-auto`, y cuál elegir
 
-    La gracia del fichero es que los datos persistan, así que `create-drop` lo tiraría todo por tierra. **En los tests sí se usa `create-drop`**, porque allí la base de datos es `mem:` y se quiere limpia.
+| Valor | Qué hace | Dónde |
+|---|---|---|
+| `none` | Nada | Producción con migraciones |
+| `validate` | **Comprueba** el esquema; si no cuadra, **no arranca** | **prod** |
+| `update` | Añade lo que falta, **nunca borra** | **dev** |
+| `create` | Borra y crea al arrancar | — |
+| `create-drop` | Borra y crea al arrancar, y borra al parar | **test** |
 
-    Y `update` tiene su límite: **no sabe renombrar ni borrar**. Si cambias un campo de nombre, crea la columna nueva y **deja la vieja con los datos dentro**. Para producción, `validate` y migraciones con Flyway.
+!!! danger "`update` en `dev`, no `create-drop`"
+    La base de datos es un **fichero** y la gracia es que los datos persistan. `create-drop` los tiraría en cada reinicio.
+
+    En los tests sí se usa `create-drop`, porque allí la base es `mem:` y se quiere limpia.
+
+    Y el límite de `update`: **no sabe renombrar ni borrar**. Si cambias un campo de nombre, crea la columna nueva y **deja la vieja con los datos dentro**. Para producción, `validate` y migraciones.
 
 !!! danger "`spring.jpa.open-in-view=false` — ponlo y no lo quites"
-    Viene **activado** por defecto, y Spring Boot incluso lo avisa al arrancar:
+    Viene **activado**, y Spring Boot lo avisa al arrancar:
 
     ```
     WARN  JpaBaseConfiguration : spring.jpa.open-in-view is enabled by default.
-    Therefore, database queries may be performed during view rendering.
     ```
 
-    Lo que hace es mantener la sesión de Hibernate abierta **durante toda la petición**, incluida la serialización del JSON. Eso **esconde** los `LazyInitializationException`… lanzando consultas desde el serializador, donde no las controlas. Es una fábrica de problemas N+1 invisibles.
+    Mantiene la sesión de Hibernate abierta **durante toda la petición**, incluida la serialización del JSON. Eso **esconde** los `LazyInitializationException` lanzando consultas desde el serializador, donde no las controlas.
 
-    Apagándolo, el error **salta en desarrollo** y te obliga a arreglarlo donde toca: en el mapeador, dentro de la transacción.
+    Apagándolo, el error **salta en desarrollo** y lo arreglas donde toca: en el mapeador.
 
 !!! warning "`defer-datasource-initialization=true` si usas `data.sql`"
-    Sin esa línea, Spring ejecuta `data.sql` **antes** de que Hibernate cree las tablas, y falla con `Table "FUNKOS" not found`. Es el error número uno de este paso, y el mensaje no da ninguna pista de la causa.
+    Sin esa línea, Spring ejecuta `data.sql` **antes** de que Hibernate cree las tablas, y falla con `Table "FUNKOS" not found`. El mensaje no da ninguna pista de la causa.
 
 ---
 
 # Proyecto A · Funkos y categorías
-
-Dos entidades, una relación 1:N, y la API de la UT4 funcionando con el repositorio sustituido.
 
 ```
 GET    /api/v1/funkos          ?page= &size= &sort= &categoria= &nombre= &precioMax=
@@ -192,20 +154,20 @@ POST   /api/v1/funkos
 PUT    /api/v1/funkos/{id}
 PATCH  /api/v1/funkos/{id}
 DELETE /api/v1/funkos/{id}     ← borrado lógico
-GET    /api/v1/funkos/estadisticas
 
-GET    /api/v1/categorias      CRUD completo
+GET    /api/v1/categorias      CRUD
 GET    /api/v1/categorias/{id}/funkos
 ```
 
-## A.1 · Las entidades
+## Paso 1 · Las entidades
+
+Aquí el modelo **deja de ser un `record`**: Hibernate construye las entidades por reflexión y necesita un constructor sin argumentos.
 
 ```java title="categorias/models/Categoria.java"
 package es.iesx.funkos.categorias.models;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import java.util.*;
 
 @Entity
 @Table(name = "categorias")
@@ -227,18 +189,25 @@ public class Categoria {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
 
-    /** Lado INVERSO: la clave ajena está en funkos. */
-    @OneToMany(mappedBy = "categoria", fetch = FetchType.LAZY)
-    private List<Funko> funkos = new ArrayList<>();
+    /** JPA lo necesita. protected para que no se use desde fuera. */
+    protected Categoria() {}
 
-    protected Categoria() {}                  // JPA lo necesita
-
-    public Categoria(String nombre) { this.nombre = nombre; }
+    /** El que usa tu código: solo lo que el cliente decide. */
+    public Categoria(String nombre) {
+        this.nombre = nombre;
+    }
 
     @PreUpdate
     void alActualizar() { this.updatedAt = LocalDateTime.now(); }
 
-    // getters y setters…
+    public Long getId()                 { return id; }
+    public String getNombre()           { return nombre; }
+    public boolean isDeleted()          { return deleted; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+
+    public void setNombre(String nombre)   { this.nombre = nombre; }
+    public void setDeleted(boolean borrado) { this.deleted = borrado; }
 }
 ```
 
@@ -270,9 +239,6 @@ public class Funko {
     @Column(nullable = false)
     private Integer cantidad;
 
-    @Column(length = 500)
-    private String imagen;
-
     /** Lado DUEÑO: la clave ajena vive en esta tabla. */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "categoria_id", nullable = false,
@@ -290,36 +256,85 @@ public class Funko {
 
     protected Funko() {}
 
-    public static Builder builder() { return new Builder(); }
+    public Funko(String nombre, BigDecimal precio, Integer cantidad, Categoria categoria) {
+        this.nombre = nombre;
+        this.precio = precio;
+        this.cantidad = cantidad;
+        this.categoria = categoria;
+    }
 
     @PreUpdate
     void alActualizar() { this.updatedAt = LocalDateTime.now(); }
 
-    // builder, getters y setters…
+    public Long getId()                 { return id; }
+    public String getNombre()           { return nombre; }
+    public BigDecimal getPrecio()       { return precio; }
+    public Integer getCantidad()        { return cantidad; }
+    public Categoria getCategoria()     { return categoria; }
+    public boolean isDeleted()          { return deleted; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+
+    public void setNombre(String nombre)          { this.nombre = nombre; }
+    public void setPrecio(BigDecimal precio)      { this.precio = precio; }
+    public void setCantidad(Integer cantidad)     { this.cantidad = cantidad; }
+    public void setCategoria(Categoria categoria) { this.categoria = categoria; }
+    public void setDeleted(boolean borrado)       { this.deleted = borrado; }
 }
 ```
 
-!!! danger "Las siete decisiones de este paso, y por qué cada una"
-    **1. `protected Funko() {}`.** JPA construye las entidades por reflexión y necesita un constructor sin argumentos. `protected` para que nadie lo use desde fuera. **Y por esto una entidad no puede ser un `record`**: un `record` es `final` y sus campos son inmutables.
+!!! success "Dos constructores y nada más: ni builder ni Lombok"
+    | | Para qué |
+    |---|---|
+    | `protected Funko() {}` | **Lo necesita Hibernate.** `protected` para que nadie lo use desde fuera |
+    | `Funko(nombre, precio, cantidad, categoria)` | **El que usa tu código.** Solo los campos que decide el cliente |
 
-    **2. `fetch = FetchType.LAZY` en el `@ManyToOne`.** El valor por defecto es `EAGER`, y es **el problema de rendimiento número uno de JPA**: cargar 100 funkos trae 100 categorías aunque no las mires.
+    El `id` lo pone la base de datos, `createdAt` y `updatedAt` se inicializan en la declaración, y `deleted` arranca en `false`. **No hacen falta en el constructor.**
 
-    **3. `mappedBy = "categoria"` en el `@OneToMany`.** Dice «el dueño es el campo `categoria` de `Funko`». Sin él, Hibernate crea una tabla intermedia `categorias_funkos` **que no quieres** y los datos se escriben en un sitio y se leen de otro, sin ningún error.
+    Con cuatro parámetros el constructor se lee sin problema, y para los cambios están los `setters`: dentro de una transacción, un `setter` ya persiste.
 
-    **4. `BigDecimal` con `precision` y `scale`.** Es dinero. `0.1 + 0.2` en `double` da `0.30000000000000004`.
+!!! danger "Las seis decisiones del modelo, y por qué cada una"
+    **1 · `protected Funko() {}`.** Hibernate construye por reflexión. **Y por esto una entidad no puede ser un `record`**: un `record` es `final` y sus campos inmutables.
 
-    **5. `@Column(name = "is_deleted")`.** `deleted` es palabra reservada en algunos motores, y la columna va **indexada** porque **todas** las consultas la filtran.
+    **2 · `fetch = FetchType.LAZY` en el `@ManyToOne`.** El valor por defecto es `EAGER`: listar 20 funkos traería 20 categorías aunque nadie las mire.
 
-    **6. Sin `cascade` en el `@OneToMany`.** Con `CascadeType.ALL`, borrar una categoría borraría sus funkos. Lo que queremos es lo contrario: que **no se pueda** borrar una categoría con funkos, y eso es un 409 comprobado en el servicio.
+    **3 · `@Column(nullable = false, unique = true)`.** Es la red de seguridad para los datos que llegan por otra vía: un `data.sql`, un script.
 
-    **7. Los `@Index` y el `foreignKey = @ForeignKey(name = …)`.** Sin el nombre, Hibernate genera nombres como `FK9s8d7f6a5s4d`, y el día que un error te hable de esa restricción no sabrás cuál es.
+    **4 · `BigDecimal` con `precision` y `scale`.** Es dinero.
+
+    **5 · `@Column(name = "is_deleted")`.** `deleted` es palabra reservada en algunos motores, y la columna va **indexada** porque **todas** las consultas la filtran.
+
+    **6 · `foreignKey = @ForeignKey(name = …)`.** Sin el nombre, Hibernate genera `FK9s8d7f6a5s4d`, y el día que un error hable de esa restricción no sabrás cuál es.
 
 !!! warning "`equals` y `hashCode`: NO los generes con el IDE"
-    El `equals` que genera IntelliJ compara **todos** los campos. En una entidad eso rompe en cuanto la metes en un `Set`: antes de guardar, el `id` es `null`; después, no. El `hashCode` cambia y el elemento **se pierde dentro del `HashSet`**.
+    El `equals` que genera IntelliJ compara **todos** los campos. En una entidad eso rompe en cuanto la metes en un `Set`: antes de guardar el `id` es `null`, después no, el `hashCode` cambia y el elemento **se pierde dentro del `HashSet`**.
 
-    Si los necesitas, compara **solo por el id** y devuelve un `hashCode` constante mientras el id sea `null`. En estos proyectos no hacen falta: trabajamos con `List` y comparamos DTOs, que son `record` y lo traen bien hecho.
+    Aquí no hacen falta: trabajamos con `List` y comparamos DTOs, que son `record` y lo traen bien hecho.
 
-## A.2 · Los datos iniciales
+### La relación, en las dos direcciones
+
+```java title="Categoria.java — añadir el lado inverso (opcional)"
+/** mappedBy: el dueño es el campo "categoria" de Funko. SIN cascade. */
+@OneToMany(mappedBy = "categoria", fetch = FetchType.LAZY)
+private List<Funko> funkos = new ArrayList<>();
+```
+
+!!! info "¿Hace falta el lado inverso?"
+    **No siempre.** La clave ajena está en `funkos`, así que la relación funciona **solo con el `@ManyToOne`**. El `@OneToMany` es una comodidad para navegar de la categoría a sus funkos desde el código.
+
+    | | Cuándo ponerlo |
+    |---|---|
+    | **Sin `@OneToMany`** | Si para listar los funkos de una categoría vas a consultar el repositorio de funkos. **Es lo que hacemos aquí** |
+    | **Con `@OneToMany`** | Si necesitas `categoria.getFunkos()` dentro de la lógica |
+
+    Y si lo pones: **`mappedBy` es obligatorio**. Sin él, Hibernate crea una tabla intermedia `categorias_funkos` que no quieres, y los datos se escriben en un sitio y se leen de otro **sin ningún error**.
+
+!!! danger "Nunca `cascade = ALL` en el `@OneToMany`"
+    Borrar la categoría `DISNEY` borraría **todos** los funkos de Disney, sin preguntar.
+
+    Lo que queremos es lo contrario: que **no se pueda** borrar una categoría con funkos. Eso es un **409** comprobado en el servicio.
+
+## Paso 2 · Los datos iniciales
 
 ```sql title="src/main/resources/data.sql"
 MERGE INTO categorias (id, nombre, is_deleted, created_at, updated_at) KEY(id) VALUES
@@ -328,25 +343,22 @@ MERGE INTO categorias (id, nombre, is_deleted, created_at, updated_at) KEY(id) V
   (3, 'ANIME',  false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (4, 'OTROS',  false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
-MERGE INTO funkos (id, nombre, precio, cantidad, imagen, categoria_id,
+MERGE INTO funkos (id, nombre, precio, cantidad, categoria_id,
                    is_deleted, created_at, updated_at) KEY(id) VALUES
-  (1, 'Mickey Mouse', 15.99, 10, 'https://placehold.co/300', 1, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (2, 'Stitch',       17.00,  8, 'https://placehold.co/300', 1, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (3, 'Spider-Man',   19.99,  5, 'https://placehold.co/300', 2, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (4, 'Iron Man',     21.50,  2, 'https://placehold.co/300', 2, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (5, 'Goku',         22.50,  3, 'https://placehold.co/300', 3, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (6, 'Naruto',       18.75,  0, 'https://placehold.co/300', 3, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (1, 'Mickey Mouse', 15.99, 10, 1, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (2, 'Stitch',       17.00,  8, 1, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (3, 'Spider-Man',   19.99,  5, 2, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (4, 'Iron Man',     21.50,  2, 2, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (5, 'Goku',         22.50,  3, 3, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (6, 'Naruto',       18.75,  0, 3, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 ALTER TABLE categorias ALTER COLUMN id RESTART WITH 5;
 ALTER TABLE funkos     ALTER COLUMN id RESTART WITH 7;
 ```
 
-!!! info "`MERGE` y `RESTART WITH`, igual que en la UT4"
-    Con H2 en fichero, `data.sql` se ejecuta **en cada arranque**: un `INSERT` con id fijo fallaría al segundo. Y sin el `RESTART WITH`, el contador del `AUTO_INCREMENT` sigue en 1 y **el primer POST choca** con Mickey Mouse.
+`MERGE` y `RESTART WITH` por lo mismo que en la UT4: con H2 en fichero, `data.sql` se ejecuta **en cada arranque**.
 
-    No es cosa de JPA: es cosa de que la base de datos persista.
-
-## A.3 · Los repositorios: donde desaparece el código
+## Paso 3 · Los repositorios: aquí desaparece el código
 
 ```java title="funkos/repositories/FunkosRepository.java"
 package es.iesx.funkos.funkos.repositories;
@@ -368,8 +380,7 @@ public interface FunkosRepository
     boolean         existsByNombreIgnoreCaseAndDeletedFalse(String nombre);
     List<Funko>     findByCategoriaNombreIgnoreCaseAndDeletedFalse(String categoria);
     long            countByCategoriaIdAndDeletedFalse(Long categoriaId);
-    List<Funko>     findByPrecioBetweenAndDeletedFalse(BigDecimal min, BigDecimal max);
-    List<Funko>     findTop5ByDeletedFalseOrderByPrecioDesc();
+    List<Funko>     findByPrecioLessThanEqualAndDeletedFalse(BigDecimal max);
 
     // ── JPQL con JOIN FETCH: evita el N+1 al paginar ──
     @Query(value      = """
@@ -408,6 +419,14 @@ public interface CategoriasRepository extends JpaRepository<Categoria, Long> {
 }
 ```
 
+### Las tres formas de consultar, y cuándo cada una
+
+| | Cómo | Cuándo |
+|---|---|---|
+| **1 · Derivada del nombre** | `findByCategoriaNombreIgnoreCaseAndDeletedFalse` | **Por defecto.** Mientras el nombre se lea |
+| **2 · `@Query` con JPQL** | `JOIN FETCH`, `GROUP BY`, `UPDATE` | Cuando la derivada no llega o hace falta controlar el `JOIN` |
+| **3 · `Specification`** | Filtros opcionales y combinables | Cuando hay 3 o más filtros que se combinan |
+
 !!! success "Compara con lo que escribiste en la UT4"
     ```java
     // UT4 · ~15 líneas
@@ -418,8 +437,7 @@ public interface CategoriasRepository extends JpaRepository<Categoria, Long> {
                   JOIN categorias c ON c.id = f.categoria_id
                  WHERE UPPER(c.nombre) = UPPER(:categoria) AND f.is_deleted = false
                 """)
-            .param("categoria", categoria)
-            .query(rowMapper).list();
+            .param("categoria", categoria).query(rowMapper).list();
     }
 
     // UT5 · 1 línea, sin cuerpo
@@ -434,26 +452,106 @@ public interface CategoriasRepository extends JpaRepository<Categoria, Long> {
      where upper(c1_0.nombre) = upper(?) and f1_0.is_deleted = false
     ```
 
-    Spring Data ha leído **el nombre del método** —`Categoria` → `Nombre`, `IgnoreCase`, `AndDeletedFalse`— y ha escrito el `JOIN` sola. No hay implementación en ninguna parte: crea un proxy en el arranque.
+    Spring Data ha leído **el nombre del método** —`Categoria` → `Nombre`, `IgnoreCase`, `AndDeletedFalse`— y ha escrito el `JOIN` sola.
 
-!!! danger "Y lo mejor: un nombre mal escrito impide ARRANCAR"
+!!! danger "Y un nombre mal escrito impide ARRANCAR"
     ```
     PropertyReferenceException: No property 'categoría' found for type 'Funko'
     ```
 
-    En la UT4, un nombre de columna mal escrito en el SQL fallaba **al ejecutar esa consulta**, quizá en producción tres semanas después. Aquí falla **en tu pantalla, antes del primer `curl`**.
+    En la UT4, un nombre de columna mal escrito fallaba **al ejecutar esa consulta**, quizá en producción. Aquí falla **en tu pantalla, antes del primer `curl`**.
 
 !!! warning "`@Modifying` necesita tres cosas"
     1. **`@Modifying`**, o salta `Not supported for DML operations`.
-    2. **`@Transactional`** en quien lo llama, o salta `TransactionRequiredException`.
+    2. **`@Transactional`** en quien lo llama, o `TransactionRequiredException`.
     3. **`clearAutomatically = true`** si en la misma transacción tenías la entidad cargada: un `UPDATE` por JPQL **no actualiza la caché de primer nivel**, así que el objeto en memoria se queda con `deleted = false`.
 
-## A.4 · El borrado lógico y las reglas
+## Paso 4 · Los DTOs y el mapeador
 
-```java title="funkos/services/FunkosServiceImpl.java (los métodos clave)"
+Los DTOs **son los mismos de la UT4**: `record`, sin cambios.
+
+```java title="funkos/dto/"
+public record FunkoResponse(
+        Long id, String nombre, BigDecimal precio, Integer cantidad,
+        String categoria, LocalDateTime createdAt, LocalDateTime updatedAt) {}
+
+public record FunkoCreateRequest(
+        @NotBlank @Size(max = 100) String nombre,
+        @NotNull @DecimalMin("0.0") BigDecimal precio,
+        @NotNull @PositiveOrZero Integer cantidad,
+        @NotBlank String categoria) {}
+
+public record FunkoUpdateRequest(
+        @Size(max = 100) String nombre,
+        @DecimalMin("0.0") BigDecimal precio,
+        @PositiveOrZero Integer cantidad,
+        String categoria) {}
+```
+
+El mapeador **sí cambia**: ahora construye entidades, y para modificarlas usa `setters`.
+
+```java title="funkos/mappers/FunkoMapper.java"
+@Component
+public class FunkoMapper {
+
+    /** Entidad → DTO. Se lee categoria.getNombre() DENTRO de la transacción. */
+    public FunkoResponse toResponse(Funko f) {
+        return new FunkoResponse(
+                f.getId(), f.getNombre(), f.getPrecio(), f.getCantidad(),
+                f.getCategoria().getNombre(),
+                f.getCreatedAt(), f.getUpdatedAt());
+    }
+
+    public List<FunkoResponse> toResponse(List<Funko> funkos) {
+        return funkos.stream().map(this::toResponse).toList();
+    }
+
+    /** POST: entidad nueva. La categoría la resuelve el servicio. */
+    public Funko toModel(FunkoCreateRequest r, Categoria categoria) {
+        return new Funko(r.nombre().trim(), r.precio(), r.cantidad(), categoria);
+    }
+
+    /** PUT: reemplaza todos los campos editables. */
+    public void reemplazar(Funko funko, FunkoCreateRequest r, Categoria categoria) {
+        funko.setNombre(r.nombre().trim());
+        funko.setPrecio(r.precio());
+        funko.setCantidad(r.cantidad());
+        funko.setCategoria(categoria);
+    }
+
+    /** PATCH: cambia solo lo que llega distinto de null. */
+    public void parchear(Funko funko, FunkoUpdateRequest r, Categoria categoria) {
+        if (r.nombre()   != null) funko.setNombre(r.nombre().trim());
+        if (r.precio()   != null) funko.setPrecio(r.precio());
+        if (r.cantidad() != null) funko.setCantidad(r.cantidad());
+        if (categoria    != null) funko.setCategoria(categoria);
+    }
+}
+```
+
+!!! success "La diferencia grande con la UT4"
+    | | UT4 (`record`) | UT5 (`@Entity`) |
+    |---|---|---|
+    | Modificar | **Crear otro objeto** y guardarlo | **`setters` sobre el que ya está** |
+    | `reemplazar` / `parchear` | Devolvían un `Funko` nuevo | **No devuelven nada** (`void`) |
+    | Guardar el cambio | `repositorio.update(nuevo)` | **Nada**: Hibernate lo detecta |
+
+    Dentro de una transacción las entidades están **gestionadas**: Hibernate compara el estado al confirmar (*dirty checking*) y lanza el `UPDATE` solo.
+
+    **Los `if (… != null)` siguen siendo la semántica del PATCH.** Lo único que cambia es que ahora se aplican con `setters` en vez de construyendo un objeto.
+
+!!! danger "El `f.getCategoria().getNombre()` del `toResponse`"
+    Esa línea **toca la relación perezosa**, así que tiene que ejecutarse **dentro de la transacción**. Por eso el mapeador se llama desde el servicio, que está anotado con `@Transactional`, y nunca desde el controlador.
+
+    Si lo llamaras desde el controlador: `LazyInitializationException`.
+
+## Paso 5 · El servicio
+
+```java title="funkos/services/FunkosServiceImpl.java"
 @Service
-@CacheConfig(cacheNames = {"funkos"})
 public class FunkosServiceImpl implements FunkosService {
+
+    private static final Logger log = LoggerFactory.getLogger(FunkosServiceImpl.class);
 
     private final FunkosRepository repositorio;
     private final CategoriasRepository categoriasRepository;
@@ -469,7 +567,6 @@ public class FunkosServiceImpl implements FunkosService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(key = "#id")
     public FunkoResponse findById(Long id) {
         return repositorio.findByIdAndDeletedFalse(id)
                 .map(mapper::toResponse)
@@ -478,22 +575,28 @@ public class FunkosServiceImpl implements FunkosService {
 
     @Override
     @Transactional
-    @CacheEvict(allEntries = true)
     public FunkoResponse save(FunkoCreateRequest request) {
         if (repositorio.existsByNombreIgnoreCaseAndDeletedFalse(request.nombre()))
             throw new FunkoConflictException("Ya existe un funko llamado " + request.nombre());
 
-        var categoria = categoriasRepository
-                .findByNombreIgnoreCaseAndDeletedFalse(request.categoria())
-                .orElseThrow(() -> new FunkoBadRequestException(
-                        "La categoría " + request.categoria() + " no existe"));
-
+        var categoria = buscarCategoria(request.categoria());
         return mapper.toResponse(repositorio.save(mapper.toModel(request, categoria)));
     }
 
     @Override
     @Transactional
-    @CacheEvict(allEntries = true)
+    public FunkoResponse update(Long id, FunkoUpdateRequest request) {
+        var funko = repositorio.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new FunkoNotFoundException(id));
+
+        var categoria = request.categoria() == null ? null : buscarCategoria(request.categoria());
+        mapper.parchear(funko, request, categoria);
+
+        return mapper.toResponse(funko);        // sin save(): dirty checking
+    }
+
+    @Override
+    @Transactional
     public void deleteById(Long id) {
         var funko = repositorio.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new FunkoNotFoundException(id));
@@ -504,6 +607,12 @@ public class FunkosServiceImpl implements FunkosService {
                             .formatted(funko.getCantidad()));
 
         repositorio.borradoLogico(id);
+    }
+
+    private Categoria buscarCategoria(String nombre) {
+        return categoriasRepository.findByNombreIgnoreCaseAndDeletedFalse(nombre)
+                .orElseThrow(() -> new FunkoBadRequestException(
+                        "La categoría " + nombre + " no existe"));
     }
 }
 ```
@@ -526,29 +635,30 @@ public void deleteById(Long id) {
 }
 ```
 
-!!! success "Fíjate en que no hay `save()` al final del `deleteById` de categorías"
+!!! success "El `save()` que desaparece"
     ```java
-    categoria.setDeleted(true);
+    categoria.setDeleted(true);        // ← esto ya persiste
     ```
 
-    Dentro de una transacción las entidades cargadas están **gestionadas**: Hibernate detecta el cambio al confirmar (*dirty checking*) y lanza el `UPDATE` él solo.
+    Dentro de una transacción, Hibernate detecta el cambio al confirmar y lanza el `UPDATE`. Llamar a `save()` no hace daño, pero es innecesario.
 
-    Esto sorprende viniendo de la UT4, donde cada cambio era un `jdbc.sql("UPDATE …").update()` explícito. Y tiene su cara b: **un `setter` llamado por error dentro de una transacción persiste el cambio sin que nadie lo pida.**
+    Esto sorprende viniendo de la UT4, donde cada cambio era un `repositorio.update(...)` explícito. Y tiene su cara b: **un `setter` llamado por error dentro de una transacción persiste el cambio sin que nadie lo pida.**
+
+### Las dos opciones del borrado, y cuál elegir
+
+| | Cómo | Consecuencia |
+|---|---|---|
+| **Físico** | `repositorio.deleteById(id)` | El dato desaparece. Las filas que lo referencian se rompen |
+| **Lógico** | `deleted = true` | El dato sigue. **Todas** las consultas llevan `AndDeletedFalse` |
 
 !!! danger "El coste real del borrado lógico"
-    **Olvidar un `AndDeletedFalse` en una sola consulta** hace que los registros borrados reaparezcan en ese endpoint. Y como el programa no falla, nadie se entera hasta que un cliente ve un producto que ya no existe.
+    **Olvidar un `AndDeletedFalse` en una sola consulta** hace que los registros borrados reaparezcan en ese endpoint. Y el programa no falla: nadie se entera hasta que un cliente ve algo que ya no existe.
 
     Por eso **todos** los métodos del repositorio llevan `AndDeletedFalse` en el nombre: es feo y es deliberado, porque un método sin ese sufijo **se ve a simple vista**.
 
-    | | Borrado físico | Borrado lógico |
-    |---|---|---|
-    | Histórico y auditoría | Se pierde | Se conserva |
-    | Filas que lo referencian | Se rompen o bloquean | Siguen funcionando |
-    | Recuperar un borrado por error | Backup | Un `UPDATE` |
-    | Coste | Ninguno | **Todas** las consultas llevan el filtro |
-    | Derecho al olvido (RGPD) | Cumple | **No cumple**: hay que borrar de verdad |
+    Y lo que no cubre: con datos personales, el borrado lógico **no cumple el derecho al olvido**. Ahí hay que borrar de verdad.
 
-## A.5 · Paginación y criterios
+## Paso 6 · Paginación y criterios
 
 ```java title="funkos/services/FunkosServiceImpl.java (la búsqueda)"
 @Override
@@ -605,29 +715,38 @@ spring.data.web.pageable.default-page-size=20
 spring.data.web.pageable.max-page-size=100
 ```
 
+### Las tres opciones de paginación, y cuál elegir
+
+| | Qué trae | Consultas |
+|---|---|:-:|
+| `List<T>` | Solo los elementos | **1** |
+| `Slice<T>` | Elementos + «¿hay más?» | **1** (pide `size+1`) |
+| **`Page<T>`** | Elementos + `totalElements` + `totalPages` | **2** |
+
+**`Page` si la interfaz tiene «página 3 de 47». `Slice` si es un *scroll* infinito con «cargar más»**, y te ahorras el `SELECT count(*)`.
+
 !!! success "Compara el `buscar` con el de la UT4"
     ```java
-    // UT4: montar el WHERE a trozos, con un StringBuilder y un mapa de parámetros
+    // UT4: StringBuilder y un mapa de parámetros
     var sql = new StringBuilder("SELECT * FROM funkos WHERE 1 = 1");
     categoria.ifPresent(c -> { sql.append(" AND …"); params.put("categoria", c); });
-    …
 
     // UT5: cada filtro es una Specification que se compone con .and()
     spec = categoria.map(c -> spec.and((root, q, cb) -> cb.equal(…))).orElse(spec);
     ```
 
-    Las dos hacen lo mismo y las dos generan el mismo SQL. La diferencia: la de la UT5 **no concatena texto SQL en ningún momento**, así que no hay forma de equivocarse e introducir una inyección.
+    Las dos generan el mismo SQL. La diferencia: la de la UT5 **no concatena texto SQL en ningún momento**, así que no hay forma de equivocarse e introducir una inyección.
 
     Y el `.map(mapper::toResponse)` del final: `Page` tiene `map`, así que la paginación se conserva (`totalElements`, `totalPages`) y lo que sale son **DTOs, no entidades**.
 
 !!! danger "Por qué el `sanear` no es paranoia"
-    **Sin lista blanca**, `?sort=` permite ordenar por **cualquier campo de la entidad**, incluidos los que no publicas. En una entidad `Usuario`, `?sort=passwordHash` no devuelve el hash pero sí revela el **orden relativo** de los hashes.
+    **Sin lista blanca**, `?sort=` permite ordenar por **cualquier campo de la entidad**, incluidos los que no publicas. En un `Usuario`, `?sort=passwordHash` no devuelve el hash pero sí revela el **orden relativo** de los hashes.
 
     **Sin tope de tamaño**, `?size=1000000` carga la tabla entera: has escrito la paginación para nada.
 
-    Y un `?sort=inventado` sin sanear provoca un `PropertyReferenceException` → **500**, cuando debería ser 400 o ignorarse.
+    Y un `?sort=inventado` sin sanear provoca un `PropertyReferenceException` → **500**.
 
-## A.6 · Probar el proyecto A
+## Paso 7 · Probar el proyecto A
 
 === "La migración, comprobada"
 
@@ -636,15 +755,16 @@ spring.data.web.pageable.max-page-size=100
     ```
 
     ```
-     .../funkos/models/Funko.java                 |  38 ++++---
-     .../funkos/repositories/FunkosRepository.java |  95 +-----------------
-     .../funkos/repositories/FunkosRepositoryJdbc.java | 118 ------------- (borrado)
-     .../funkos/mappers/FunkoRowMapper.java       |  24 ------ (borrado)
-     .../funkos/services/FunkosServiceImpl.java    |  12 ++-
-     6 files changed, 50 insertions(+), 237 deletions(-)
+     .../funkos/models/Funko.java                      |  62 ++++++---
+     .../funkos/repositories/FunkosRepository.java      |  95 +------------
+     .../funkos/repositories/FunkosRepositoryJdbc.java  | 118 --------------- (borrado)
+     .../funkos/repositories/FunkoRowMapper.java        |  24 ------ (borrado)
+     .../funkos/mappers/FunkoMapper.java                |  28 ++--
+     .../funkos/services/FunkosServiceImpl.java          |  18 ++-
+     6 files changed, 70 insertions(+), 275 deletions(-)
     ```
 
-    **Ni el controlador, ni los DTOs, ni el manejador de errores, ni los tests de capa web aparecen en ese diff.** Eso es lo que compraste con las capas.
+    **Ni el controlador, ni los DTOs, ni el manejador de errores, ni los tests de capa web aparecen en ese diff.**
 
 === "Paginación y orden"
 
@@ -694,501 +814,439 @@ spring.data.web.pageable.max-page-size=100
 === "Contar las consultas"
 
     ```bash
-    # Con JOIN FETCH / @EntityGraph
+    # Con @EntityGraph o JOIN FETCH
     curl -s "localhost:8080/api/v1/funkos?size=20" > /dev/null
-    # En el log: 2 consultas (la página + el count)
-
-    # Quita el JOIN FETCH y usa findByDeletedFalse: 1 + 20 consultas
     ```
 
-    **Esto es lo que se mira en la corrección.** Un N+1 se ve en el log en dos segundos y un programa que funciona no lo delata de ninguna otra manera.
+    En el log, **dos líneas** `Hibernate:`: la página y el `count`.
+
+    Quita el `JOIN FETCH` y usa `findByDeletedFalse`: **1 + 20**. Eso es el N+1, y es lo que se mira en la corrección.
 
 ---
 
 # Proyecto B · La tienda
 
-Cuatro entidades, relaciones en las dos direcciones, y la misma transacción de la UT4 — ahora con JPA.
+Dos entidades, el N+1 medido, la transacción de dos tablas y el bloqueo optimista.
 
 ```
-GET    /api/v1/clientes        ?nombre= &ciudad=      CRUD + borrado lógico
-GET    /api/v1/clientes/{id}/pedidos                  paginado
-
-GET    /api/v1/productos       ?categoria= &conStock= CRUD + borrado lógico
-PATCH  /api/v1/productos/{id}/stock
-
-GET    /api/v1/pedidos         ?clienteId= &estado=   paginado
-GET    /api/v1/pedidos/{id}                           con sus líneas
-POST   /api/v1/pedidos                                crea Y descuenta stock
-POST   /api/v1/pedidos/{id}/cancelar                  cancela Y devuelve stock
-PATCH  /api/v1/pedidos/{id}/estado
-GET    /api/v1/pedidos/estadisticas
+GET    /api/v1/categorias        CRUD · GET /{id}/productos
+GET    /api/v1/productos         ?page= &size= &sort= &categoria= &nombre= &conStock=
+GET    /api/v1/productos/{id}
+POST   /api/v1/productos         · PATCH · DELETE (lógico)
+POST   /api/v1/productos/{id}/venta      ← toca las DOS entidades
 ```
 
-## B.1 · Las cuatro entidades y sus relaciones
+## Paso 1 · Las entidades, con `@Version`
 
-```mermaid
-erDiagram
-    CLIENTE  ||--o{ PEDIDO       : "1:N"
-    PEDIDO   ||--|{ LINEA_PEDIDO : "1:N cascade + orphanRemoval"
-    PRODUCTO ||--o{ LINEA_PEDIDO : "1:N sin cascade"
-    CATEGORIA ||--o{ PRODUCTO    : "1:N"
-```
-
-```java title="pedidos/models/Pedido.java"
+```java title="categorias/models/Categoria.java"
 @Entity
-@Table(name = "pedidos", indexes = {
-        @Index(name = "idx_pedido_cliente", columnList = "cliente_id"),
-        @Index(name = "idx_pedido_estado",  columnList = "estado")
-})
-public class Pedido {
+@Table(name = "categorias")
+public class Categoria {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 40)
+    private String nombre;
+
+    @Column(name = "unidades_vendidas", nullable = false)
+    private Integer unidadesVendidas = 0;
+
+    @Column(name = "is_deleted", nullable = false)
+    private boolean deleted = false;
+
+    protected Categoria() {}
+
+    public Categoria(String nombre) { this.nombre = nombre; }
+
+    public Long getId()               { return id; }
+    public String getNombre()         { return nombre; }
+    public Integer getUnidadesVendidas() { return unidadesVendidas; }
+    public boolean isDeleted()        { return deleted; }
+
+    public void setNombre(String nombre)    { this.nombre = nombre; }
+    public void setDeleted(boolean borrado) { this.deleted = borrado; }
+}
+```
+
+```java title="productos/models/Producto.java"
+@Entity
+@Table(name = "productos", indexes = {
+        @Index(name = "idx_producto_nombre",  columnList = "nombre"),
+        @Index(name = "idx_producto_deleted", columnList = "is_deleted")
+})
+public class Producto {
+
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false, unique = true, length = 20)
-    private String codigo;
+    private String sku;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "cliente_id", nullable = false)
-    private Cliente cliente;
+    @Column(nullable = false, length = 150)
+    private String nombre;
 
-    @Enumerated(EnumType.STRING)                 // NUNCA ORDINAL
-    @Column(nullable = false, length = 20)
-    private EstadoPedido estado = EstadoPedido.PENDIENTE;
-
-    @Column(nullable = false, precision = 12, scale = 2)
-    private BigDecimal total = BigDecimal.ZERO;
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal precio;
 
     @Column(nullable = false)
-    private LocalDateTime fecha = LocalDateTime.now();
+    private Integer stock;
 
-    /** COMPOSICIÓN: una línea no existe sin su pedido. */
-    @OneToMany(mappedBy = "pedido",
-               cascade = CascadeType.ALL,
-               orphanRemoval = true,
-               fetch = FetchType.LAZY)
-    private List<LineaPedido> lineas = new ArrayList<>();
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "categoria_id", nullable = false,
+                foreignKey = @ForeignKey(name = "fk_producto_categoria"))
+    private Categoria categoria;
 
+    @Column(name = "is_deleted", nullable = false)
+    private boolean deleted = false;
+
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt = LocalDateTime.now();
+
+    /** Bloqueo optimista: dos ediciones a la vez → la segunda falla. */
     @Version
-    private Long version;                        // bloqueo optimista
+    private Long version;
 
-    protected Pedido() {}
+    protected Producto() {}
 
-    /** Método de conveniencia: mantiene LOS DOS lados de la relación. */
-    public void añadirLinea(LineaPedido linea) {
-        lineas.add(linea);
-        linea.setPedido(this);
+    public Producto(String sku, String nombre, BigDecimal precio,
+                    Integer stock, Categoria categoria) {
+        this.sku = sku;
+        this.nombre = nombre;
+        this.precio = precio;
+        this.stock = stock;
+        this.categoria = categoria;
     }
 
-    public void quitarLinea(LineaPedido linea) {
-        lineas.remove(linea);
-        linea.setPedido(null);                   // con orphanRemoval → DELETE
-    }
-    // builder, getters…
+    @PreUpdate
+    void alActualizar() { this.updatedAt = LocalDateTime.now(); }
+
+    // getters y los setters de nombre, precio, stock, categoria y deleted…
 }
 ```
 
-```java title="pedidos/models/LineaPedido.java"
-@Entity
-@Table(name = "lineas_pedido")
-public class LineaPedido {
+!!! danger "`@Version`: el bug silencioso que evita"
+    Hibernate añade `AND version = ?` a cada `UPDATE` e incrementa el número. Si otro ya lo había cambiado, el `UPDATE` afecta a **0 filas** y lanza `ObjectOptimisticLockingFailureException`.
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    **Sin esto, el último en guardar pisa los cambios del primero y nadie se entera.** Se llama *lost update*, y es el clásico de un panel con dos personas trabajando.
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "pedido_id", nullable = false)
-    private Pedido pedido;
+    Se traduce a un **409** con un mensaje útil:
 
-    /** SIN cascade: borrar una línea NO borra el producto. */
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "producto_id", nullable = false)
-    private Producto producto;
-
-    @Column(nullable = false)
-    private Integer cantidad;
-
-    /** Se COPIA del producto al crear el pedido. */
-    @Column(name = "precio_unitario", nullable = false, precision = 10, scale = 2)
-    private BigDecimal precioUnitario;
-
-    protected LineaPedido() {}
-
-    @Transient                                   // calculado, NO se persiste
-    public BigDecimal subtotal() {
-        return precioUnitario.multiply(BigDecimal.valueOf(cantidad));
-    }
-    // builder, getters, setPedido…
-}
-```
-
-!!! danger "Las cinco decisiones del modelo, y todas se corrigen"
-    **1. `cascade = ALL` + `orphanRemoval = true` SOLO en `Pedido → LineaPedido`.** Es una **composición** de verdad: una línea no tiene sentido sin su pedido. Borrar el pedido borra sus líneas, y sacar una línea de la lista la borra.
-
-    **2. NADA de cascade en `LineaPedido → Producto`.** Borrar una línea **no puede borrar el producto**. Y al revés: borrar un producto que aparece en pedidos tiene que **fallar** (lo impide la clave ajena) y devolver 409.
-
-    **3. `@Enumerated(EnumType.STRING)`.** El valor por defecto es `ORDINAL`, que guarda **la posición**: `PENDIENTE`=0, `PAGADO`=1… Reordenar el `enum` **cambia el significado de todos los registros en silencio**. Los pedidos pendientes pasan a pagados. No hay error, no hay log.
-
-    **4. `precioUnitario` en la línea.** Se copia del producto al crear el pedido. Si mañana sube el precio, **el pedido histórico no cambia**. Una factura de hace un año no se recalcula sola.
-
-    **5. `@Version` en `Pedido`.** Dos administradores editando el mismo pedido a la vez: sin esto, **el último pisa los cambios del primero** y nadie se entera (*lost update*). Con esto, el segundo recibe `ObjectOptimisticLockingFailureException` → **409**.
-
-!!! success "Los métodos `añadirLinea` y `quitarLinea` arreglan un bug clásico"
     ```java
-    // ❌ Mal: solo un lado de la relación
-    pedido.getLineas().add(linea);
-    // La línea no tiene pedido_id → el INSERT falla con "null not allowed"
-
-    // ❌ También mal
-    linea.setPedido(pedido);
-    // Funciona al guardar, pero pedido.getLineas() en memoria está vacía
-    // y el código que la recorra después no ve nada
-
-    // ✅ Bien: los dos lados, en un solo método
-    pedido.añadirLinea(linea);
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public Map<String, Object> conflictoDeEdicion(ObjectOptimisticLockingFailureException ex) {
+        return Map.of("status", 409,
+                "error", "Otro usuario ha modificado este producto. "
+                       + "Recarga los datos y vuelve a intentarlo.");
+    }
     ```
 
-    **En una relación bidireccional hay que mantener los dos lados.** Hibernate solo persiste **el lado dueño** (el que tiene la clave ajena), pero tu código en memoria lee el otro. Un método de conveniencia en la entidad es la forma de no olvidarse nunca.
+## Paso 2 · Los repositorios y el N+1
 
-## B.2 · El servicio con la transacción
+```java title="productos/repositories/ProductosRepository.java"
+public interface ProductosRepository
+        extends JpaRepository<Producto, Long>, JpaSpecificationExecutor<Producto> {
 
-```java title="pedidos/services/PedidosServiceImpl.java"
-@Service
-public class PedidosServiceImpl implements PedidosService {
+    Optional<Producto> findByIdAndDeletedFalse(Long id);
+    boolean            existsBySkuIgnoreCase(String sku);
+    long               countByCategoriaIdAndDeletedFalse(Long categoriaId);
 
-    private static final Logger log = LoggerFactory.getLogger(PedidosServiceImpl.class);
+    /** Lista paginada CON la categoría: 2 consultas, no 1+N. */
+    @EntityGraph(attributePaths = {"categoria"})
+    Page<Producto> findByDeletedFalse(Pageable pageable);
 
-    private final PedidosRepository pedidos;
-    private final ProductosRepository productos;
-    private final ClientesRepository clientes;
-    private final PedidoMapper mapper;
-
-    // constructor…
-
-    @Override
-    @Transactional
-    public PedidoResponse crear(PedidoCreateRequest request) {
-
-        // 1 · el cliente existe y está activo
-        var cliente = clientes.findByIdAndDeletedFalse(request.clienteId())
-                .orElseThrow(() -> new ClienteNotFoundException(request.clienteId()));
-        if (!cliente.isActivo())
-            throw new PedidoConflictException(
-                    "El cliente %s está desactivado".formatted(cliente.getNombre()));
-
-        // 2 · agrupar líneas repetidas del mismo producto
-        var cantidadPorProducto = request.lineas().stream()
-                .collect(Collectors.groupingBy(LineaRequest::productoId, TreeMap::new,
-                         Collectors.summingInt(LineaRequest::cantidad)));
-
-        var pedido = Pedido.builder()
-                .codigo(siguienteCodigo())
-                .cliente(cliente)
-                .estado(EstadoPedido.PENDIENTE)
-                .fecha(LocalDateTime.now())
-                .build();
-
-        var total = BigDecimal.ZERO;
-
-        // 3 · por cada producto: descontar stock de forma atómica y copiar el precio
-        for (var e : cantidadPorProducto.entrySet()) {
-            Long productoId = e.getKey();
-            int cantidad = e.getValue();
-
-            var producto = productos.findByIdAndDeletedFalse(productoId)
-                    .orElseThrow(() -> new ProductoNotFoundException(productoId));
-
-            if (productos.descontarStock(productoId, cantidad) == 0)
-                throw new StockInsuficienteException(
-                        "Stock insuficiente de %s (sku %s): piden %d, hay %d"
-                                .formatted(producto.getNombre(), producto.getSku(),
-                                           cantidad, producto.getStock()));
-
-            pedido.añadirLinea(LineaPedido.builder()
-                    .producto(producto)
-                    .cantidad(cantidad)
-                    .precioUnitario(producto.getPrecio())      // ← SE COPIA
-                    .build());
-
-            total = total.add(producto.getPrecio().multiply(BigDecimal.valueOf(cantidad)));
-        }
-
-        pedido.setTotal(total.setScale(2, RoundingMode.HALF_UP));
-
-        // 4 · un solo save: la cascada guarda también las líneas
-        var guardado = pedidos.save(pedido);
-        log.info("Pedido {} creado para {} por {} €",
-                 guardado.getCodigo(), cliente.getNombre(), guardado.getTotal());
-
-        return mapper.toResponse(guardado);
-    }
-
-    @Override
-    @Transactional
-    public PedidoResponse cancelar(Long id) {
-        var pedido = pedidos.findByIdConLineas(id)
-                .orElseThrow(() -> new PedidoNotFoundException(id));
-
-        if (pedido.getEstado() != EstadoPedido.PENDIENTE
-                && pedido.getEstado() != EstadoPedido.PAGADO)
-            throw new PedidoConflictException(
-                    "No se puede cancelar un pedido en estado " + pedido.getEstado());
-
-        for (var l : pedido.getLineas())
-            productos.devolverStock(l.getProducto().getId(), l.getCantidad());
-
-        pedido.setEstado(EstadoPedido.CANCELADO);     // dirty checking: sin save()
-        return mapper.toResponse(pedido);
-    }
-}
-```
-
-```java title="productos/repositories/ProductosRepository.java (los dos métodos clave)"
-/** Descuenta SOLO si hay suficiente. Devuelve las filas afectadas. */
-@Modifying(clearAutomatically = true, flushAutomatically = true)
-@Query("""
-       UPDATE Producto p
-          SET p.stock = p.stock - :cantidad
-        WHERE p.id = :id AND p.stock >= :cantidad
-       """)
-int descontarStock(@Param("id") Long id, @Param("cantidad") int cantidad);
-
-@Modifying(clearAutomatically = true, flushAutomatically = true)
-@Query("UPDATE Producto p SET p.stock = p.stock + :cantidad WHERE p.id = :id")
-int devolverStock(@Param("id") Long id, @Param("cantidad") int cantidad);
-```
-
-```java title="pedidos/repositories/PedidosRepository.java"
-public interface PedidosRepository
-        extends JpaRepository<Pedido, Long>, JpaSpecificationExecutor<Pedido> {
-
-    /** El pedido con su cliente y sus líneas con sus productos, en UNA consulta. */
+    /** Descuenta SOLO si hay suficiente. Devuelve las filas afectadas. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
-           SELECT DISTINCT p FROM Pedido p
-             JOIN FETCH p.cliente
-             LEFT JOIN FETCH p.lineas l
-             LEFT JOIN FETCH l.producto
-            WHERE p.id = :id
+           UPDATE Producto p
+              SET p.stock = p.stock - :cantidad, p.updatedAt = CURRENT_TIMESTAMP
+            WHERE p.id = :id AND p.stock >= :cantidad
            """)
-    Optional<Pedido> findByIdConLineas(@Param("id") Long id);
-
-    @EntityGraph(attributePaths = {"cliente"})
-    Page<Pedido> findByClienteId(Long clienteId, Pageable pageable);
-
-    @Query("SELECT COALESCE(MAX(p.id), 0) FROM Pedido p WHERE p.codigo LIKE :patron")
-    Long ultimoDelAnio(@Param("patron") String patron);
+    int descontarStock(@Param("id") Long id, @Param("cantidad") int cantidad);
 }
 ```
 
-!!! danger "El `UPDATE … WHERE stock >= :cantidad` sigue siendo la pieza central"
-    Es **exactamente** la misma solución que en la UT4, escrita en JPQL en vez de en SQL. Y por el mismo motivo:
+```java title="categorias/repositories/CategoriasRepository.java"
+public interface CategoriasRepository extends JpaRepository<Categoria, Long> {
 
-    === "❌ Mal: leer, comprobar, escribir"
+    Optional<Categoria> findByNombreIgnoreCaseAndDeletedFalse(String nombre);
+    List<Categoria>     findByDeletedFalse();
 
-        ```java
-        var producto = productos.findById(id).orElseThrow();
-        if (producto.getStock() < cantidad) throw new StockInsuficienteException(…);
-        producto.setStock(producto.getStock() - cantidad);
-        ```
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+           UPDATE Categoria c SET c.unidadesVendidas = c.unidadesVendidas + :cantidad
+            WHERE c.id = :id
+           """)
+    int sumarVendidas(@Param("id") Long id, @Param("cantidad") int cantidad);
+}
+```
 
-        Entre el `if` y el guardado **cabe otra petición**. Las dos leen stock 5, las dos creen que pueden vender 3, y el stock acaba en **-1**.
+### Las dos formas de evitar el N+1, y cuál elegir
 
-        Con JPA es **más fácil caer en esto**, porque el `setStack` parece inofensivo: no hay un `UPDATE` visible que te haga pensar.
+=== "`@EntityGraph` ✅ para relaciones `@ManyToOne`"
 
-    === "✅ Bien: una sola sentencia atómica"
+    ```java
+    @EntityGraph(attributePaths = {"categoria"})
+    Page<Producto> findByDeletedFalse(Pageable pageable);
+    ```
 
-        ```java
-        if (productos.descontarStock(id, cantidad) == 0)
-            throw new StockInsuficienteException(…);
-        ```
+    Una línea, se combina con **cualquier** consulta derivada, y **funciona con `Pageable`**.
 
-        El `UPDATE … WHERE stock >= :cantidad` es **una operación atómica**: la base de datos garantiza que nadie se cuela. Si no había bastante, afecta a **0 filas**, y eso es la señal.
+=== "`JOIN FETCH` para controlar el JPQL"
 
-    Y el `CHECK (stock >= 0)` del esquema sigue siendo la última red. Con `ddl-auto` no se genera solo: en `prod`, donde el esquema viene de un script, ponlo.
+    ```java
+    @Query(value      = "SELECT p FROM Producto p JOIN FETCH p.categoria WHERE p.deleted = false",
+           countQuery = "SELECT count(p) FROM Producto p WHERE p.deleted = false")
+    Page<Producto> findAllConCategoria(Pageable pageable);
+    ```
 
-!!! warning "El `DISTINCT` del `findByIdConLineas` no es decoración"
-    Un `JOIN FETCH` sobre una colección **multiplica las filas**: un pedido con 3 líneas vuelve 3 veces del `ResultSet`, y sin `DISTINCT` obtienes 3 objetos `Pedido` idénticos.
+    Hace falta el **`countQuery`**: sin él, Hibernate intenta contar sobre la consulta con el fetch.
 
-    Y ojo con mezclar `JOIN FETCH` de colección con `Pageable`: Hibernate avisa
-
+!!! danger "`JOIN FETCH` de una COLECCIÓN con `Pageable` no se puede"
     ```
     HHH90003004: firstResult/maxResults specified with collection fetch; applying in memory
     ```
 
-    y **trae la tabla entera para paginar en memoria**. Para listar pedidos paginados se usa `@EntityGraph(attributePaths = {"cliente"})` —solo relaciones `@ManyToOne`— y las líneas se cargan aparte si hacen falta.
+    Hibernate **trae la tabla entera y pagina en memoria**, que es justo lo que querías evitar.
 
-## B.3 · Probar el proyecto B
+    | | Con `Pageable` |
+    |---|---|
+    | `@ManyToOne` (una categoría) | **Sí**: `@EntityGraph` o `JOIN FETCH` |
+    | `@OneToMany` (una lista) | **No**: carga la lista en otra consulta |
 
-=== "Un pedido correcto"
+## Paso 3 · La venta: la transacción de dos entidades
+
+```java title="productos/services/ProductosServiceImpl.java"
+/**
+ * Vende unidades: descuenta el stock del producto y suma al contador
+ * de su categoría. Las dos cosas, o ninguna.
+ */
+@Override
+@Transactional
+public ProductoResponse vender(Long id, VentaRequest request) {
+
+    var producto = repositorio.findByIdAndDeletedFalse(id)
+            .orElseThrow(() -> new ProductoNotFoundException(id));
+
+    // 1 · descontar de forma atómica
+    if (repositorio.descontarStock(id, request.cantidad()) == 0)
+        throw new ProductoConflictException(
+                "Stock insuficiente de %s: piden %d, hay %d"
+                        .formatted(producto.getNombre(), request.cantidad(),
+                                   producto.getStock()));
+
+    // 2 · sumar al contador de la categoría
+    categoriasRepository.sumarVendidas(producto.getCategoria().getId(), request.cantidad());
+
+    log.info("Vendidas {} unidades de {}", request.cantidad(), producto.getSku());
+
+    return mapper.toResponse(repositorio.findByIdAndDeletedFalse(id).orElseThrow());
+}
+```
+
+!!! danger "El `@Transactional` es todo el proyecto en una anotación"
+    Si el paso 2 falla después del paso 1, el `rollback` deshace el descuento de stock.
+
+    **Sin `@Transactional`**, cada `update()` se confirma solo: el stock queda descontado y el contador sin subir. **Has perdido stock sin vender nada, y nadie recibe ningún error.**
+
+!!! danger "Y el `AND stock >= :cantidad`"
+    === "❌ Mal: leer, comprobar, escribir"
+
+        ```java
+        var p = repositorio.findByIdAndDeletedFalse(id).orElseThrow();
+        if (p.getStock() < cantidad) throw new ProductoConflictException("Sin stock");
+        p.setStock(p.getStock() - cantidad);
+        ```
+
+        Entre el `if` y el guardado **cabe otra petición**: las dos leen 5, las dos venden 3, el stock acaba en **−1**.
+
+        **Con JPA es más fácil caer en esto**, porque el `setStock` parece inofensivo: no hay un `UPDATE` visible que te haga pensar.
+
+    === "✅ Bien: una sentencia atómica"
+
+        ```java
+        if (repositorio.descontarStock(id, cantidad) == 0)
+            throw new ProductoConflictException("Stock insuficiente…");
+        ```
+
+        La base de datos garantiza que nadie se cuela, y las **0 filas afectadas** son la señal.
+
+### Las tres trampas de `@Transactional`
+
+| | Qué pasa |
+|---|---|
+| **Solo revierte con `RuntimeException`** | Una comprobada (`IOException`) **confirma** la transacción a medias. Si las capturas: `@Transactional(rollbackFor = Exception.class)` |
+| **Si capturas la excepción dentro, no hay *rollback*** | Tiene que **salir** del método transaccional |
+| **Funciona por proxy** | `this.vender(...)` desde otro método del mismo bean **no abre transacción**. Igual que `@Cacheable` |
+
+## Paso 4 · Probar el proyecto B
+
+=== "Una venta correcta"
 
     ```bash
-    curl -s -X POST localhost:8080/api/v1/pedidos \
-      -H "Content-Type: application/json" \
-      -d '{"clienteId":1,"lineas":[
-             {"productoId":1,"cantidad":2},
-             {"productoId":4,"cantidad":1}]}' | jq '{codigo, total, lineas: [.lineas[].nombre]}'
-    # { "codigo": "PED-2026-000001", "total": 179.79,
-    #   "lineas": ["Teclado mecánico", "Alfombrilla XL"] }
+    curl -s localhost:8080/api/v1/productos/1 | jq '{nombre, stock, categoria}'
+    # { "nombre": "Teclado mecánico", "stock": 10, "categoria": "INFORMATICA" }
 
-    curl -s localhost:8080/api/v1/productos/1 | jq .stock    # 8, bajó de 10
+    curl -s -X POST localhost:8080/api/v1/productos/1/venta \
+      -H "Content-Type: application/json" -d '{"cantidad":3}' | jq '{nombre, stock}'
+    # { "nombre": "Teclado mecánico", "stock": 7 }
+
+    curl -s localhost:8080/api/v1/categorias | jq '.[] | select(.nombre=="INFORMATICA")'
+    # { "id": 1, "nombre": "INFORMATICA", "unidadesVendidas": 3 }
     ```
-
-    En el log, **un solo `save` ha hecho tres `INSERT`**: el pedido y sus dos líneas. Eso es el `cascade = ALL`.
 
 === "La transacción, comprobada"
 
     ```bash
-    curl -s localhost:8080/api/v1/productos | jq '[.content[] | {id, stock}]'
-    # [{"id":1,"stock":8},{"id":2,"stock":3},{"id":3,"stock":1},{"id":4,"stock":49}]
+    # Antes
+    curl -s "localhost:8080/api/v1/productos?size=50" | jq '[.content[] | {sku, stock}]'
+    curl -s localhost:8080/api/v1/categorias | jq '[.[] | {nombre, unidadesVendidas}]'
 
-    # Tres líneas, la tercera sin stock
-    curl -i -X POST localhost:8080/api/v1/pedidos \
-      -H "Content-Type: application/json" \
-      -d '{"clienteId":1,"lineas":[
-             {"productoId":1,"cantidad":1},
-             {"productoId":4,"cantidad":1},
-             {"productoId":3,"cantidad":5}]}'
-    # 409 · "Stock insuficiente de Monitor 27\" (sku SKU-003): piden 5, hay 1"
+    # Venta de más unidades de las que hay
+    curl -i -X POST localhost:8080/api/v1/productos/3/venta \
+      -H "Content-Type: application/json" -d '{"cantidad":999}'
+    # 409 · "Stock insuficiente de Monitor 27\": piden 999, hay 1"
 
-    curl -s localhost:8080/api/v1/productos | jq '[.content[] | {id, stock}]'
-    # [{"id":1,"stock":8},{"id":2,"stock":3},{"id":3,"stock":1},{"id":4,"stock":49}]
-    #  ← IDÉNTICO. El rollback deshizo los dos UPDATE y no hubo INSERT
+    # Después: NINGUNA de las dos ha cambiado
+    curl -s "localhost:8080/api/v1/productos?size=50" | jq '[.content[] | {sku, stock}]'
+    curl -s localhost:8080/api/v1/categorias | jq '[.[] | {nombre, unidadesVendidas}]'
     ```
 
-=== "Las relaciones y la cascada"
+    **Esos dos pares de salidas idénticas son el resultado de aprendizaje del proyecto.**
+
+=== "El N+1, contado"
 
     ```bash
-    # Borrar un producto que está en un pedido: lo impide la FK
-    curl -i -X DELETE localhost:8080/api/v1/productos/1
-    # 409 · "La operación viola una restricción de la base de datos"
-
-    # Borrar un pedido: la cascada borra sus líneas
-    curl -i -X DELETE localhost:8080/api/v1/pedidos/1       # 204
-
-    # Comprobar en la consola de H2 que las líneas ya no están
-    # SELECT COUNT(*) FROM lineas_pedido WHERE pedido_id = 1;  → 0
+    curl -s "localhost:8080/api/v1/productos?size=20" > /dev/null
     ```
 
-=== "El N+1, cazado"
+    ```
+    Hibernate: select p1_0.id, …, c1_0.nombre from productos p1_0 join categorias c1_0 …
+    Hibernate: select count(p1_0.id) from productos p1_0
+    ```
+
+    **Dos líneas.** Quita el `@EntityGraph` y serán **veintiuna**.
+
+=== "El bloqueo optimista"
 
     ```bash
-    # ✅ Con @EntityGraph: 2 consultas, pida lo que pida el cliente
-    curl -s "localhost:8080/api/v1/pedidos?size=20" > /dev/null
-
-    # ❌ Sin él: 1 + 20 consultas para los clientes
+    # Dos PATCH simultáneos sobre el mismo producto
+    curl -s -X PATCH localhost:8080/api/v1/productos/1 \
+      -H "Content-Type: application/json" -d '{"nombre":"Teclado A"}' &
+    curl -s -X PATCH localhost:8080/api/v1/productos/1 \
+      -H "Content-Type: application/json" -d '{"nombre":"Teclado B"}' &
+    wait
     ```
 
-    ```
-    Hibernate: select p1_0.id, …, c1_0.nombre from pedidos p1_0 join clientes c1_0 …
-    Hibernate: select count(p1_0.id) from pedidos p1_0
-    ```
+    Uno de los dos devuelve **409** con el mensaje de recargar. Sin `@Version`, los dos devolverían 200 y **uno de los cambios se perdería en silencio**.
 
-    **Dos líneas en el log. Si ves veintiuna, falta el `@EntityGraph`.**
+## Paso 5 · Los tests
 
-## B.4 · Los tests
-
-```java
+```java title="Repositorio · @DataJpaTest"
 @DataJpaTest
 @ActiveProfiles("test")
-class PedidosRepositoryTest {
+class ProductosRepositoryTest {
 
-    @Autowired PedidosRepository pedidos;
+    @Autowired ProductosRepository repositorio;
     @Autowired TestEntityManager em;
 
-    @Test
-    void laCascadaGuardaLasLineasConElPedido() {
-        var cliente  = em.persistAndFlush(new Cliente("12345678Z", "Ana", "ana@x.es"));
-        var producto = em.persistAndFlush(nuevoProducto("SKU-1", "Teclado", "79.90", 10));
+    private Categoria informatica;
 
-        var pedido = Pedido.builder().codigo("PED-2026-000001").cliente(cliente).build();
-        pedido.añadirLinea(LineaPedido.builder()
-                .producto(producto).cantidad(2)
-                .precioUnitario(new BigDecimal("79.90")).build());
-
-        var guardado = pedidos.saveAndFlush(pedido);
-        em.clear();                                   // vaciar la caché de primer nivel
-
-        var releido = pedidos.findByIdConLineas(guardado.getId()).orElseThrow();
-        assertThat(releido.getLineas()).hasSize(1);
-        assertThat(releido.getLineas().get(0).subtotal())
-                .isEqualByComparingTo("159.80");
-    }
-
-    @Test
-    void elOrphanRemovalBorraLaLineaAlSacarlaDeLaLista() {
-        var pedido = unPedidoConDosLineas();
-        pedido.quitarLinea(pedido.getLineas().get(0));
-        pedidos.saveAndFlush(pedido);
-        em.clear();
-
-        assertThat(pedidos.findByIdConLineas(pedido.getId()).orElseThrow()
-                          .getLineas()).hasSize(1);
+    @BeforeEach
+    void preparar() {
+        informatica = em.persistAndFlush(new Categoria("INFORMATICA"));
     }
 
     @Test
     void noDevuelveLosBorradosLogicamente() {
-        em.persistAndFlush(nuevoProducto("SKU-A", "Visible", "10.00", 1));
-        var borrado = nuevoProducto("SKU-B", "Oculto", "10.00", 1);
+        em.persistAndFlush(new Producto("SKU-001", "Visible",
+                new BigDecimal("10.00"), 5, informatica));
+
+        var borrado = new Producto("SKU-002", "Oculto",
+                new BigDecimal("10.00"), 5, informatica);
         borrado.setDeleted(true);
         em.persistAndFlush(borrado);
+        em.clear();
 
-        assertThat(productos.findByDeletedFalse())
+        assertThat(repositorio.findByDeletedFalse(PageRequest.of(0, 10)))
                 .extracting(Producto::getNombre)
                 .containsExactly("Visible");
     }
+
+    @Test
+    void elDescuentoFallaSiNoHayStockSuficiente() {
+        var p = em.persistAndFlush(new Producto("SKU-003", "Monitor",
+                new BigDecimal("229.00"), 1, informatica));
+        em.clear();
+
+        assertEquals(0, repositorio.descontarStock(p.getId(), 5));   // no hay bastante
+        assertEquals(1, repositorio.descontarStock(p.getId(), 1));   // sí
+    }
+
+    @Test
+    void elSkuUnicoLoImponeLaBaseDeDatos() {
+        em.persistAndFlush(new Producto("SKU-004", "Uno",
+                new BigDecimal("1.00"), 1, informatica));
+
+        assertThatThrownBy(() -> em.persistAndFlush(new Producto("SKU-004", "Otro",
+                new BigDecimal("1.00"), 1, informatica)))
+                .isInstanceOf(PersistenceException.class);
+    }
 }
 ```
 
-```java
+```java title="La transacción · @SpringBootTest"
 @SpringBootTest
 @ActiveProfiles("test")
-class PedidosTransaccionTest {
+class VentaTransaccionTest {
 
-    @Autowired PedidosService servicio;
+    @Autowired ProductosService servicio;
     @Autowired ProductosRepository productos;
+    @Autowired CategoriasRepository categorias;
 
     @Test
-    void siFallaUnaLineaNoSeDescuentaNingunStock() {
-        var antes = productos.findAll().stream()
-                .collect(Collectors.toMap(Producto::getId, Producto::getStock));
+    void siFallaLaVentaNoCambiaNingunaDeLasDosTablas() {
+        var stockAntes = productos.findByIdAndDeletedFalse(3L).orElseThrow().getStock();
+        var vendidasAntes = categorias.findById(1L).orElseThrow().getUnidadesVendidas();
 
-        var request = new PedidoCreateRequest(1L, List.of(
-                new LineaRequest(1L, 1),       // hay
-                new LineaRequest(4L, 1),       // hay
-                new LineaRequest(3L, 999)));   // NO hay
+        assertThrows(ProductoConflictException.class,
+                () -> servicio.vender(3L, new VentaRequest(999)));
 
-        assertThrows(StockInsuficienteException.class, () -> servicio.crear(request));
-
-        var despues = productos.findAll().stream()
-                .collect(Collectors.toMap(Producto::getId, Producto::getStock));
-
-        assertEquals(antes, despues, "El rollback debe dejar el stock intacto");
+        assertEquals(stockAntes,
+                productos.findByIdAndDeletedFalse(3L).orElseThrow().getStock(),
+                "El stock no puede haber cambiado");
+        assertEquals(vendidasAntes,
+                categorias.findById(1L).orElseThrow().getUnidadesVendidas(),
+                "El contador de la categoría no puede haber cambiado");
     }
 
     @Test
-    void elPrecioSeCongelaEnLaLinea() {
-        var pedido = servicio.crear(new PedidoCreateRequest(1L,
-                List.of(new LineaRequest(1L, 1))));
-        var precioOriginal = pedido.lineas().get(0).precioUnitario();
+    void dosEdicionesSimultaneasProvocanConflicto() {
+        var a = productos.findById(1L).orElseThrow();   // version = 0
+        var b = productos.findById(1L).orElseThrow();   // version = 0
 
-        productos.actualizarPrecio(1L, new BigDecimal("999.00"));
+        a.setNombre("Teclado A");
+        productos.saveAndFlush(a);                      // version → 1
 
-        assertEquals(precioOriginal,
-                servicio.findById(pedido.id()).lineas().get(0).precioUnitario());
+        b.setNombre("Teclado B");
+        assertThrows(ObjectOptimisticLockingFailureException.class,
+                () -> productos.saveAndFlush(b));       // version 0 ≠ 1
     }
 }
 ```
 
-!!! success "Los tres niveles de test de la unidad"
+!!! success "Los tres niveles de test"
     | | Qué prueba | Tarda | Caza |
     |---|---|---|---|
     | **Mockito** | Reglas de negocio | ms | Un 409 que falta |
-    | **`@DataJpaTest`** | Mapeo, relaciones y consultas | ~1 s | Un `mappedBy` mal, un `AndDeletedFalse` olvidado, la cascada |
+    | **`@DataJpaTest`** | Mapeo, relaciones y consultas | ~1 s | Un `mappedBy` mal, un `AndDeletedFalse` olvidado |
     | **`@SpringBootTest`** | Todo junto | ~3 s | El cableado y **las transacciones** |
 
-    El `em.clear()` de los tests de repositorio es importante: **sin él, lees el objeto de la caché de primer nivel** y el test pasa aunque el mapeo esté mal. Hay que forzar que vuelva a la base de datos.
+    El **`em.clear()`** es importante: sin él lees el objeto de la caché de primer nivel y el test pasa aunque el mapeo esté mal. Hay que forzar que vuelva a la base de datos.
 
 ---
 
@@ -1198,27 +1256,27 @@ class PedidosTransaccionTest {
 flowchart TB
     Cliente["curl / Postman"] -->|HTTP + JSON| C["@RestController<br/>Pageable + criterios"]
     C -->|DTOs| S["@Service<br/>@Transactional"]
-    S --> R1["JpaRepository<br/>+ JpaSpecificationExecutor"]
-    S --> R2["JpaRepository"]
+    S --> R1["JpaRepository productos"]
+    S --> R2["JpaRepository categorias"]
     R1 --> H["Hibernate<br/>genera el SQL"]
     R2 --> H
-    H --> BD[("H2 en fichero<br/>datos/tienda.mv.db")]
-    S -.->|excepciones de dominio| G["@RestControllerAdvice"]
+    H --> BD[("H2 en fichero")]
+    S -.->|excepciones| G["@RestControllerAdvice"]
     G -.->|400 / 404 / 409| Cliente
 ```
 
-!!! success "Checklist de los dos proyectos"
+!!! success "Comprueba los dos proyectos"
     **Comunes**
 
     - [ ] `./mvnw clean package` en verde con los tres tipos de test
     - [ ] Los datos **sobreviven** a parar y arrancar
     - [ ] `spring.jpa.open-in-view=false` y **ningún** `LazyInitializationException`
     - [ ] `grep -rn "FetchType.EAGER" src/` → **vacío**
-    - [ ] `@Enumerated(EnumType.STRING)` en todos los `enum`
     - [ ] Dinero con `BigDecimal` y `precision`/`scale`
     - [ ] `?page=&size=&sort=` funcionan; `?size=99999` se recorta; `?sort=inventado` no da 500
     - [ ] El controlador **no** devuelve entidades, solo DTOs
-    - [ ] `ddl-auto=validate` en `prod`, nunca `create-drop`
+    - [ ] `ddl-auto=validate` en `prod`, `update` en `dev`, `create-drop` en `test`
+    - [ ] **Ningún patrón builder**: constructor con los campos del cliente, y `setters`
 
     **Proyecto A**
 
@@ -1229,14 +1287,10 @@ flowchart TB
 
     **Proyecto B**
 
-    - [ ] Un pedido con una línea sin stock → **409 y el stock no cambia en ninguna**
-    - [ ] `cascade = ALL` + `orphanRemoval` solo en `Pedido → LineaPedido`
-    - [ ] `añadirLinea` mantiene **los dos lados** de la relación
-    - [ ] Borrar un producto que está en un pedido → **409**
-    - [ ] El `precioUnitario` queda congelado en la línea
-    - [ ] Listar pedidos paginados son **2 consultas**
+    - [ ] Una venta correcta cambia **las dos tablas**
+    - [ ] Una venta sin stock → **409 y ninguna de las dos cambia**
+    - [ ] Listar productos paginados son **2 consultas**
+    - [ ] Dos PATCH simultáneos → uno recibe **409** por `@Version`
 
-!!! info "Y en la UT6 no se toca nada de esto"
-    Los servicios y los repositorios que acabas de escribir atenderán también un **WebSocket** y una consulta **GraphQL**. Sin tocarlos: solo se añaden clases que los llaman.
-
-    El único cambio en el servicio será un `publishEvent`. Dos líneas.
+!!! info "En la UT6 no se toca nada de esto"
+    Los servicios y los repositorios que acabas de escribir atenderán también un **WebSocket** y una consulta **GraphQL**. El único cambio en el servicio será un `publishEvent`: **dos líneas**.

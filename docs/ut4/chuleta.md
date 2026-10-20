@@ -277,15 +277,23 @@ spring.h2.console.path=/h2-console
 :material-alert: Si insertas con ids fijos: `ALTER TABLE t ALTER COLUMN id RESTART WITH n+1`, o el primer POST choca.
 
 ```java
+// El modelo es un record: constructor, captadores, equals y toString gratis
+public record Funko(Long id, String nombre, BigDecimal precio, Integer cantidad,
+                    String categoria, LocalDateTime createdAt, LocalDateTime updatedAt) {}
+```
+
+```java
 @Component
 public class FunkoRowMapper implements RowMapper<Funko> {
     @Override public Funko mapRow(ResultSet rs, int n) throws SQLException {
-        return Funko.builder()
-                .id(rs.getLong("id"))
-                .nombre(rs.getString("nombre"))
-                .precio(rs.getBigDecimal("precio"))
-                .createdAt(rs.getTimestamp("created_at").toLocalDateTime())
-                .build();
+        return new Funko(
+                rs.getLong("id"),
+                rs.getString("nombre"),
+                rs.getBigDecimal("precio"),
+                rs.getInt("cantidad"),
+                rs.getString("categoria"),
+                rs.getTimestamp("created_at").toLocalDateTime(),
+                rs.getTimestamp("updated_at").toLocalDateTime());
     }
 }
 ```

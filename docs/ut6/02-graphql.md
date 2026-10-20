@@ -1,155 +1,23 @@
 # 2. GraphQL
 
-!!! tip "Tip del Examinador"
-    GraphQL usa "queries" para leer y "mutations" para escribir, similar a GET y POST en REST.
+**Un solo endpoint, `/graphql`, y el cliente dice qué campos quiere.** Nada más cambia: los servicios y los repositorios de la UT4 y la UT5 se reutilizan tal cual.
+
+| | REST | GraphQL |
+|---|---|---|
+| URLs | Una por recurso | **Una sola**: `/graphql` |
+| Qué devuelve | Lo que decide el servidor | **Lo que pide el cliente** |
+| Traer de más | `?` y endpoints a medida | No: pides los campos |
+| Traer de menos | Varias peticiones | **Una** con los anidados |
+| Versionado | `/v1`, `/v2` | El esquema crece |
+| Códigos HTTP | 200/400/404/409 | **Siempre 200** + `errors` |
 
 ---
 
-## 2.1. ¿Qué es GraphQL? ¿Por qué es especial?
+## 2.1. El esquema: el contrato
 
-**GraphQL** es un lenguaje de consulta para APIs y un entorno de ejecución para tus datos. Fue creado por Facebook en 2012 y liberado en 2015.
+El esquema vive en `src/main/resources/graphql/schema.graphqls` y es **de donde sale todo**: la validación, la documentación y el autocompletado del playground.
 
-### 2.1.1. Ventajas y Características
-
-- **Consulta flexible:** El cliente pide exactamente los datos que necesita.
-- **Un solo endpoint:** Se accede siempre a `/graphql`.
-- **Tipo fuerte:** El esquema define los tipos y validaciones.
-- **Consultas anidadas y relaciones:** Puedes obtener objetos relacionados y jerarquía de datos en una sola petición.
-- **Introspección:** El cliente puede explorar el esquema y autocompletar queries desde el playground.
-- **Mutaciones:** Permite modificar datos de forma estructurada y tipada.
-- **Suscripciones:** Permite recibir notificaciones en tiempo real (como WebSockets).
-- **Evolución sin versionado:** El esquema puede crecer sin romper clientes antiguos.
-
-### 2.1.2. Comparación con REST
-
-| REST             | GraphQL                               |
-| ---------------- | ------------------------------------- |
-| Múltiples URLs   | Un solo endpoint                      |
-| Respuestas fijas | El cliente elige los campos           |
-| Overfetching     | Solo lo que pides                     |
-| Underfetching    | Consultas anidadas y relaciones       |
-| Versionado       | No es necesario, evoluciona el schema |
-| Difícil de tipar | Tipado fuerte y validación automática |
-
----
-
-## 2.2. Sintaxis básica de GraphQL
-
-### 2.2.1. Elementos del esquema
-
-- **type**: Define un objeto (como una clase Java).
-- **input**: Define tipos de entrada para mutaciones.
-- **enum**: Un conjunto finito de valores posibles.
-- **Query**: Operaciones de lectura.
-- **Mutation**: Operaciones de escritura (crear, modificar, borrar).
-- **Subscription**: Operaciones en tiempo real (push de eventos).
-- **interface**: Contrato que deben implementar varios tipos.
-- **union**: Un campo puede ser uno de varios tipos.
-
-### 2.2.2. Tipos soportados
-
-- **Escalares**:  
-  - `Int` (número entero)
-  - `Float` (número decimal)
-  - `String` (texto)
-  - `Boolean` (true/false)
-  - `ID` (identificador único, string o int)
-- **Enum**: Enumerados.
-- **Objetos**: Definidos con `type`.
-- **Listas**: `[Tipo]`  
-  Ejemplo: `[Producto!]!` (lista obligatoria de productos obligatorios)
-- **Campos obligatorios**: `!`  
-  Ejemplo: `nombre: String!` (el campo no puede ser nulo)
-- **Campos opcionales**: sin `!`  
-  Ejemplo: `descripcion: String`
-- **Relaciones**: Un campo puede ser otro tipo o una lista de otro tipo.
-
-### 2.2.3. Ejemplo de sintaxis
-
-```graphql
-type Producto {
-    id: ID!
-    nombre: String!
-    precio: Float!
-    categoria: Categoria!
-    etiquetas: [String!]! # lista obligatoria de strings obligatorios
-}
-
-type Categoria {
-    id: ID!
-    nombre: String!
-    productos: [Producto!]!
-}
-```
-
-- `[Producto!]!` significa:
-    - Lista no nula (`!` al final)
-    - De elementos no nulos (`!` tras el tipo)
-    - Es decir: la lista siempre existe y no puede tener elementos nulos.
-
----
-
-## 2.3. Instalación y configuración en Spring Boot
-
-### 2.3.1. Dependencias
-
-=== "Maven (lo que usamos)"
-
-    ```xml
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-graphql</artifactId>
-    </dependency>
-
-    <!-- Para el playground web -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
-
-    <!-- Para suscripciones: opcional, pero necesario si usas Subscription -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-webflux</artifactId>
-    </dependency>
-
-    <!-- Para los tests de GraphQL -->
-    <dependency>
-      <groupId>org.springframework.graphql</groupId>
-      <artifactId>spring-graphql-test</artifactId>
-      <scope>test</scope>
-    </dependency>
-    ```
-
-=== "Gradle (el original)"
-
-    ```kotlin
-    implementation("org.springframework.boot:spring-boot-starter-graphql")
-    implementation("org.springframework.boot:spring-boot-starter-web") // Para playground web
-    implementation("org.springframework.boot:spring-boot-starter-webflux") // Para suscripciones (opcional, pero necesario si usas Subscription)
-    ```
-
-### 2.3.2. Configuración básica
-
-En `src/main/resources/application.properties`:
-
-```properties
-spring.graphql.graphiql.enabled=true         # Activa el playground web
-spring.graphql.graphiql.path=/graphiql       # Ruta del playground
-spring.graphql.path=/graphql                 # Ruta del endpoint principal
-```
-
----
-
-## 2.4. Definiendo el esquema GraphQL
-
-El esquema se escribe en un archivo:  
-`src/main/resources/graphql/schema.graphqls`
-
-### 2.4.1. Esquema de ejemplo: Producto y Categoría (queries, mutaciones y suscripciones)
-
-```graphql
-# ==== TIPOS ====
+```graphql title="schema.graphqls"
 type Producto {
     id: ID!
     nombre: String!
@@ -164,7 +32,6 @@ type Categoria {
     productos: [Producto!]!
 }
 
-# ==== TIPOS DE ENTRADA PARA MUTACIONES ====
 input ProductoInput {
     nombre: String!
     precio: Float!
@@ -172,11 +39,6 @@ input ProductoInput {
     categoriaId: ID!
 }
 
-input CategoriaInput {
-    nombre: String!
-}
-
-# ==== QUERIES ====
 type Query {
     productos: [Producto!]!
     productoById(id: ID!): Producto
@@ -184,614 +46,410 @@ type Query {
     categoriaById(id: ID!): Categoria
 }
 
-# ==== MUTACIONES ====
 type Mutation {
     crearProducto(input: ProductoInput!): Producto!
     actualizarProducto(id: ID!, input: ProductoInput!): Producto!
     eliminarProducto(id: ID!): Boolean!
-
-    crearCategoria(input: CategoriaInput!): Categoria!
-    actualizarCategoria(id: ID!, input: CategoriaInput!): Categoria!
-    eliminarCategoria(id: ID!): Boolean!
 }
 
-# ==== SUSCRIPCIONES (notificaciones en tiempo real) ====
 type Subscription {
-    # Notifica cuando se crea un producto
     productoCreado: Producto!
-    # Notifica cuando se actualiza un producto
-    productoActualizado: Producto!
-    # Notifica cuando se elimina un producto
-    productoEliminado: ID!
 }
 ```
 
+### Las cuatro piezas, y cuándo cada una
+
+| | Qué es | Cuándo |
+|---|---|---|
+| `type` | Un objeto que **sale** | Lo que devuelves: `Producto`, `Categoria` |
+| `input` | Un objeto que **entra** | Los argumentos de las mutaciones |
+| `enum` | Valores cerrados | `enum Estado { ACTIVO INACTIVO }` |
+| `Query` / `Mutation` / `Subscription` | Los tres puntos de entrada | Leer / escribir / escuchar |
+
+!!! success "Los tipos y los símbolos, de una vez"
+    **Escalares:** `Int`, `Float`, `String`, `Boolean`, `ID`.
+
+    | Se escribe | Significa |
+    |---|---|
+    | `String` | Puede ser `null` |
+    | `String!` | **No** puede ser `null` |
+    | `[Producto]` | La lista puede ser `null`, y sus elementos también |
+    | `[Producto!]!` | **La lista existe siempre y ningún elemento es `null`** |
+
+    **`[Producto!]!` es lo que quieres casi siempre**: una colección vacía es `[]`, no `null`.
+
+!!! warning "`type` e `input` no son intercambiables"
+    Un `type` **no** se puede usar como argumento, y un `input` no se puede devolver. Si lo intentas, la aplicación **no arranca**:
+
+    ```
+    The type 'Producto' is not an input type, but was used in an input type position
+    ```
+
+    Por eso hay un `ProductoInput` aparte del `Producto`, igual que en REST hay un `ProductoCreateRequest` aparte del `ProductoResponse`. **Es la misma idea del DTO.**
+
 ---
 
-## 2.5. Ejemplo de Controlador GraphQL en Spring Boot (queries, mutaciones y suscripciones)
+## 2.2. Instalación y configuración
 
-*Recuerda: los servicios y repositorios ya existen. Aquí solo resolvers y lógica GraphQL.*
+```xml title="pom.xml"
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-graphql</artifactId>
+</dependency>
 
-```java
-package com.ejemplo.demo.graphql;
+<!-- Solo si usas Subscription -->
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-webflux</artifactId>
+</dependency>
 
-import com.ejemplo.demo.model.Producto;
-import com.ejemplo.demo.model.Categoria;
-import com.ejemplo.demo.service.ProductoService;
-import com.ejemplo.demo.service.CategoriaService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.graphql.data.method.annotation.*;
-import org.springframework.stereotype.Controller;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Sinks;
+<dependency>
+  <groupId>org.springframework.graphql</groupId>
+  <artifactId>spring-graphql-test</artifactId>
+  <scope>test</scope>
+</dependency>
+```
 
-import java.util.List;
+```properties title="application.properties"
+spring.graphql.path=/graphql
+spring.graphql.graphiql.enabled=true
+spring.graphql.graphiql.path=/graphiql
+```
 
+!!! danger "`graphiql.enabled=true` solo en `dev`"
+    El playground **expone el esquema entero** con introspección: todos los tipos, todos los campos y todas las mutaciones. En producción va a `false`, junto con la consola de H2 y Swagger UI.
+
+---
+
+## 2.3. El controlador: resolutores
+
+```java title="productos/graphql/ProductosGraphQLController.java"
 @Controller
-public class ProductoCategoriaGraphQLController {
+public class ProductosGraphQLController {
 
-    private final ProductoService productoService;
-    private final CategoriaService categoriaService;
+    private final ProductosService productosService;
+    private final CategoriasService categoriasService;
 
-    // Sinks para suscripciones en tiempo real
-    private final Sinks.Many<Producto> productoCreadoSink = Sinks.many().multicast().onBackpressureBuffer();
-    private final Sinks.Many<Producto> productoActualizadoSink = Sinks.many().multicast().onBackpressureBuffer();
-    private final Sinks.Many<Long> productoEliminadoSink = Sinks.many().multicast().onBackpressureBuffer();
+    /** Para la suscripción: un bus en memoria. */
+    private final Sinks.Many<ProductoResponse> creados =
+            Sinks.many().multicast().onBackpressureBuffer();
 
-    @Autowired
-    public ProductoCategoriaGraphQLController(ProductoService productoService, CategoriaService categoriaService) {
-        this.productoService = productoService;
-        this.categoriaService = categoriaService;
+    public ProductosGraphQLController(ProductosService productosService,
+                                      CategoriasService categoriasService) {
+        this.productosService = productosService;
+        this.categoriasService = categoriasService;
     }
 
-    // === Queries ===
+    // ───── Queries ─────
     @QueryMapping
-    public List<Producto> productos() {
-        return productoService.findAll();
-    }
-
-    @QueryMapping
-    public Producto productoById(@Argument Long id) {
-        return productoService.findById(id).orElse(null);
+    public List<ProductoResponse> productos() {
+        return productosService.findAll();
     }
 
     @QueryMapping
-    public List<Categoria> categorias() {
-        return categoriaService.findAll();
+    public ProductoResponse productoById(@Argument Long id) {
+        return productosService.findById(id);          // lanza 404 → error GraphQL
     }
 
-    @QueryMapping
-    public Categoria categoriaById(@Argument Long id) {
-        return categoriaService.findById(id).orElse(null);
-    }
-
-    // === Mutaciones ===
+    // ───── Mutaciones ─────
     @MutationMapping
-    public Producto crearProducto(@Argument ProductoInput input) {
-        Producto producto = productoService.save(input);
-        productoCreadoSink.tryEmitNext(producto); // Notifica a suscriptores
-        return producto;
+    public ProductoResponse crearProducto(@Argument @Valid ProductoInput input) {
+        var creado = productosService.save(input.toRequest());
+        creados.tryEmitNext(creado);                   // avisa a los suscriptores
+        return creado;
     }
 
     @MutationMapping
-    public Producto actualizarProducto(@Argument Long id, @Argument ProductoInput input) {
-        Producto producto = productoService.update(id, input);
-        productoActualizadoSink.tryEmitNext(producto); // Notifica a suscriptores
-        return producto;
+    public ProductoResponse actualizarProducto(@Argument Long id,
+                                               @Argument @Valid ProductoInput input) {
+        return productosService.update(id, input.toRequest());
     }
 
     @MutationMapping
     public Boolean eliminarProducto(@Argument Long id) {
-        productoService.deleteById(id);
-        productoEliminadoSink.tryEmitNext(id); // Notifica a suscriptores
+        productosService.deleteById(id);
         return true;
     }
 
-    @MutationMapping
-    public Categoria crearCategoria(@Argument CategoriaInput input) {
-        return categoriaService.save(input);
-    }
-
-    @MutationMapping
-    public Categoria actualizarCategoria(@Argument Long id, @Argument CategoriaInput input) {
-        return categoriaService.update(id, input);
-    }
-
-    @MutationMapping
-    public Boolean eliminarCategoria(@Argument Long id) {
-        categoriaService.deleteById(id);
-        return true;
-    }
-
-    // === Suscripciones ===
+    // ───── Suscripción ─────
     @SubscriptionMapping
-    public Flux<Producto> productoCreado() {
-        return productoCreadoSink.asFlux();
-    }
-
-    @SubscriptionMapping
-    public Flux<Producto> productoActualizado() {
-        return productoActualizadoSink.asFlux();
-    }
-
-    @SubscriptionMapping
-    public Flux<Long> productoEliminado() {
-        return productoEliminadoSink.asFlux();
+    public Flux<ProductoResponse> productoCreado() {
+        return creados.asFlux();
     }
 }
 ```
 
-### 2.5.1. ¿Cómo funciona la suscripción?
-- Cada vez que se crea, actualiza o elimina un producto, se emite una notificación.
-- Los clientes suscritos (por ejemplo, desde el playground o desde una app usando Apollo Client) reciben el evento en tiempo real.
-- Para usar suscripciones necesitas tener configurado WebFlux y usar el playground o cliente compatible con WebSocket.
+### Las cuatro anotaciones, y para qué sirve cada una
 
----
+| | Resuelve | Equivale en REST a |
+|---|---|---|
+| `@QueryMapping` | Un campo de `Query` | `@GetMapping` |
+| `@MutationMapping` | Un campo de `Mutation` | `@PostMapping` / `@PutMapping` / `@DeleteMapping` |
+| `@SubscriptionMapping` | Un campo de `Subscription` | Un WebSocket |
+| `@SchemaMapping` / `@BatchMapping` | **Un campo dentro de un tipo** | — |
 
-## 2.6. Ejemplos de consultas, mutaciones y suscripciones
+!!! success "El método se llama igual que el campo del esquema"
+    `productoById(id: ID!)` en el esquema → `public ProductoResponse productoById(@Argument Long id)`.
 
-### 2.6.1. Obtener todos los productos con su categoría
-```graphql
-query {
-  productos {
-    id
-    nombre
-    precio
-    categoria {
-      id
-      nombre
-    }
-  }
+    Si no coinciden, GraphQL **no avisa al arrancar**: la consulta devuelve `null` en ese campo y te quedas mirando. Para que no pase, se pone `@QueryMapping("productoById")` con el nombre explícito, o se revisa el esquema a la primera consulta.
+
+!!! danger "Los resolutores devuelven DTOs, no entidades"
+    Es la misma regla de la UT5, y aquí importa más: GraphQL **navega** por los campos. Si devuelves la entidad, el cliente puede pedir `categoria { productos { categoria { … } } }` y provocar un bucle de consultas que no habías previsto.
+
+### El campo calculado y el N+1
+
+```java title="Resolver un campo que no está en el DTO"
+/** Campo del tipo Producto que NO viene del servicio. */
+@SchemaMapping(typeName = "Producto", field = "stockBajo")
+public Boolean stockBajo(ProductoResponse producto) {
+    return producto.stock() < 5;
+}
+
+/** Resuelve categoria para TODOS los productos de golpe: 1 consulta, no N. */
+@BatchMapping(typeName = "Producto")
+public Map<ProductoResponse, CategoriaResponse> categoria(List<ProductoResponse> productos) {
+    var ids = productos.stream().map(ProductoResponse::categoriaId).distinct().toList();
+    var porId = categoriasService.findAllById(ids).stream()
+            .collect(toMap(CategoriaResponse::id, c -> c));
+    return productos.stream()
+            .collect(toMap(p -> p, p -> porId.get(p.categoriaId())));
 }
 ```
 
-### 2.6.2. Crear un producto
-```graphql
-mutation {
-  crearProducto(input: {
-    nombre: "Raqueta Pro",
-    precio: 120.5,
-    stock: 10,
-    categoriaId: "1"
-  }) {
-    id
-    nombre
-    precio
-    categoria {
-      nombre
-    }
-  }
-}
-```
+!!! danger "`@SchemaMapping` por elemento es el N+1 de GraphQL"
+    `@SchemaMapping` se ejecuta **una vez por cada elemento de la lista**. Con 50 productos, eso son **50 consultas** para traer las categorías.
 
-### 2.6.3. Actualizar un producto
-```graphql
-mutation {
-  actualizarProducto(id: "1", input: {
-    nombre: "Raqueta Ultra Pro",
-    precio: 150.0,
-    stock: 20,
-    categoriaId: "1"
-  }) {
-    id
-    nombre
-    precio
-  }
-}
-```
-
-### 2.6.4. Eliminar un producto
-```graphql
-mutation {
-  eliminarProducto(id: "1")
-}
-```
-
-### 2.6.5. Consulta de una categoría y sus productos
-```graphql
-query {
-  categoriaById(id: "1") {
-    id
-    nombre
-    productos {
-      id
-      nombre
-      precio
-    }
-  }
-}
-```
-
-### 2.6.6. Ejemplo de suscripción (en el playground o Apollo Client)
-
-```graphql
-subscription {
-  productoCreado {
-    id
-    nombre
-    precio
-  }
-}
-```
-
-Al ejecutar esta suscripción, cualquier cliente conectado recibirá en tiempo real el producto que se cree en el sistema.
+    **`@BatchMapping` recibe la lista completa y devuelve un `Map`.** Una consulta. Es el equivalente exacto del `JOIN FETCH` de la UT5, y es lo que se corrige en el examen.
 
 ---
 
-## 2.7. Consejos y buenas prácticas
+## 2.4. Probar la API
 
-- Usa tipos `input` para mutaciones: más claro, extensible y tipado.
-- Las relaciones se muestran como campos de otro tipo o listas.
-- Usa el autocompletado y la introspección del playground: ayuda mucho a descubrir el esquema.
-- Valida los datos en los resolvers; GraphQL valida tipos, pero no lógica de negocio.
-- Añade comentarios en el esquema, los clientes los verán en la documentación automática.
-- Si tienes muchas entidades, añade paginación y filtros.
-- Las suscripciones requieren WebFlux y configuración especial, pero son potentes para tiempo real.
-- Recuerda: `[Tipo!]!` -> lista no nula de elementos no nulos; `!` indica campo obligatorio.
+=== "Leer con los anidados"
 
----
-
-## 2.8. Ejercicio propuesto: API GraphQL de Funkos
-
-**Enunciado:**
-
-Crea una API GraphQL para gestionar una colección de Funkos y sus categorías.
-
-### 2.8.1. Requisitos
-
-1. **Entidades**:
-    - Funko: id, nombre, precio, stock, imagen, categoría.
-    - Categoria: id, nombre, lista de funkos.
-2. **Operaciones**:
-    - Queries para obtener todos los funkos, un funko por id, todas las categorías, una categoría por id, los funkos de una categoría.
-    - Mutaciones para crear, actualizar y borrar funkos y categorías.
-    - Suscripciones para notificar cuando se crea un funko.
-3. **Relaciones**:
-    - Cada Funko pertenece a una categoría.
-    - Cada categoría puede tener muchos Funkos.
-4. **Extras** (opcional):
-    - Añadir paginación.
-    - Permitir buscar funkos por nombre o por rango de precio.
-    - Validaciones (por ejemplo: precio > 0, stock >= 0).
-    - Documentar el esquema con comentarios.
-5. **Entrega**:
-    - Implementa el schema en `schema.graphqls`.
-    - Implementa los resolvers en el controlador (puedes asumir que los servicios y repositorios ya existen).
-    - Incluye ejemplos de queries, mutaciones y suscripciones en un archivo markdown de ejemplos.
-    - (Opcional) Añade tests automatizados para los resolvers.
-
----
-
-## 2.9. Diagrama didáctico: Flujo de una consulta GraphQL
-
-```mermaid
-flowchart TD
-  A["Cliente (Frontend)"]-->|"Query"|B["Endpoint /graphql"]
-  B-->C["Resolver GraphQL"]
-  C-->D["Servicio Spring"]
-  D-->E["Repositorio/BD"]
-  E-->|"Datos"|D
-  D-->|"Respuesta"|C
-  C-->|"Respuesta"|B
-  B-->|"JSON"|F["Cliente (Frontend)"]
-```
-
-*Diagrama: Flujo de una consulta GraphQL en Spring Boot.*
-
-## 2.10. Resumen didáctico
-
-- **GraphQL** permite a los clientes pedir exactamente los datos que necesitan, optimizando el tráfico y la experiencia.
-- El endpoint `/graphql` centraliza todas las operaciones (queries, mutaciones, suscripciones).
-- Los resolvers son responsables de transformar las peticiones en llamadas a servicios y repositorios.
-- El uso de suscripciones permite notificaciones en tiempo real.
-- Spring Boot integra GraphQL de forma sencilla y productiva.
-
----
-
-## 2.11. Recursos y enlaces útiles
-
-- [Documentación oficial de GraphQL](https://graphql.org/learn/)
-- [Spring Boot GraphQL Reference](https://docs.spring.io/spring-graphql/docs/current/reference/html/)
-- [Ejemplo de Playground online](https://graphqlbin.com/v2/new)
-- [Ejemplo avanzado de API GraphQL con Spring Boot](https://github.com/spring-projects/spring-graphql-samples)
-
----
-
-## Pruébalo ahora (15 min)
-
-Sobre el proyecto de Funkos, con el esquema y el controlador GraphQL puestos:
-
-1. Abre `http://localhost:8080/graphiql` y pide solo `{ productos { nombre } }`. Mira el SQL en el log.
-2. Pide `{ productos { nombre categoria { nombre } } }`. Cuenta las consultas del log.
-3. Pide un campo que no existe en el esquema. ¿Qué código HTTP devuelve?
-4. Provoca un error en el servicio (un id que no existe) y mira la forma de la respuesta.
-5. Pide `{ productos { categoria { productos { categoria { nombre } } } } }`.
-
-??? success "Solución de las cinco"
-
-    **1.** Una consulta, y **solo con las columnas del esquema si has hecho la proyección**; si devuelves la entidad, Hibernate trae todas las columnas igual. GraphQL optimiza lo que viaja por la red, **no** lo que se pide a la base de datos.
-
-    **2. Aquí está el N+1 de GraphQL**, y es el problema característico de la tecnología: una consulta para los productos y **una por cada producto** para su categoría.
-
-    Se arregla con un **`@BatchMapping`**:
-
-    ```java
-    @BatchMapping(typeName = "Producto")
-    public Map<Producto, Categoria> categoria(List<Producto> productos) {
-        var ids = productos.stream().map(Producto::getCategoriaId).toList();
-        var categorias = categoriasRepository.findAllById(ids).stream()
-                .collect(Collectors.toMap(Categoria::getId, c -> c));
-        return productos.stream().collect(Collectors.toMap(
-                p -> p, p -> categorias.get(p.getCategoriaId())));
+    ```graphql
+    query {
+      productos {
+        id
+        nombre
+        precio
+        categoria { nombre }
+      }
     }
     ```
 
-    De N+1 a **2 consultas**, hagas la pregunta que hagas.
+    **Esa consulta anidada es el argumento de venta de GraphQL**: en REST serían dos peticiones, o un endpoint hecho a medida.
 
-    **3. `200 OK`.** Y esto sorprende siempre: **GraphQL responde 200 casi siempre**, con los errores dentro del cuerpo:
+=== "Pedir menos campos"
 
+    ```graphql
+    query {
+      productos { nombre precio }
+    }
+    ```
+
+    El mismo endpoint, la mitad de JSON. En REST harían falta `?fields=` o un DTO nuevo.
+
+=== "Crear"
+
+    ```graphql
+    mutation {
+      crearProducto(input: {
+        nombre: "Raqueta Pro", precio: 120.5, stock: 10, categoriaId: "1"
+      }) {
+        id
+        nombre
+        categoria { nombre }
+      }
+    }
+    ```
+
+    **La mutación también elige los campos de la respuesta**: eso que va entre llaves al final.
+
+=== "Borrar y escuchar"
+
+    ```graphql
+    mutation { eliminarProducto(id: "1") }
+    ```
+
+    ```graphql
+    subscription {
+      productoCreado { id nombre precio }
+    }
+    ```
+
+    La suscripción se queda abierta y recibe cada producto nuevo. Por debajo **es un WebSocket**: lo mismo del tema 1, con el esquema por delante.
+
+=== "Con `curl`"
+
+    ```bash
+    curl -s localhost:8080/graphql \
+      -H "Content-Type: application/json" \
+      -d '{"query":"{ productos { nombre categoria { nombre } } }"}' | jq
+    ```
+
+    ```json
+    { "data": { "productos": [
+        { "nombre": "Teclado mecánico", "categoria": { "nombre": "INFORMATICA" } }
+    ]}}
+    ```
+
+---
+
+## 2.5. Los errores
+
+```java title="graphql/GraphQLExceptionResolver.java"
+@Component
+public class GraphQLExceptionResolver extends DataFetcherExceptionResolverAdapter {
+
+    @Override
+    protected GraphQLError resolveToSingleError(Throwable ex, DataFetchingEnvironment env) {
+        var tipo = switch (ex) {
+            case ProductoNotFoundException e -> ErrorType.NOT_FOUND;
+            case ProductoConflictException e -> ErrorType.BAD_REQUEST;
+            default -> null;                      // los demás, sin tocar
+        };
+        if (tipo == null) return null;
+
+        return GraphqlErrorBuilder.newError(env)
+                .errorType(tipo)
+                .message(ex.getMessage())
+                .build();
+    }
+}
+```
+
+!!! danger "GraphQL devuelve **200** incluso cuando falla"
     ```json
     {
       "errors": [{
-        "message": "Field 'inventado' in type 'Producto' is undefined",
-        "extensions": { "classification": "ValidationError" }
-      }]
+        "message": "No se ha encontrado el producto con id: 99",
+        "extensions": { "classification": "NOT_FOUND" }
+      }],
+      "data": { "productoById": null }
     }
     ```
 
-    Así que **no puedes monitorizar una API GraphQL por el código de estado**. Es la diferencia práctica más grande con REST.
+    **El código HTTP es 200.** El error va dentro del cuerpo, en `errors`, y `data` puede traer una parte buena y otra a `null`.
 
-    **4.** También un 200, con el error en `errors` y, si lo has configurado, `data: null` o parcialmente rellenado:
+    Consecuencia práctica: un cliente que solo mire `response.status` **no se entera de nada**. Y en los tests, `GraphQlTester` tiene `.errors()` justo por esto.
 
-    ```json
-    { "data": { "productoById": null },
-      "errors": [{ "message": "No existe el producto 99",
-                   "extensions": { "classification": "NOT_FOUND" } }] }
+!!! warning "Sin el resolutor, el mensaje se pierde"
+    Por defecto, cualquier excepción que no reconozca sale como:
+
+    ```
+    "message": "INTERNAL_ERROR for 8f3a1b…"
     ```
 
-    Una respuesta GraphQL puede traer **datos y errores a la vez**: lo que se pudo resolver, resuelto.
-
-    **5.** Si no lo has limitado, la consulta se anida indefinidamente y puedes tumbar el servidor. Se limita en la configuración:
-
-    ```properties
-    spring.graphql.schema.introspection.enabled=false   # en producción
-    ```
-
-    ```java
-    @Bean
-    public GraphQlSourceBuilderCustomizer limites() {
-        return builder -> builder.configureGraphQl(graphQl ->
-                graphQl.instrumentation(List.of(
-                        new MaxQueryDepthInstrumentation(10),
-                        new MaxQueryComplexityInstrumentation(200))));
-    }
-    ```
-
-    **Es el riesgo propio de GraphQL:** en REST, cada endpoint tiene un coste conocido. En GraphQL, **el cliente decide** el coste de la consulta.
+    Ese identificador solo sirve para buscarlo en el log del servidor. **El cliente se queda sin saber qué ha pasado**, y por eso el resolutor es obligatorio.
 
 ---
 
-## Ejercicios (con solución)
+## El flujo completo
 
-### E1 ● — GraphQL frente a REST
-
-Completa la tabla.
-
-??? success "Solución"
-
-    | | REST | GraphQL |
-    |---|---|---|
-    | Endpoints | Uno por recurso | **Uno solo**: `/graphql` |
-    | Qué datos llegan | Los que decide el servidor | **Los que pide el cliente** |
-    | Varios recursos | Varias peticiones | **Una** |
-    | Verbos | GET/POST/PUT/PATCH/DELETE | `query` y `mutation` |
-    | Códigos de estado | 200/201/400/404/409… | **200 casi siempre** |
-    | Caché HTTP | Nativa (`ETag`, `Cache-Control`) | **No, hay que montarla** |
-    | Esquema y tipos | OpenAPI, opcional | **Obligatorio y verificado** |
-    | Subir ficheros | Natural | Incómodo |
-    | Versionado | `/v1`, `/v2` | Añadir campos, marcar `@deprecated` |
-
-    **Las dos filas que deciden en la práctica:** la caché HTTP (que en REST es gratis y en GraphQL hay que construir) y los códigos de estado (que en REST son la mitad del contrato).
-
-    GraphQL gana claramente cuando el cliente es una app móvil con muchas pantallas distintas sobre los mismos datos. REST gana cuando el consumo es homogéneo y la caché importa.
-
-### E2 ● — Los símbolos del esquema
-
-¿Qué significan `String`, `String!`, `[String]`, `[String!]!`?
-
-??? success "Solución"
-
-    | | Significa |
-    |---|---|
-    | `String` | Puede ser `null` |
-    | `String!` | **No** puede ser `null` |
-    | `[String]` | La lista puede ser `null`, y sus elementos también |
-    | `[String]!` | La lista no es `null`; sus elementos sí pueden serlo |
-    | `[String!]!` | **Ni la lista ni los elementos** pueden ser `null` |
-
-    **`[Producto!]!` es lo correcto para un listado:** nunca devuelves `null` en vez de una lista, y nunca metes un `null` dentro de la lista. Una lista vacía es `[]`.
-
-    Y el detalle que importa: si un campo es `!` y tu resolutor devuelve `null`, **GraphQL anula el objeto padre entero** y lo reporta como error. La no-nulabilidad se propaga hacia arriba.
-
-### E3 ●● — `query`, `mutation` y `subscription`
-
-¿Qué hace cada una y con qué se corresponde en REST?
-
-??? success "Solución"
-
-    | | GraphQL | REST |
-    |---|---|---|
-    | Leer | `query` | `GET` |
-    | Escribir | `mutation` | `POST` / `PUT` / `PATCH` / `DELETE` |
-    | Tiempo real | `subscription` | WebSocket o SSE |
-
-    Dos diferencias de comportamiento, no solo de nombre:
-
-    - **Las `query` se ejecutan en paralelo**; las `mutation`, **en serie y en orden**. Si pides dos mutaciones en una petición, la segunda ve el efecto de la primera.
-    - **Todas van por `POST`** a `/graphql`, también las `query`. Por eso la caché HTTP no funciona de serie.
-
-    Y `subscription` es la pieza que une este tema con el 1: por debajo va sobre un WebSocket.
-
-### E4 ●● — El N+1 de GraphQL
-
-```graphql
-{ productos { nombre categoria { nombre } } }
+```mermaid
+flowchart LR
+  A["Cliente"] -->|"query / mutation"| B["/graphql"]
+  B --> C["@QueryMapping<br/>@MutationMapping"]
+  C --> D["@Service<br/>el de la UT5, sin tocar"]
+  D --> E[("BD")]
+  C -.->|"campos anidados"| F["@BatchMapping"]
+  F --> D
+  C -.->|"excepciones"| G["DataFetcherExceptionResolver"]
+  G -.->|"200 + errors"| A
 ```
 
-Con 100 productos, ¿cuántas consultas y cómo se arregla?
+!!! success "Lo que hay que llevarse"
+    - El **esquema** es el contrato: tipos, `input`, y `!` donde no puede haber `null`
+    - **Cuatro anotaciones**: `@QueryMapping`, `@MutationMapping`, `@SubscriptionMapping` y `@BatchMapping`
+    - **`@BatchMapping`, no `@SchemaMapping`**, para los campos anidados de una lista
+    - **Siempre 200**: los errores van en `errors`, y hacen falta el resolutor y `ErrorType`
+    - El servicio **no se toca**: es el de la UT5
 
-??? success "Solución"
+---
 
-    **101.** Una para los productos y una por cada producto para su categoría. Es el problema característico de GraphQL, y es peor que en REST porque **el cliente decide** cuándo ocurre: tú no controlas qué campos piden.
+## Casos especiales
 
-    ```java
-    @BatchMapping(typeName = "Producto")
-    public Map<Producto, Categoria> categoria(List<Producto> productos) {
-        var ids = productos.stream().map(Producto::getCategoriaId).distinct().toList();
-        var porId = categoriasRepository.findAllById(ids).stream()
-                .collect(Collectors.toMap(Categoria::getId, c -> c));
-        return productos.stream().collect(Collectors.toMap(
-                p -> p, p -> porId.get(p.getCategoriaId())));
-    }
-    ```
+### Un `null` en un campo marcado con `!`
 
-    **`@BatchMapping` recibe la lista entera de productos de golpe** y hace una sola consulta con todos los ids. De 101 a **2**.
+Si tu resolutor devuelve `null` en un campo declarado `String!`, GraphQL **no devuelve ese campo a `null`: anula el objeto padre entero** y lo reporta como error.
 
-    Es el mismo problema del [N+1 de la UT5](../ut5/04-proyectos.md), pero aquí la solución no puede ser un `JOIN FETCH` fijo: la consulta depende de lo que pida el cliente, así que hace falta el agrupamiento.
+```graphql
+type Producto { categoria: Categoria! }     # ← el "!"
+```
 
-### E5 ●● — El 200 que es un error
+Un producto cuya categoría se haya borrado hace que **el producto desaparezca de la lista**, no solo su categoría. La no-nulabilidad **se propaga hacia arriba**.
 
-Tu monitorización avisa cuando hay respuestas 4xx y 5xx. Con GraphQL no avisa nunca. ¿Por qué?
+**Qué hacer:** marca con `!` solo lo que de verdad no puede faltar. En la duda, sin `!`: un campo `null` es un problema pequeño; un listado que se anula entero, no.
 
-??? success "Solución"
+### Todo va por `POST`, y eso quita la caché
 
-    Porque **GraphQL devuelve 200 casi siempre**, incluso cuando la consulta es inválida o el servicio ha lanzado una excepción. Los errores van en el cuerpo:
+| | Comportamiento |
+|---|---|
+| Varias `query` en una petición | **En paralelo** |
+| Varias `mutation` en una petición | **En serie y en orden**: la segunda ve el efecto de la primera |
+| Verbo HTTP | **`POST` siempre**, también para leer |
 
-    ```json
-    { "data": null,
-      "errors": [{ "message": "...", "extensions": { "classification": "NOT_FOUND" } }] }
-    ```
+Y la consecuencia de lo último: **la caché HTTP no funciona.** `ETag`, `Cache-Control` y las cachés intermedias se apoyan en que un `GET` con la misma URL devuelve lo mismo, y aquí la URL es siempre `/graphql`.
 
-    Los 4xx solo salen cuando el error es anterior a GraphQL: un JSON mal formado (400) o un fallo de autenticación (401).
+En REST la caché es gratis. En GraphQL hay que montarla dentro de la aplicación —`@Cacheable` en el servicio, como en la UT4— o delante con una caché que entienda consultas.
 
-    **Lo que hay que hacer:** monitorizar **la presencia del campo `errors`** en la respuesta, no el código de estado. Y traducir las excepciones a clasificaciones útiles:
+**Esta fila y la de los códigos de estado son las que deciden en la práctica**: GraphQL gana cuando el cliente es una app con muchas pantallas sobre los mismos datos; REST gana cuando el consumo es homogéneo y la caché importa.
 
-    ```java
-    @Component
-    public class GraphQlExceptionHandler extends DataFetcherExceptionResolverAdapter {
-        @Override
-        protected GraphQLError resolveToSingleError(Throwable ex, DataFetchingEnvironment env) {
-            if (ex instanceof FunkoNotFoundException) {
-                return GraphqlErrorBuilder.newError(env)
-                        .errorType(ErrorType.NOT_FOUND)
-                        .message(ex.getMessage())
-                        .build();
-            }
-            return null;    // que lo trate el por defecto
-        }
-    }
-    ```
+### Monitorizar una API que siempre responde 200
 
-    **Y fíjate en lo que esto demuestra:** las excepciones propias de la [UT4](../ut4/03-repositorios-servicios-dtos.md) funcionan aquí sin tocarlas. Si el servicio lanzara `ResponseStatusException` con `HttpStatus`, no habría nada que traducir, porque en GraphQL un código HTTP no significa nada.
+Un panel que avise de 4xx y 5xx **no avisará nunca** con GraphQL: los errores van en el cuerpo y el estado es 200.
 
-### E6 ●●● — El controlador GraphQL
+**Qué monitorizar:** la presencia del campo `errors` en la respuesta, y las `classification` que traen dentro. Los 4xx solo salen cuando el fallo es **anterior** a GraphQL: un JSON mal formado (400) o la autenticación (401).
 
-Escribe el esquema y el controlador para consultar y crear funkos, reutilizando el servicio de la UT5.
+### El controlador que reutiliza el servicio de la UT5
 
-??? success "Solución"
+```java title="funkos/graphql/FunkosGraphQlController.java"
+@Controller
+public class FunkosGraphQlController {
 
-    ```graphql title="src/main/resources/graphql/schema.graphqls"
-    type Funko {
-        id: ID!
-        nombre: String!
-        precio: Float!
-        cantidad: Int!
-        categoria: Categoria!
+    private final FunkosService servicio;              // ← EL MISMO de REST
+
+    public FunkosGraphQlController(FunkosService servicio) {
+        this.servicio = servicio;
     }
 
-    type Categoria {
-        id: ID!
-        nombre: String!
-        funkos: [Funko!]!
+    @QueryMapping
+    public List<FunkoResponse> funkos(@Argument Optional<String> categoria) {
+        return servicio.buscar(categoria, Optional.empty(), Optional.empty(),
+                               Pageable.unpaged()).getContent();
     }
 
-    input FunkoInput {
-        nombre: String!
-        precio: Float!
-        cantidad: Int!
-        categoria: String!
+    @QueryMapping
+    public FunkoResponse funkoById(@Argument Long id) {
+        return servicio.findById(id);          // lanza FunkoNotFoundException
     }
 
-    type Query {
-        funkos(categoria: String): [Funko!]!
-        funkoById(id: ID!): Funko
+    @MutationMapping
+    public FunkoResponse crearFunko(@Argument @Valid FunkoCreateRequest input) {
+        return servicio.save(input);
     }
 
-    type Mutation {
-        crearFunko(input: FunkoInput!): Funko!
-        borrarFunko(id: ID!): Boolean!
+    @MutationMapping
+    public Boolean borrarFunko(@Argument Long id) {
+        servicio.deleteById(id);
+        return true;
     }
-    ```
+}
+```
 
-    ```java title="funkos/controllers/FunkosGraphQlController.java"
-    @Controller
-    public class FunkosGraphQlController {
+!!! success "Lo importante es lo que NO hay"
+    **Ni una línea de lógica de negocio.** Llama a los mismos métodos de `FunkosService` que el `@RestController`, y las excepciones propias suben igual.
 
-        private final FunkosService servicio;              // ← EL MISMO de REST
-        private final CategoriasRepository categoriasRepository;
+    Cuatro métodos de fontanería más un `@BatchMapping`. **Eso es lo que compraste con las capas en la UT4: el tercer transporte sale casi gratis.**
 
-        public FunkosGraphQlController(FunkosService servicio,
-                                       CategoriasRepository categoriasRepository) {
-            this.servicio = servicio;
-            this.categoriasRepository = categoriasRepository;
-        }
+    Y al revés: si el servicio lanzara `ResponseStatusException` con un `HttpStatus`, aquí no habría nada que traducir, porque **en GraphQL un código HTTP no significa nada**.
 
-        @QueryMapping
-        public List<FunkoResponse> funkos(@Argument Optional<String> categoria) {
-            return servicio.findAll(categoria, Optional.empty(), Optional.empty(),
-                                    Optional.empty(), Pageable.unpaged()).getContent();
-        }
+### Apagar el esquema en producción
 
-        @QueryMapping
-        public FunkoResponse funkoById(@Argument Long id) {
-            return servicio.findById(id);          // lanza FunkoNotFoundException
-        }
+```properties
+spring.graphql.graphiql.enabled=false              # el playground
+spring.graphql.schema.introspection.enabled=false  # descargar el esquema
+```
 
-        @MutationMapping
-        public FunkoResponse crearFunko(@Argument @Valid FunkoCreateRequest input) {
-            return servicio.save(input);
-        }
-
-        @MutationMapping
-        public Boolean borrarFunko(@Argument Long id) {
-            servicio.deleteById(id);
-            return true;
-        }
-
-        /** Resuelve el campo "categoria" de Funko, agrupando para evitar el N+1. */
-        @BatchMapping(typeName = "Funko")
-        public Map<FunkoResponse, CategoriaResponse> categoria(List<FunkoResponse> funkos) {
-            var nombres = funkos.stream().map(FunkoResponse::categoria).distinct().toList();
-            var porNombre = categoriasRepository.findByNombreIn(nombres).stream()
-                    .collect(Collectors.toMap(Categoria::getNombre, mapper::toResponse));
-            return funkos.stream().collect(Collectors.toMap(
-                    f -> f, f -> porNombre.get(f.categoria())));
-        }
-    }
-    ```
-
-    ```properties
-    spring.graphql.graphiql.enabled=true               # /graphiql — solo en dev
-    spring.graphql.schema.printer.enabled=true
-    spring.graphql.schema.introspection.enabled=false  # false en PROD
-    ```
-
-    !!! success "Lo importante de este ejercicio es lo que NO hay"
-        **Ni una línea de lógica de negocio.** El controlador GraphQL llama exactamente a los mismos métodos de `FunkosService` que el `@RestController`, y las excepciones propias suben igual.
-
-        Son **cuatro métodos de fontanería** y un `@BatchMapping`. Eso es lo que compraste con las capas en la UT4: el tercer transporte sale casi gratis.
-
-    !!! danger "`introspection.enabled=false` en producción"
-        La introspección permite a cualquiera **descargar tu esquema completo**: todos los tipos, todos los campos, todas las mutaciones. Es lo que hace funcionar el playground, y es un mapa regalado para quien busque por dónde entrar.
-
-        En desarrollo, activada. En producción, apagada.
+La introspección permite a cualquiera **bajarse tu esquema completo**: todos los tipos, todos los campos, todas las mutaciones. Es lo que hace funcionar el playground, y es un mapa regalado para quien busque por dónde entrar.

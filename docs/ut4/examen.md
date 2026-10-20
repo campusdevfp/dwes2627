@@ -1,6 +1,11 @@
-# Ejercicios prácticos — UT4 (RA5)
+# Examen práctico — UT4 (RA5)
 
-Tres enunciados **del mismo tamaño que el examen**: dos tablas, siete endpoints, seis reglas de negocio y tres tests. Pensados para **resolverse en cuatro horas** con el esqueleto dado.
+!!! danger "Esta página ES el examen"
+    **El examen de la UT4 es uno de estos tres enunciados, con otro dominio.** Mismo formato, mismo tamaño, misma rúbrica: dos tablas, siete endpoints, seis reglas de negocio y tres tests, en **cuatro horas** y con el esqueleto dado.
+
+    Así que esto no es «práctica suelta»: **resuelve los tres y habrás hecho el examen tres veces.** Lo que cambia el día del examen son los nombres de las tablas y las reglas, no lo que hay que escribir.
+
+    Y la [rúbrica](#rubrica-de-calificacion) del final es **la misma** con la que se te va a corregir. Léela **antes** de empezar, no después.
 
 !!! info "Qué se te da y qué escribes tú"
     **Se te da:** `pom.xml`, `application.properties`, `schema.sql`, `data.sql` y la clase de arranque. El proyecto **arranca vacío** y conectado a H2.
@@ -380,7 +385,7 @@ public ReparacionResponse añadirPieza(Long id, PiezaRequest req) {
 
 | | Ficheros que escribes | Líneas aprox. |
 |---|---|:-:|
-| Modelo (2 clases con `builder`) | 2 | 90 |
+| Modelo (2 `record`) | 2 | 20 |
 | DTOs (`Response`, `CreateRequest`, `UpdateRequest`) | 3 | 50 |
 | `RowMapper` (2) | 2 | 40 |
 | Repositorios (interfaz + impl, los dos) | 4 | 120 |

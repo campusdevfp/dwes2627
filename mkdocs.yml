@@ -192,7 +192,7 @@ nav:
       - 3. Repositorios, servicios y DTOs: ut4/03-repositorios-servicios-dtos.md
       - 4. Configuración y variables de entorno: ut4/04-configuracion.md
       - 5. Dos proyectos paso a paso: ut4/05-proyectos.md
-      - Ejercicios prácticos: ut4/ejercicios-practicos.md
+      - Examen práctico: ut4/examen.md
       - Chuleta (PDF): ut4/chuleta.md
     - UT5 · RA6 · Spring Data con JPA y SQL:
       - ut5/index.md
@@ -200,7 +200,7 @@ nav:
       - 2. Resultados avanzados: ut5/02-resultados-avanzados.md
       - 3. Referencia de JPA y validaciones: ut5/03-referencias.md
       - 4. Dos proyectos paso a paso: ut5/04-proyectos.md
-      - Ejercicios prácticos: ut5/ejercicios-practicos.md
+      - Examen práctico: ut5/examen.md
       - Chuleta (PDF): ut5/chuleta.md
     - UT6 · RA7 · Servicios web:
       - ut6/index.md
@@ -210,7 +210,7 @@ nav:
       - 4. Proyecto · WebSockets: ut6/04-proyecto-websockets.md
       - 5. Proyecto · GraphQL: ut6/05-proyecto-graphql.md
       - 6. Proyecto · CORS y OpenAPI: ut6/06-proyecto-openapi.md
-      - Ejercicios prácticos: ut6/ejercicios-practicos.md
+      - Examen práctico: ut6/examen.md
       - Chuleta (PDF): ut6/chuleta.md
 
   - 2.º trimestre · 80 h:

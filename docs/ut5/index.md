@@ -17,7 +17,7 @@
 
 | | |
 |---|---|
-| [**Ejercicios prácticos**](ejercicios-practicos.md) | Tres enunciados del formato del examen, con la rúbrica |
+| [**Examen práctico**](examen.md) | Tres enunciados del formato del examen, con la rúbrica |
 | [**Chuleta**](chuleta.md) | Referencia en una página · **[PDF para el examen](../pdf/chuleta-ut5.pdf)** |
 
 !!! info "El tema 3 es de consulta, no de estudio"
@@ -55,7 +55,7 @@
 | 6 | Tests | 1,0 |
 | 7 | Configuración y persistencia | 1,0 |
 
-Se aprueba con **5,0**. Suman 12 puntos de criterios sobre un máximo de 10, lo que permite compensar un bloque flojo. La rúbrica completa está en [Ejercicios prácticos](ejercicios-practicos.md).
+Se aprueba con **5,0**. Suman 12 puntos de criterios sobre un máximo de 10, lo que permite compensar un bloque flojo. La rúbrica completa está en [Examen práctico](examen.md).
 
 !!! danger "Dos ítems no se pueden corregir leyendo el código"
     **El N+1 (0,8 pts)** se corrige con `show-sql=true`, pidiendo un listado paginado y **contando las líneas `Hibernate:`**:

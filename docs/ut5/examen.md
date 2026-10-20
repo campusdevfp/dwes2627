@@ -1,6 +1,11 @@
-# Ejercicios prácticos — UT5 (RA6)
+# Examen práctico — UT5 (RA6)
 
-Tres enunciados **del mismo tamaño que el examen**: dos o tres entidades relacionadas, ocho endpoints, siete reglas y tres tests. Pensados para **resolverse en cuatro horas** con el esqueleto dado.
+!!! danger "Esta página ES el examen"
+    **El examen de la UT5 es uno de estos tres enunciados, con otro dominio.** Mismo formato, mismo tamaño, misma rúbrica: dos o tres entidades relacionadas, ocho endpoints, siete reglas y tres tests, en **cuatro horas** y con el esqueleto dado.
+
+    Los [proyectos paso a paso](04-proyectos.md) se construyen **en clase, contigo**. Estos enunciados se resuelven **solo y a reloj**: son el ensayo del examen, y la [rúbrica](#rubrica-de-calificacion) del final es **la misma** con la que se corrige.
+
+    **Lee la rúbrica antes de escribir la primera entidad.** Cuatro de los diez puntos están en el `LAZY`, el `JOIN FETCH` y el `@Transactional`, y eso se decide al principio.
 
 !!! info "Qué se te da y qué escribes tú"
     **Se te da:** `pom.xml`, los `application*.properties` de los tres perfiles, `data.sql` y la clase de arranque.

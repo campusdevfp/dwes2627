@@ -1912,157 +1912,95 @@ volumes:
 
 ---
 
-## Pruébalo ahora (15 min)
+## Casos especiales
 
-Sobre el proyecto de la UT4, añadiendo `spring-boot-starter-data-jpa` y H2:
+Los sitios donde esto se rompe, y qué hacer.
 
-1. Convierte `Funko` en `@Entity` y sustituye tu `FunkosRepositoryImpl` por una interfaz que extienda `JpaRepository<Funko, Long>`. ¿Cuántos ficheros has tenido que tocar del servicio y del controlador?
-2. Pon `spring.jpa.show-sql=true` y mira el SQL de un `findAll()` y de un `save()`.
-3. Escribe `List<Funko> findByCategoriaIgnoreCase(String categoria)` en la interfaz, **sin cuerpo**, y úsalo. Mira el SQL que genera.
-4. Pon una relación `@OneToMany` bidireccional entre `Categoria` y `Funko` y devuelve la entidad en el controlador. Lee el error.
-5. Cambia `ddl-auto` a `validate` y arranca.
-
-??? success "Solución de las cinco"
-
-    **1. Cero ficheros del servicio y del controlador.** Solo desaparece `FunkosRepositoryImpl` y la interfaz pasa a extender `JpaRepository`. Eso es lo que compraste con las capas en la UT4.
-
-    ```java
-    public interface FunkosRepository extends JpaRepository<Funko, Long> {
-        List<Funko> findByCategoriaIgnoreCase(String categoria);
-        boolean existsByNombreIgnoreCase(String nombre);
-    }
-    ```
-
-    `findAll`, `findById`, `save`, `deleteById` y `existsById` **ya están** y devuelven lo mismo que tu implementación a mano: `findById` devuelve `Optional`, como en la UT3.
-
-    **2.**
-
-    ```sql
-    Hibernate: select f1_0.id, f1_0.cantidad, f1_0.categoria, ... from funkos f1_0
-    Hibernate: insert into funkos (cantidad,categoria,created_at,imagen,nombre,precio,updated_at) values (?,?,?,?,?,?,?)
-    ```
-
-    Los `?` son el `PreparedStatement` de la UT3: **JPA nunca concatena**, así que la inyección SQL del E22 no es posible por esta vía.
-
-    **3.**
-
-    ```sql
-    select ... from funkos f1_0 where upper(f1_0.categoria)=upper(?)
-    ```
-
-    Spring Data ha leído **el nombre del método** y ha escrito la consulta. No hay implementación en ninguna parte: la genera en el arranque.
-
-    Y si escribes mal el nombre del campo (`findByCategoría`), **falla al arrancar**, no en la primera petición. Eso es bueno.
-
-    **4.** `StackOverflowError` o un JSON infinito: Jackson serializa el funko, que lleva la categoría, que lleva la lista de funkos, que lleva la categoría…
-
-    Es el apartado 1.4.10, y la razón de ser de los DTOs de la UT4: con un `FunkoResponse` que solo lleva `String categoria`, el problema no existe.
-
-    **5.** Si el esquema no coincide exactamente con las entidades, **no arranca**:
-
-    ```
-    Schema-validation: missing table [funkos]
-    ```
-
-    Con una base de datos en memoria vacía, `validate` no puede funcionar: no hay esquema que validar. Es la configuración de producción, donde el esquema lo crea una migración y no Hibernate.
-
----
-
-## Ejercicios (con solución)
-
-### E1 ● — `ddl-auto`
+### `ddl-auto`
 
 ¿Qué hace cada valor y cuál va en cada entorno?
 
-??? success "Solución"
+| Valor | Qué hace | Dónde |
+|---|---|---|
+| `none` | Nada | Producción con migraciones |
+| `validate` | Comprueba que el esquema coincide; si no, **no arranca** | **Producción** |
+| `update` | Añade lo que falta, **nunca borra ni modifica** | En ningún sitio serio |
+| `create` | Borra y crea al arrancar | Tests |
+| `create-drop` | Borra y crea al arrancar, y borra al parar | **Desarrollo** |
 
-    | Valor | Qué hace | Dónde |
-    |---|---|---|
-    | `none` | Nada | Producción con migraciones |
-    | `validate` | Comprueba que el esquema coincide; si no, **no arranca** | **Producción** |
-    | `update` | Añade lo que falta, **nunca borra ni modifica** | En ningún sitio serio |
-    | `create` | Borra y crea al arrancar | Tests |
-    | `create-drop` | Borra y crea al arrancar, y borra al parar | **Desarrollo** |
+**`create-drop` en producción borra la base de datos entera cada vez que se reinicia la aplicación.**
 
-    **`create-drop` en producción borra la base de datos entera cada vez que se reinicia la aplicación.**
+Y `update` es el que engaña: parece prudente, pero adivina los cambios, no sabe renombrar una columna (crea una nueva y deja la vieja con los datos dentro) y no tiene vuelta atrás. Para producción, migraciones con Flyway o Liquibase.
 
-    Y `update` es el que engaña: parece prudente, pero adivina los cambios, no sabe renombrar una columna (crea una nueva y deja la vieja con los datos dentro) y no tiene vuelta atrás. Para producción, migraciones con Flyway o Liquibase.
-
-### E2 ● — `GenerationType`
+### `GenerationType`
 
 ¿Qué diferencia hay entre `IDENTITY`, `SEQUENCE`, `AUTO` y un `UUID`?
 
-??? success "Solución"
+| | Cómo genera el id | Nota |
+|---|---|---|
+| `IDENTITY` | Columna autoincremental de la BD | **Impide el *batch insert***: Hibernate necesita el id tras cada `INSERT` |
+| `SEQUENCE` | Secuencia de la BD, con caché | Más rápido en inserciones masivas. No existe en MySQL |
+| `AUTO` | Que elija Hibernate | Suele acabar en `SEQUENCE` con una tabla `hibernate_sequence` |
+| `UUID` | 128 bits generados en Java | El id se conoce **antes** de insertar |
 
-    | | Cómo genera el id | Nota |
-    |---|---|---|
-    | `IDENTITY` | Columna autoincremental de la BD | **Impide el *batch insert***: Hibernate necesita el id tras cada `INSERT` |
-    | `SEQUENCE` | Secuencia de la BD, con caché | Más rápido en inserciones masivas. No existe en MySQL |
-    | `AUTO` | Que elija Hibernate | Suele acabar en `SEQUENCE` con una tabla `hibernate_sequence` |
-    | `UUID` | 128 bits generados en Java | El id se conoce **antes** de insertar |
+El `UUID` tiene una ventaja concreta que se ve en una API: puedes devolver el id sin haber ido a la base de datos, y no expone cuántos registros tienes (con `IDENTITY`, el id 847 te dice que hay 847 clientes). A cambio, ocupa más y los índices son menos eficientes.
 
-    El `UUID` tiene una ventaja concreta que se ve en una API: puedes devolver el id sin haber ido a la base de datos, y no expone cuántos registros tienes (con `IDENTITY`, el id 847 te dice que hay 847 clientes). A cambio, ocupa más y los índices son menos eficientes.
+En el módulo: `IDENTITY` con H2 y MySQL.
 
-    En el módulo: `IDENTITY` con H2 y MySQL.
-
-### E3 ●● — Las tres relaciones
+### Las tres relaciones
 
 Modela: (a) un usuario tiene un perfil · (b) una categoría tiene muchos funkos · (c) un alumno cursa varios módulos y un módulo tiene varios alumnos
 
-??? success "Solución"
+```java
+// (a) 1:1
+@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+@JoinColumn(name = "perfil_id")
+private Perfil perfil;
 
-    ```java
-    // (a) 1:1
-    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "perfil_id")
-    private Perfil perfil;
+// (b) 1:N  ← el lado dueño es el MUCHOS
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "categoria_id")
+private Categoria categoria;
 
-    // (b) 1:N  ← el lado dueño es el MUCHOS
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "categoria_id")
-    private Categoria categoria;
+// y en Categoria, el lado inverso
+@OneToMany(mappedBy = "categoria")
+private List<Funko> funkos = new ArrayList<>();
 
-    // y en Categoria, el lado inverso
-    @OneToMany(mappedBy = "categoria")
-    private List<Funko> funkos = new ArrayList<>();
+// (c) N:M
+@ManyToMany
+@JoinTable(name = "alumno_modulo",
+           joinColumns = @JoinColumn(name = "alumno_id"),
+           inverseJoinColumns = @JoinColumn(name = "modulo_id"))
+private Set<Modulo> modulos = new HashSet<>();
+```
 
-    // (c) N:M
-    @ManyToMany
-    @JoinTable(name = "alumno_modulo",
-               joinColumns = @JoinColumn(name = "alumno_id"),
-               inverseJoinColumns = @JoinColumn(name = "modulo_id"))
-    private Set<Modulo> modulos = new HashSet<>();
-    ```
+**Lo que se falla:** en la (b), la clave ajena está en la tabla `funkos`, así que **el lado dueño es `@ManyToOne`** y el `@OneToMany` lleva `mappedBy`. Sin ese `mappedBy`, Hibernate crea una tabla intermedia que no quieres.
 
-    **Lo que se falla:** en la (b), la clave ajena está en la tabla `funkos`, así que **el lado dueño es `@ManyToOne`** y el `@OneToMany` lleva `mappedBy`. Sin ese `mappedBy`, Hibernate crea una tabla intermedia que no quieres.
+Y en la (c), `Set` y no `List`: con `List` en un `@ManyToMany`, borrar un elemento hace que Hibernate borre **todas** las filas de la tabla intermedia y las vuelva a insertar.
 
-    Y en la (c), `Set` y no `List`: con `List` en un `@ManyToMany`, borrar un elemento hace que Hibernate borre **todas** las filas de la tabla intermedia y las vuelva a insertar.
-
-### E4 ●● — `LAZY` o `EAGER`
+### `LAZY` o `EAGER`
 
 ¿Cuál es el valor por defecto de cada relación y cuál deberías poner?
 
-??? success "Solución"
+| Relación | Por defecto | Lo correcto |
+|---|---|---|
+| `@OneToOne` | **`EAGER`** | `LAZY` |
+| `@ManyToOne` | **`EAGER`** | `LAZY` |
+| `@OneToMany` | `LAZY` | `LAZY` |
+| `@ManyToMany` | `LAZY` | `LAZY` |
 
-    | Relación | Por defecto | Lo correcto |
-    |---|---|---|
-    | `@OneToOne` | **`EAGER`** | `LAZY` |
-    | `@ManyToOne` | **`EAGER`** | `LAZY` |
-    | `@OneToMany` | `LAZY` | `LAZY` |
-    | `@ManyToMany` | `LAZY` | `LAZY` |
+**Los dos por defecto están mal**, y es el problema de rendimiento número uno de JPA: cargar un funko trae su categoría, que trae su proveedor, que trae su país… Un `findAll()` de 100 funkos puede acabar en 300 consultas.
 
-    **Los dos por defecto están mal**, y es el problema de rendimiento número uno de JPA: cargar un funko trae su categoría, que trae su proveedor, que trae su país… Un `findAll()` de 100 funkos puede acabar en 300 consultas.
+Siempre `fetch = FetchType.LAZY`, y cuando sí necesitas la relación, la pides explícitamente:
 
-    Siempre `fetch = FetchType.LAZY`, y cuando sí necesitas la relación, la pides explícitamente:
+```java
+@Query("SELECT f FROM Funko f JOIN FETCH f.categoria")
+List<Funko> findAllConCategoria();
+```
 
-    ```java
-    @Query("SELECT f FROM Funko f JOIN FETCH f.categoria")
-    List<Funko> findAllConCategoria();
-    ```
+Eso es **un** `JOIN` en vez de N+1 consultas.
 
-    Eso es **un** `JOIN` en vez de N+1 consultas.
-
-### E5 ●● — `LazyInitializationException`
+### `LazyInitializationException`
 
 ```java
 @GetMapping("/{id}")
@@ -2073,126 +2011,115 @@ public Funko uno(@PathVariable Long id) {
 
 Con `categoria` en `LAZY`, ¿qué pasa?
 
-??? success "Solución"
+```
+org.hibernate.LazyInitializationException: could not initialize proxy
+- no Session
+```
 
-    ```
-    org.hibernate.LazyInitializationException: could not initialize proxy
-    - no Session
-    ```
+La transacción se cierra al salir del repositorio. Cuando Jackson intenta serializar `categoria`, el *proxy* perezoso ya no tiene sesión con la que ir a buscarla.
 
-    La transacción se cierra al salir del repositorio. Cuando Jackson intenta serializar `categoria`, el *proxy* perezoso ya no tiene sesión con la que ir a buscarla.
+**La solución no es poner `EAGER`** (eso es el E4), ni abrir la sesión en la vista (`spring.jpa.open-in-view=true`, que viene activado y es mala idea). La solución es **el DTO**:
 
-    **La solución no es poner `EAGER`** (eso es el E4), ni abrir la sesión en la vista (`spring.jpa.open-in-view=true`, que viene activado y es mala idea). La solución es **el DTO**:
+```java
+@GetMapping("/{id}")
+public ResponseEntity<FunkoResponse> uno(@PathVariable Long id) {
+    return ResponseEntity.ok(servicio.findById(id));   // devuelve DTO
+}
+```
 
-    ```java
-    @GetMapping("/{id}")
-    public ResponseEntity<FunkoResponse> uno(@PathVariable Long id) {
-        return ResponseEntity.ok(servicio.findById(id));   // devuelve DTO
-    }
-    ```
+El mapeador lee lo que necesita **dentro** de la transacción y devuelve datos planos. Por eso la UT4 insistía tanto en no devolver la entidad: aquí es donde se cobra.
 
-    El mapeador lee lo que necesita **dentro** de la transacción y devuelve datos planos. Por eso la UT4 insistía tanto en no devolver la entidad: aquí es donde se cobra.
-
-### E6 ●● — La recursión infinita
+### La recursión infinita
 
 `Funko` tiene `@ManyToOne Categoria` y `Categoria` tiene `@OneToMany List<Funko>`. Devuelves la entidad. Tres formas de arreglarlo.
 
-??? success "Solución"
+1. **DTOs** (la buena): `FunkoResponse` lleva `String categoria`, no el objeto. El bucle no existe.
+2. **`@JsonManagedReference` / `@JsonBackReference`**: marca un lado como «no serializar la vuelta». Funciona, pero ensucia la entidad con anotaciones de la capa web.
+3. **`@JsonIgnore`** en el lado inverso. Lo mismo, y más tosco: ese campo desaparece para **todas** las respuestas, aunque alguna lo necesite.
 
-    1. **DTOs** (la buena): `FunkoResponse` lleva `String categoria`, no el objeto. El bucle no existe.
-    2. **`@JsonManagedReference` / `@JsonBackReference`**: marca un lado como «no serializar la vuelta». Funciona, pero ensucia la entidad con anotaciones de la capa web.
-    3. **`@JsonIgnore`** en el lado inverso. Lo mismo, y más tosco: ese campo desaparece para **todas** las respuestas, aunque alguna lo necesite.
+La (1) es la única que no mezcla capas. Las otras dos ponen decisiones de presentación dentro del modelo de datos, que es justo lo que la UT4 separó.
 
-    La (1) es la única que no mezcla capas. Las otras dos ponen decisiones de presentación dentro del modelo de datos, que es justo lo que la UT4 separó.
-
-### E7 ●● — Consultas por nombre de método
+### Consultas por nombre de método
 
 Escribe la firma para: (a) funkos de una categoría ordenados por precio descendente · (b) funkos con precio entre dos valores · (c) funkos cuyo nombre contenga un texto, sin distinguir mayúsculas · (d) contar los de una categoría
 
-??? success "Solución"
+```java
+List<Funko> findByCategoriaOrderByPrecioDesc(String categoria);
+List<Funko> findByPrecioBetween(Double min, Double max);
+List<Funko> findByNombreContainingIgnoreCase(String texto);
+long countByCategoria(String categoria);
+```
 
-    ```java
-    List<Funko> findByCategoriaOrderByPrecioDesc(String categoria);
-    List<Funko> findByPrecioBetween(Double min, Double max);
-    List<Funko> findByNombreContainingIgnoreCase(String texto);
-    long countByCategoria(String categoria);
-    ```
+El vocabulario que cubre el 90 %:
 
-    El vocabulario que cubre el 90 %:
+| Palabra | SQL |
+|---|---|
+| `findBy` / `countBy` / `existsBy` / `deleteBy` | `SELECT` / `COUNT` / `EXISTS` / `DELETE` |
+| `And` `Or` | `AND` `OR` |
+| `Between` `LessThan` `GreaterThanEqual` | comparaciones |
+| `Like` `Containing` `StartingWith` | `LIKE` |
+| `IgnoreCase` | `UPPER(...)` |
+| `IsNull` `IsNotNull` `True` `False` | |
+| `OrderBy...Asc/Desc` | `ORDER BY` |
+| `Top3` `First5` | `LIMIT` |
 
-    | Palabra | SQL |
-    |---|---|
-    | `findBy` / `countBy` / `existsBy` / `deleteBy` | `SELECT` / `COUNT` / `EXISTS` / `DELETE` |
-    | `And` `Or` | `AND` `OR` |
-    | `Between` `LessThan` `GreaterThanEqual` | comparaciones |
-    | `Like` `Containing` `StartingWith` | `LIKE` |
-    | `IgnoreCase` | `UPPER(...)` |
-    | `IsNull` `IsNotNull` `True` `False` | |
-    | `OrderBy...Asc/Desc` | `ORDER BY` |
-    | `Top3` `First5` | `LIMIT` |
+**Y la ventaja grande:** si escribes mal el nombre de un campo, **la aplicación no arranca**. El error aparece en el arranque, no en producción.
 
-    **Y la ventaja grande:** si escribes mal el nombre de un campo, **la aplicación no arranca**. El error aparece en el arranque, no en producción.
-
-### E8 ●●● — `@Query` con JPQL y con SQL nativo
+### `@Query` con JPQL y con SQL nativo
 
 Escribe la misma consulta —funkos de una categoría con stock— de las dos formas y di cuándo usar cada una.
 
-??? success "Solución"
+```java
+// JPQL: habla de ENTIDADES y campos Java
+@Query("SELECT f FROM Funko f WHERE f.categoria = :cat AND f.cantidad > 0")
+List<Funko> conStock(@Param("cat") String categoria);
 
-    ```java
-    // JPQL: habla de ENTIDADES y campos Java
-    @Query("SELECT f FROM Funko f WHERE f.categoria = :cat AND f.cantidad > 0")
-    List<Funko> conStock(@Param("cat") String categoria);
+// SQL nativo: habla de TABLAS y columnas
+@Query(value = "SELECT * FROM funkos WHERE categoria = :cat AND cantidad > 0",
+       nativeQuery = true)
+List<Funko> conStockNativo(@Param("cat") String categoria);
+```
 
-    // SQL nativo: habla de TABLAS y columnas
-    @Query(value = "SELECT * FROM funkos WHERE categoria = :cat AND cantidad > 0",
-           nativeQuery = true)
-    List<Funko> conStockNativo(@Param("cat") String categoria);
-    ```
+| | JPQL | SQL nativo |
+|---|---|---|
+| Habla de | Entidades (`Funko`, `f.cantidad`) | Tablas (`funkos`, `cantidad`) |
+| Portable entre BD | **Sí** | No |
+| Se valida al arrancar | **Sí** | No: falla al ejecutar |
+| Funciones propias de la BD | No | Sí |
 
-    | | JPQL | SQL nativo |
-    |---|---|---|
-    | Habla de | Entidades (`Funko`, `f.cantidad`) | Tablas (`funkos`, `cantidad`) |
-    | Portable entre BD | **Sí** | No |
-    | Se valida al arrancar | **Sí** | No: falla al ejecutar |
-    | Funciones propias de la BD | No | Sí |
+**JPQL por defecto.** Nativo solo cuando necesitas algo que JPQL no expresa: una función específica del motor, una ventana (`OVER`), un `UPSERT`.
 
-    **JPQL por defecto.** Nativo solo cuando necesitas algo que JPQL no expresa: una función específica del motor, una ventana (`OVER`), un `UPSERT`.
+Y los `:nombre` son parámetros preparados en los dos casos: **nunca** concatenes la entrada del usuario en un `@Query`, ni en el nativo. Es el E22 de la UT3 otra vez.
 
-    Y los `:nombre` son parámetros preparados en los dos casos: **nunca** concatenes la entrada del usuario en un `@Query`, ni en el nativo. Es el E22 de la UT3 otra vez.
-
-### E9 ●●● — `@DataJpaTest`
+### `@DataJpaTest`
 
 Escribe un test del repositorio que compruebe `findByCategoriaIgnoreCase`.
 
-??? success "Solución"
+```java
+@DataJpaTest
+@ActiveProfiles("test")
+class FunkosRepositoryTest {
 
-    ```java
-    @DataJpaTest
-    @ActiveProfiles("test")
-    class FunkosRepositoryTest {
+    @Autowired FunkosRepository repositorio;
+    @Autowired TestEntityManager entityManager;
 
-        @Autowired FunkosRepository repositorio;
-        @Autowired TestEntityManager entityManager;
+    @Test
+    void findByCategoriaIgnoreCaseEncuentraEnMinusculas() {
+        entityManager.persistAndFlush(
+                new Funko("Goku", new BigDecimal("20.00"), 1, "ANIME"));
 
-        @Test
-        void findByCategoriaIgnoreCaseEncuentraEnMinusculas() {
-            entityManager.persistAndFlush(
-                    Funko.builder().nombre("Goku").categoria("ANIME")
-                         .precio(20.0).cantidad(1).build());
+        var resultado = repositorio.findByCategoriaIgnoreCase("anime");
 
-            var resultado = repositorio.findByCategoriaIgnoreCase("anime");
-
-            assertThat(resultado).hasSize(1);
-            assertThat(resultado.get(0).getNombre()).isEqualTo("Goku");
-        }
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).getNombre()).isEqualTo("Goku");
     }
-    ```
+}
+```
 
-    **`@DataJpaTest` hace tres cosas** que conviene saber:
+**`@DataJpaTest` hace tres cosas** que conviene saber:
 
-    1. Levanta **solo** la capa JPA: ni controladores ni servicios. Tarda menos de un segundo.
-    2. Usa la base de datos **en memoria** configurada en el perfil de test.
-    3. Cada test va en **una transacción que se deshace al acabar**, así que no hace falta limpiar nada.
+1. Levanta **solo** la capa JPA: ni controladores ni servicios. Tarda menos de un segundo.
+2. Usa la base de datos **en memoria** configurada en el perfil de test.
+3. Cada test va en **una transacción que se deshace al acabar**, así que no hace falta limpiar nada.
 
-    El `persistAndFlush` es importante: sin el `flush`, el `INSERT` se queda en la caché de primer nivel de Hibernate y la consulta del repositorio no lo ve.
+El `persistAndFlush` es importante: sin el `flush`, el `INSERT` se queda en la caché de primer nivel de Hibernate y la consulta del repositorio no lo ve.

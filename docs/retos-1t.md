@@ -113,7 +113,7 @@ Además de los micro-retos, cada unidad tiene **un reto de dos sesiones** que se
     **Se entrega:** el proyecto y **tres preguntas de test** escritas por vosotros sobre los errores que cometisteis.
 
 !!! info "Y desde la UT4 ya cambia"
-    UT4, UT5 y UT6 trabajan con **proyectos paso a paso** que se construyen en clase y **ejercicios prácticos** del formato exacto del examen, con su rúbrica de calificación: [UT4](ut4/ejercicios-practicos.md) · [UT5](ut5/ejercicios-practicos.md) · [UT6](ut6/ejercicios-practicos.md). Es el escalón entre esto y el proyecto de enero.
+    UT4, UT5 y UT6 trabajan con **proyectos paso a paso** que se construyen en clase y la **página de examen práctico** de cada unidad: enunciados del formato exacto del examen con su rúbrica: [UT4](ut4/examen.md) · [UT5](ut5/examen.md) · [UT6](ut6/examen.md). Es el escalón entre esto y el proyecto de enero.
 
 ---
 

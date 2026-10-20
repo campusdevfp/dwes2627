@@ -1,6 +1,9 @@
-# Ejercicios prácticos — UT6 (RA7)
+# Examen práctico — UT6 (RA7)
 
-Seis enunciados **del mismo tamaño que el examen**: tres de **WebSockets** y tres de **GraphQL**, y **todos** incluyen su parte de **documentación OpenAPI**.
+!!! danger "Esta página ES el examen"
+    **El examen de la UT6 es uno de estos seis enunciados, con otro dominio.** Tres de **WebSockets** y tres de **GraphQL**, y **todos** llevan su parte de **documentación OpenAPI**, porque el examen también la lleva.
+
+    No sabes cuál de los dos transportes te va a caer, así que hay que **haber hecho al menos uno de cada bloque**. La [rúbrica](#rubrica-de-calificacion) del final es la misma con la que se corrige.
 
 !!! success "Así es el examen"
     **Cae un WebSocket o un GraphQL, más la documentación de la API.** Nunca los dos transportes a la vez: no cabe en cuatro horas y no haría falta para demostrar el RA.
