@@ -18,16 +18,16 @@ La lista **completa** de anotaciones, con sus valores por defecto y sus trampas,
 </dependency>
 <dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId>
   <scope>runtime</scope></dependency>
-<dependency><groupId>com.mysql</groupId><artifactId>mysql-connector-j</artifactId>
+<dependency><groupId>org.postgresql</groupId><artifactId>postgresql</artifactId>
   <scope>runtime</scope></dependency>
 ```
 
-=== "dev · H2"
+=== "dev · H2 en fichero"
 
     ```properties
-    spring.datasource.url=jdbc:h2:mem:funkos;DB_CLOSE_DELAY=-1
+    spring.datasource.url=jdbc:h2:file:./datos/funkos;AUTO_SERVER=TRUE
     spring.datasource.username=sa
-    spring.jpa.hibernate.ddl-auto=create-drop
+    spring.jpa.hibernate.ddl-auto=update
     spring.jpa.show-sql=true
     spring.jpa.properties.hibernate.format_sql=true
     spring.h2.console.enabled=true          # /h2-console
@@ -36,7 +36,26 @@ La lista **completa** de anotaciones, con sus valores por defecto y sus trampas,
     spring.jpa.open-in-view=false
     ```
 
-=== "prod · MySQL"
+=== "postgres"
+
+    ```properties
+    spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:5432/funkos}
+    spring.datasource.username=${DB_USER:dwes}
+    spring.datasource.password=${DB_PASSWORD:dwes2026}
+    spring.jpa.hibernate.ddl-auto=update
+    spring.jpa.show-sql=true
+    spring.jpa.defer-datasource-initialization=true
+    spring.sql.init.data-locations=classpath:data-postgres.sql
+    spring.h2.console.enabled=false
+    spring.jpa.open-in-view=false
+    ```
+
+    ```bash
+    docker compose up -d
+    SPRING_PROFILES_ACTIVE=postgres ./mvnw spring-boot:run
+    ```
+
+=== "prod"
 
     ```properties
     spring.datasource.url=${DB_URL}
@@ -51,13 +70,21 @@ La lista **completa** de anotaciones, con sus valores por defecto y sus trampas,
 
 | `ddl-auto` | Qué hace | Dónde |
 |---|---|---|
-| `create-drop` | Borra y crea al arrancar y al parar | **dev / test** |
-| `create` | Borra y crea al arrancar | test |
-| `update` | Añade lo que falta, nunca borra | en ningún sitio serio |
+| `update` | Añade lo que falta, **nunca borra** | **dev** |
+| `create-drop` | Borra y crea al arrancar y al parar | **test** |
+| `create` | Borra y crea al arrancar | — |
 | `validate` | Comprueba; si no cuadra, **no arranca** | **prod** |
 | `none` | Nada | prod con migraciones |
 
-:material-alert: `create-drop` en producción **borra la base de datos** en cada reinicio.
+:material-alert: `create-drop` en producción **borra la base de datos** en cada reinicio. Y en `dev`, con H2 en fichero, también.
+:material-alert: `update` **no sabe renombrar ni borrar**: crea la columna nueva y deja la vieja con los datos dentro.
+
+| Sentencia del `data.sql` | H2 | PostgreSQL |
+|---|---|---|
+| Insertar sin duplicar | `MERGE … KEY(id)` | `INSERT … ON CONFLICT (id) DO NOTHING` |
+| Recolocar el contador | `ALTER TABLE … ALTER COLUMN id RESTART WITH 7` | `SELECT setval('tabla_id_seq', …)` |
+
+:material-alert: Sin el `setval`, el primer `POST` contra PostgreSQL falla con `duplicate key value`.
 :material-alert: `open-in-view` viene **activado**: apágalo o esconderás los N+1.
 :material-alert: Sin `defer-datasource-initialization=true`, `data.sql` falla con `Table not found`.
 
@@ -103,7 +130,7 @@ public class Funko {
 
 | `@Id` | Cómo genera | Cuándo |
 |---|---|---|
-| `IDENTITY` | Autoincremental de la BD | **MySQL, H2** |
+| `IDENTITY` | Autoincremental de la BD | **H2, PostgreSQL** |
 | `SEQUENCE` | Secuencia con caché | PostgreSQL, inserciones masivas |
 | `AUTO` | Que elija Hibernate | — |
 | `UUID` | En Java, antes de insertar | Ids no enumerables |
@@ -120,33 +147,19 @@ private Categoria categoria;
 @OneToMany(mappedBy = "categoria", fetch = FetchType.LAZY)
 private List<Funko> funkos = new ArrayList<>();
 
-// 1:1
-@OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-@JoinColumn(name = "perfil_id", unique = true)
-private Perfil perfil;
-
-// N:M  (solo si la relación NO tiene datos propios)
-@ManyToMany(fetch = FetchType.LAZY)
-@JoinTable(name = "alumno_modulo",
-           joinColumns        = @JoinColumn(name = "alumno_id"),
-           inverseJoinColumns = @JoinColumn(name = "modulo_id"))
-private Set<Modulo> modulos = new HashSet<>();
-
-// Objeto de valor: NO crea tabla
-@Embedded private Direccion direccion;      // + @Embeddable en Direccion
 ```
+
+**En la unidad y en el examen solo se usan estas dos.** `@OneToOne`, `@ManyToMany` y `@Embedded` están en el tema 3 de referencia.
 
 | | `fetch` por defecto | Lo correcto |
 |---|---|---|
-| `@OneToOne` | **`EAGER`** | `LAZY` |
-| `@ManyToOne` | **`EAGER`** | `LAZY` |
+| `@ManyToOne` | **`EAGER`** | **`LAZY`** |
 | `@OneToMany` | `LAZY` | `LAZY` |
-| `@ManyToMany` | `LAZY` | `LAZY` |
 
-:material-alert: **Los dos `EAGER` por defecto son el problema de rendimiento nº 1 de JPA.** Siempre `LAZY`.
+:material-alert: **El `EAGER` por defecto del `@ManyToOne` es el problema de rendimiento nº 1 de JPA.** Siempre `LAZY`.
 :material-alert: `@OneToMany` sin `mappedBy` → Hibernate crea una tabla intermedia fantasma.
 :material-alert: `cascade = ALL` en un `@OneToMany` hace que borrar el padre **borre los hijos**. Casi nunca es lo que quieres: suele ser un 409.
-:material-alert: En cuanto la relación N:M tiene un **dato propio** (nota, cantidad, fecha), deja de ser `@ManyToMany` y pasa a ser una **entidad intermedia**.
+:material-alert: Una relación N:M **con datos propios** (nota, cantidad, fecha) no es un `@ManyToMany`: son **dos 1:N con una entidad en medio**.
 
 | `cascade` | Propaga |
 |---|---|
@@ -368,20 +381,29 @@ services:
     env_file: .env
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      DB_URL: jdbc:mysql://db:3306/funkos      # ← "db", NO localhost
+      DB_URL: jdbc:postgresql://db:5432/funkos   # ← "db", NO localhost
     depends_on:
-      db: { condition: service_healthy }       # ← sin esto, falla al arrancar
+      db: { condition: service_healthy }         # ← sin esto, falla al arrancar
   db:
-    image: mysql:8.4
+    image: postgres:17-alpine
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: funkos
-    volumes: [dbdata:/var/lib/mysql]
+      POSTGRES_DB: funkos
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports: ["5432:5432"]
+    volumes: [dbdata:/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD","mysqladmin","ping","-h","localhost"]
+      test: ["CMD-SHELL","pg_isready -U ${DB_USER} -d funkos"]
       interval: 5s
       retries: 10
 volumes: { dbdata: }
+```
+
+```bash
+docker compose up -d                  # levantar
+docker compose ps                     # healthy
+docker compose exec db psql -U dwes -d funkos -c '\dt'
+docker compose down -v                # el -v BORRA los datos
 ```
 
 ---
@@ -391,7 +413,7 @@ volumes: { dbdata: }
 | | Síntoma | Causa |
 |:-:|---|---|
 | 1 | `LazyInitializationException` | Se devuelve la entidad en vez del DTO |
-| 2 | 100 funkos → 101 consultas | `@ManyToOne` en `EAGER`, o falta `JOIN FETCH` |
+| 2 | 100 funkos → 101 consultas | Falta el `@EntityGraph` (o el `JOIN FETCH`) |
 | 3 | `StackOverflowError` al serializar | Relación bidireccional devuelta tal cual |
 | 4 | Tabla intermedia que no pediste | `@OneToMany` sin `mappedBy` |
 | 5 | Borrar un género borra sus películas | `cascade = CascadeType.ALL` |
@@ -399,4 +421,6 @@ volumes: { dbdata: }
 | 7 | `Table "FUNKOS" not found` al arrancar | Falta `defer-datasource-initialization=true` |
 | 8 | `TransactionRequiredException` | `@Modifying` sin `@Transactional` |
 | 9 | La transacción se confirma tras un fallo | Excepción comprobada, o capturada dentro |
-| 10 | Base de datos vacía tras reiniciar | `ddl-auto=create-drop` en `prod` |
+| 10 | Base de datos vacía tras reiniciar | `ddl-auto=create-drop` en `dev` o `prod` |
+| 11 | `duplicate key value` en el primer POST con PostgreSQL | Falta el `setval` de la secuencia |
+| 12 | `?sort=inventado` → 500 | `Pageable` sin lista blanca de campos |

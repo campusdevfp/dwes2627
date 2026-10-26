@@ -1,369 +1,474 @@
 # Examen práctico — UT5 (RA6)
 
 !!! danger "Esta página ES el examen"
-    **El examen de la UT5 es uno de estos tres enunciados, con otro dominio.** Mismo formato, mismo tamaño, misma rúbrica: dos o tres entidades relacionadas, ocho endpoints, siete reglas y tres tests, en **cuatro horas** y con el esqueleto dado.
+    **El examen de la UT5 es uno de estos tres enunciados, con otro dominio.** Mismo formato, mismo tamaño, misma rúbrica, y **el mismo material dado**.
 
-    Los [proyectos paso a paso](04-proyectos.md) se construyen **en clase, contigo**. Estos enunciados se resuelven **solo y a reloj**: son el ensayo del examen, y la [rúbrica](#rubrica-de-calificacion) del final es **la misma** con la que se corrige.
+    Es **el examen de la UT4 más JPA**: las mismas capas, los mismos códigos de estado y las mismas reglas de negocio, pero con el modelo como entidad y el repositorio generado por Spring Data.
 
-    **Lee la rúbrica antes de escribir la primera entidad.** Cuatro de los diez puntos están en el `LAZY`, el `JOIN FETCH` y el `@Transactional`, y eso se decide al principio.
+    La [rúbrica](#rubrica-de-calificacion) del final es la misma con la que se corrige. Léela **antes** de escribir la primera entidad: cuatro de los diez puntos se deciden en el `LAZY`, el `@EntityGraph` y el `@Transactional`.
 
-!!! info "Qué se te da y qué escribes tú"
-    **Se te da:** `pom.xml`, los `application*.properties` de los tres perfiles, `data.sql` y la clase de arranque.
+## Qué se te da y qué escribes tú
 
-    **Escribes tú:** las entidades, los DTOs, los repositorios, el mapeador, las excepciones, el servicio, el controlador, el manejador global y tres tests.
+!!! success "Se te da, ya hecho"
+    | | Qué |
+    |---|---|
+    | **El proyecto** | `pom.xml` con `data-jpa`, H2 y PostgreSQL, los `application*.properties` de los perfiles y la clase de arranque |
+    | **Los datos** | `data.sql` (y su versión para PostgreSQL) |
+    | **Los mapeadores** | **Completos**: `toResponse`, `toModel`, `reemplazar` y `parchear` |
 
-    **No hay `schema.sql`:** el esquema lo genera Hibernate desde tus entidades, así que **el modelo de datos lo diseñas tú** y es lo primero que se corrige.
+    **No hay `schema.sql`:** el esquema lo genera Hibernate desde tus entidades.
+
+!!! danger "Escribes tú"
+    | | Qué | Por qué está aquí |
+    |---|---|---|
+    | **1** | **La estructura de carpetas por capas** | Es la base del RA5, y se da por sabida |
+    | **2** | **Las entidades**, con sus anotaciones y su relación | **Es lo que se evalúa del RA6** |
+    | **3** | **Los DTOs** con sus validaciones | La entrada y la salida |
+    | **4** | **Los repositorios JPA**: derivadas, una `@Query` y el `@EntityGraph` | El corazón de la unidad |
+    | **5** | **Las excepciones** con `@ResponseStatus` | Los códigos de error |
+    | **6** | **El servicio** con las reglas y los `@Transactional` | La mitad de la nota |
+    | **7** | **El controlador** con `Pageable` saneado y el `@RestControllerAdvice` | La presentación |
+    | **8** | **Dos tests**: uno `@DataJpaTest` y uno de servicio | |
+
+!!! warning "Los mapeadores que recibes SON la especificación de las entidades"
+    Vienen escritos, **pero no compilan todavía**, porque usan clases que tú no has creado.
+
+    ```java
+    public LibroResponse toResponse(Libro l) {
+        return new LibroResponse(l.getId(), l.getIsbn(), …, l.getSocio().getNombre(), …);
+    }                            │                           │
+    //                           │                           └── hay una RELACIÓN a Socio
+    //                           └── la entidad tiene getId(), getIsbn()…
+    ```
+
+    **De ahí sale:** cómo se llama cada entidad, qué `getters` y `setters` necesita, **qué relaciones hay y en qué dirección**, y qué DTOs hacen falta con qué componentes.
+
+    Léelos enteros y dibuja el modelo **antes** de escribir una línea. Quince minutos ahí te ahorran una hora de peleas con el compilador.
 
 | | Enunciado | Entidades | La dificultad |
 |:-:|---|:-:|---|
-| **EP1** | [Biblioteca](#ep1-biblioteca) | 2 | Relación 1:N, borrado lógico y una regla sobre contadores de las dos tablas |
-| **EP2** | [Instituto](#ep2-instituto) | 3 | **N:M con datos propios** y un N+1 de manual |
-| **EP3** | [Tienda](#ep3-tienda) | 2 | **Transacción** y **`@Version`**: el único que trabaja la concurrencia |
+| **E1** | [Biblioteca](#e1-biblioteca) | 2 | Relación 1:N, borrado lógico y paginación |
+| **E2** | [Instituto](#e2-instituto) | 2 | **El N+1 medido** y el `@EntityGraph` |
+| **E3** | [Tienda](#e3-tienda) | 2 | **Transacción de dos entidades** y `@Version` |
 
-!!! success "Reparto del tiempo, para que quepa"
+!!! success "Reparto de las cuatro horas"
     | | Qué | Tiempo |
     |:-:|---|:-:|
-    | 1 | Las entidades y sus relaciones | 45 min |
-    | 2 | DTOs y mapeador | 30 min |
-    | 3 | Repositorios: derivadas, una `@Query` y la `Specification` | 50 min |
-    | 4 | Servicio con las siete reglas y `@Transactional` | 70 min |
-    | 5 | Controlador con `Pageable` saneado y el advice | 30 min |
-    | 6 | Tres tests | 25 min |
-    | 7 | Probar con `curl` y **contar las consultas** del log | 20 min |
-    | | | **4 h** |
+    | 1 | **Leer los mapeadores** y dibujar el modelo | 15 min |
+    | 2 | **Las entidades y su relación** | 45 min |
+    | 3 | DTOs con validaciones y excepciones | 30 min |
+    | 4 | **Los repositorios**: derivadas, `@Query` y `@EntityGraph` | 35 min |
+    | 5 | **El servicio con las cinco reglas** y los `@Transactional` | 70 min |
+    | 6 | Controlador con `Pageable` saneado y el advice | 30 min |
+    | 7 | Dos tests | 25 min |
+    | 8 | Probar con `curl` y **contar las consultas** del log | 20 min |
+    | | | **4 h 10** |
 
-    **Si vas justo, el orden de lo que se abandona** es: las estadísticas, el tercer test y el PATCH. Nunca el `LAZY`, el `JOIN FETCH` ni el `@Transactional`: ahí están 4 de los 10 puntos.
-
----
-
-## EP1 · Biblioteca
-
-**Contexto.** Una biblioteca presta libros a sus socios. Cada libro pertenece a un género y hay que saber en todo momento cuántos ejemplares están fuera y cuántos préstamos activos tiene cada socio.
-
-### Modelo que hay que crear
-
-```mermaid
-erDiagram
-    GENERO ||--o{ LIBRO : "1:N"
-```
-
-| Entidad | Campos |
-|---|---|
-| **`Genero`** | `id`, `nombre` (único, máx. 40), `prestamosTotales` (contador), `deleted` |
-| **`Libro`** | `id`, `isbn` (único, 13 dígitos), `titulo`, `autor`, `genero` (**N:1**), `ejemplares`, `prestados`, `publicacion` (fecha), `deleted`, `createdAt`, `updatedAt` |
-
-### Endpoints
-
-| # | Método y ruta | Éxito |
-|:-:|---|:-:|
-| 1 | `GET /api/v1/libros` · **paginado**. Filtros opcionales y combinables `titulo` (contiene), `autor` (contiene), `genero` (nombre exacto), `disponibles=true` | 200 |
-| 2 | `GET /api/v1/libros/{id}` · con **el nombre del género**, no su id | 200 |
-| 3 | `POST /api/v1/libros` | 201 + `Location` |
-| 4 | `PATCH /api/v1/libros/{id}` | 200 |
-| 5 | `DELETE /api/v1/libros/{id}` · **borrado lógico** | 204 |
-| 6 | `POST /api/v1/libros/{id}/prestamo` · **toca las dos entidades** | 200 |
-| 7 | `POST /api/v1/libros/{id}/devolucion` | 200 |
-| 8 | `GET /api/v1/generos` · `POST` · `DELETE` | — |
-
-### Reglas de negocio
-
-| # | Regla | Respuesta |
-|:-:|---|:-:|
-| R1 | `isbn` **13 dígitos** y único; `titulo` y `autor` no vacíos | **400** / **409** |
-| R2 | `ejemplares` ≥ 1; `publicacion` **no futura** | **400** |
-| R3 | El `genero` indicado **debe existir y no estar borrado** | **400** |
-| R4 | **No se puede prestar** si `prestados == ejemplares` | **409** |
-| R5 | Prestar incrementa `libro.prestados` **y** `genero.prestamosTotales`, de forma **atómica** | — |
-| R6 | **No se puede devolver** si `prestados == 0` | **409** |
-| R7 | **No se puede borrar** un libro con `prestados > 0`, ni un género con libros | **409** |
-
-### Lo que se evalúa aquí
-
-```java title="Libro.java — las cuatro decisiones del modelo"
-@Entity
-@Table(name = "libros", indexes = {
-        @Index(name = "idx_libro_titulo",  columnList = "titulo"),
-        @Index(name = "idx_libro_deleted", columnList = "is_deleted")
-})
-public class Libro {
-
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false, unique = true, length = 13)
-    private String isbn;
-
-    /** Lado DUEÑO: la clave ajena vive en esta tabla. LAZY, siempre. */
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "genero_id", nullable = false,
-                foreignKey = @ForeignKey(name = "fk_libro_genero"))
-    private Genero genero;
-
-    @Column(name = "is_deleted", nullable = false)
-    private boolean deleted = false;
-
-    protected Libro() {}          // JPA lo necesita
-}
-```
-
-```java title="Genero.java — el lado inverso"
-/** mappedBy: el dueño es el campo "genero" de Libro. SIN cascade. */
-@OneToMany(mappedBy = "genero", fetch = FetchType.LAZY)
-private List<Libro> libros = new ArrayList<>();
-```
-
-```java title="LibrosRepository.java — sin N+1"
-@Query(value      = """
-                    SELECT l FROM Libro l JOIN FETCH l.genero
-                     WHERE l.deleted = false
-                    """,
-       countQuery = "SELECT count(l) FROM Libro l WHERE l.deleted = false")
-Page<Libro> findAllConGenero(Pageable pageable);
-
-@Modifying(clearAutomatically = true, flushAutomatically = true)
-@Query("""
-       UPDATE Libro l SET l.prestados = l.prestados + 1, l.updatedAt = CURRENT_TIMESTAMP
-        WHERE l.id = :id AND l.prestados < l.ejemplares
-       """)
-int reservarEjemplar(@Param("id") Long id);
-```
-
-!!! danger "Los tres ítems que más puntúan en este enunciado"
-    **1. `fetch = FetchType.LAZY` en el `@ManyToOne`.** El valor por defecto es `EAGER`, y entonces listar 20 libros trae 20 géneros aunque nadie los mire.
-
-    **2. El `JOIN FETCH` con su `countQuery`.** Listar 20 libros con su género tiene que ser **2 consultas**. Si son 21, falta.
-
-    **3. El `@Transactional` de la R5.** Si el incremento del género falla después de reservar el ejemplar, el `rollback` tiene que devolver `libro.prestados`. **Se comprueba apuntando los dos contadores, provocando el fallo y volviendo a mirar.**
+    **Si vas justo, el orden de lo que se abandona** es: el segundo test, el PATCH y el filtro combinado. Nunca el `LAZY`, el `@EntityGraph` ni el `@Transactional`.
 
 ---
 
-## EP2 · Instituto
+## E1 · Biblioteca
 
-**Contexto.** Un centro gestiona las matrículas de sus alumnos en los módulos de un ciclo. Un alumno se matricula de varios módulos por curso académico, y **cada matrícula tiene su nota y su fecha**.
+Los libros de una biblioteca y los socios que los tienen prestados.
 
-### Modelo que hay que crear
+### El mapeador, que se te da
 
-```mermaid
-erDiagram
-    ALUMNO ||--o{ MATRICULA : "1:N"
-    MODULO ||--o{ MATRICULA : "1:N"
-```
+```java title="libros/mappers/LibroMapper.java"
+@Component
+public class LibroMapper {
 
-| Entidad | Campos |
-|---|---|
-| **`Alumno`** | `id`, `dni` (único, `\d{8}[A-Z]`), `nombre`, `email` (único), `deleted` |
-| **`Modulo`** | `id`, `codigo` (único, 4 dígitos), `nombre`, `curso` (1 o 2), `horas`, `deleted` |
-| **`Matricula`** | `id`, `alumno` (**N:1**), `modulo` (**N:1**), `curso` (`2025-2026`), `nota` (`BigDecimal(4,2)`, puede ser nula), `fechaMatricula`, **única por (alumno, modulo, curso)** |
+    /** Se lee getSocio() DENTRO de la transacción: la relación es LAZY. */
+    public LibroResponse toResponse(Libro l) {
+        return new LibroResponse(
+                l.getId(), l.getIsbn(), l.getTitulo(), l.getAutor(),
+                l.getEjemplares(),
+                l.getSocio() == null ? null : l.getSocio().getNombre(),
+                l.getCreatedAt(), l.getUpdatedAt());
+    }
 
-!!! danger "La decisión de diseño que se corrige primero, y es eliminatoria"
-    La relación «alumno cursa módulos» **no es un `@ManyToMany`**, porque la matrícula tiene **datos propios**: la nota y la fecha.
+    public List<LibroResponse> toResponse(List<Libro> libros) {
+        return libros.stream().map(this::toResponse).toList();
+    }
 
-    | | `@ManyToMany` | Entidad intermedia |
-    |---|---|---|
-    | La tabla de unión | La crea Hibernate | **La defines tú** |
-    | Datos propios | **Imposible** | Sí: nota, fecha |
-    | Consultar la relación | No se puede | Es un repositorio más |
-    | Paginar las matrículas de un alumno | No se puede | Sí |
+    /** POST: entidad nueva, sin socio. */
+    public Libro toModel(LibroCreateRequest r) {
+        return new Libro(r.isbn().trim(), r.titulo().trim(),
+                         r.autor().trim(), r.ejemplares());
+    }
 
-    **Resolverlo con un `@ManyToMany` es 0 puntos en todo el bloque 1**, porque hace imposible el resto del enunciado.
+    /** PUT: reemplaza los campos editables. */
+    public void reemplazar(Libro libro, LibroCreateRequest r) {
+        libro.setTitulo(r.titulo().trim());
+        libro.setAutor(r.autor().trim());
+        libro.setEjemplares(r.ejemplares());
+    }
 
-### Endpoints
-
-| # | Método y ruta | Éxito |
-|:-:|---|:-:|
-| 1 | `GET /api/v1/alumnos` · **paginado**. Filtros opcionales `nombre`, `dni` | 200 |
-| 2 | `GET /api/v1/alumnos/{id}` · CRUD completo con **borrado lógico** | — |
-| 3 | `GET /api/v1/alumnos/{id}/matriculas?curso=` · con **el nombre del módulo y la nota** | 200 |
-| 4 | `GET /api/v1/alumnos/{id}/expediente?curso=` · resumen (abajo) | 200 |
-| 5 | `GET /api/v1/modulos` · paginado, filtro `curso`. `POST` y `PATCH` | — |
-| 6 | `POST /api/v1/matriculas` | 201 + `Location` |
-| 7 | `PATCH /api/v1/matriculas/{id}/nota` | 200 |
-| 8 | `DELETE /api/v1/matriculas/{id}` | 204 |
-
-### Reglas de negocio
-
-| # | Regla | Respuesta |
-|:-:|---|:-:|
-| R1 | `dni` con formato `\d{8}[A-Z]`; `email` válido; `codigo` de módulo `\d{4}` | **400** |
-| R2 | `curso` con formato `AAAA-AAAA` **y años consecutivos** | **400** |
-| R3 | `nota` entre **0 y 10**, con dos decimales; `horas` entre 30 y 400 | **400** |
-| R4 | Alumno y módulo **deben existir y no estar borrados** | **400** |
-| R5 | **Un alumno no se matricula dos veces del mismo módulo en el mismo curso** | **409** |
-| R6 | **No se puede desmatricular** una matrícula que ya tiene nota | **409** |
-| R7 | **No se puede borrar** un alumno ni un módulo con matrículas | **409** |
-
-### `GET /api/v1/alumnos/{id}/expediente?curso=2025-2026`
-
-```json
-{
-  "alumno": { "dni": "12345678Z", "nombre": "Ana Pérez" },
-  "curso": "2025-2026",
-  "matriculados": 8,
-  "calificados": 6,
-  "aprobados": 5,
-  "suspensos": 1,
-  "media": 6.83,
-  "porModulo": [
-    { "codigo": "0613", "nombre": "DWES",           "nota": 8.00 },
-    { "codigo": "0612", "nombre": "Bases de Datos", "nota": 7.50 },
-    { "codigo": "0614", "nombre": "Despliegue",     "nota": null }
-  ]
+    /** PATCH: solo lo que llega distinto de null. El ISBN no se cambia. */
+    public void parchear(Libro libro, LibroUpdateRequest r) {
+        if (r.titulo()     != null) libro.setTitulo(r.titulo().trim());
+        if (r.autor()      != null) libro.setAutor(r.autor().trim());
+        if (r.ejemplares() != null) libro.setEjemplares(r.ejemplares());
+    }
 }
 ```
 
-!!! danger "El expediente trae un N+1 dentro, y es el ítem que decide"
-    Lo obvio **está mal**:
+```java title="socios/mappers/SocioMapper.java"
+@Component
+public class SocioMapper {
 
-    ```java
-    // ❌ Un SELECT por cada matrícula para traer su módulo
-    var matriculas = matriculasRepository.findByAlumnoIdAndCurso(id, curso);
-    matriculas.forEach(m -> m.getModulo().getNombre());    // ← N+1 aquí
-    ```
+    public SocioResponse toResponse(Socio s) {
+        return new SocioResponse(s.getId(), s.getNombre(), s.getEmail(), s.getPrestamos());
+    }
 
-    Con 8 matrículas son 9 consultas; con 40, 41. Lo correcto trae el módulo **en la misma consulta**:
+    public Socio toModel(SocioCreateRequest r) {
+        return new Socio(r.nombre().trim(), r.email().trim().toLowerCase());
+    }
+}
+```
 
-    ```java
+!!! success "Lo que el mapeador te está diciendo"
+    | Lo que ves | Lo que tienes que escribir |
+    |---|---|
+    | `new Libro(isbn, titulo, autor, ejemplares)` | Constructor con **esos 4**, más el `protected` sin argumentos |
+    | `l.getSocio()` puede ser `null` | `@ManyToOne(optional = true)` hacia `Socio` |
+    | `libro.setTitulo/setAutor/setEjemplares` | Esos tres `setters`, y **ningún otro** |
+    | No hay `setIsbn` ni `setId` | El ISBN **no se cambia** después de crear |
+    | `new Socio(nombre, email)` | Constructor con 2, y `getPrestamos()` arranca en 0 |
+    | `LibroResponse(… , socioNombre, …)` | **8 componentes**, y el del socio es el **nombre**, no el id |
+
+### Los endpoints que escribes
+
+```
+GET    /api/v1/libros            ?page= &size= &sort= &autor= &disponibles=true
+GET    /api/v1/libros/{id}
+POST   /api/v1/libros
+PATCH  /api/v1/libros/{id}
+DELETE /api/v1/libros/{id}        ← borrado lógico
+POST   /api/v1/libros/{id}/prestar   { "socioId": 3 }
+
+GET    /api/v1/socios             CRUD
+GET    /api/v1/socios/{id}/libros
+```
+
+### Las reglas de negocio
+
+| | Regla | Si falla |
+|:-:|---|:-:|
+| **R1** | `isbn` de 13 caracteres; `titulo` y `autor` no vacíos; `ejemplares` ≥ 0; `email` con formato válido | **400** |
+| **R2** | El `isbn` y el `email` **no se repiten** | **409** |
+| **R3** | Prestar **descuenta un ejemplar** y **suma 1** al contador del socio, o ninguna de las dos | **409** si no quedan ejemplares |
+| **R4** | Un socio no puede tener **más de 3 libros** prestados | **409** |
+| **R5** | Un libro con socio **no se puede borrar**; el borrado es **lógico** | **409** |
+| **R6** | Un `id` que no existe, en cualquier endpoint | **404** |
+
+### Lo que se evalúa del RA6, concretamente
+
+```java title="Lo que se busca en tu repositorio"
+public interface LibrosRepository
+        extends JpaRepository<Libro, Long>, JpaSpecificationExecutor<Libro> {
+
+    Optional<Libro> findByIdAndDeletedFalse(Long id);
+    boolean         existsByIsbnAndDeletedFalse(String isbn);
+    long            countBySocioIdAndDeletedFalse(Long socioId);
+
+    /** Para el listado: el socio en la MISMA consulta. */
+    @EntityGraph(attributePaths = {"socio"})
+    Page<Libro> findByDeletedFalse(Pageable pageable);
+
+    /** Descuenta un ejemplar solo si queda alguno. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
-           SELECT m FROM Matricula m
-             JOIN FETCH m.modulo
-            WHERE m.alumno.id = :alumnoId AND m.curso = :curso
+           UPDATE Libro l SET l.ejemplares = l.ejemplares - 1
+            WHERE l.id = :id AND l.ejemplares >= 1
            """)
-    List<Matricula> findConModulo(@Param("alumnoId") Long alumnoId,
-                                  @Param("curso") String curso);
-    ```
+    int descontarEjemplar(@Param("id") Long id);
+}
+```
 
-    **Se corrige con `show-sql=true` y contando las líneas `Hibernate:`.** Dos consultas, no nueve.
+!!! danger "Los tres sitios donde se gana o se pierde este enunciado"
+    **1 · El `@EntityGraph`.** El mapeador lee `getSocio()`, así que listar 20 libros sin él son **21 consultas**. Se corrige contando las líneas `Hibernate:` del log.
 
-!!! warning "La media con `BigDecimal` y `RoundingMode`"
-    ```java
-    var media = calificadas.isEmpty() ? null : calificadas.stream()
-            .map(Matricula::getNota)
-            .reduce(BigDecimal.ZERO, BigDecimal::add)
-            .divide(BigDecimal.valueOf(calificadas.size()), 2, RoundingMode.HALF_UP);
-    ```
+    **2 · El `@Transactional` de la R3.** Descontar el ejemplar y subir el contador del socio van juntos. Se corrige provocando el fallo y comparando **las dos tablas** antes y después.
 
-    Son notas: **el redondeo tiene consecuencias**. Y `calificadas.size()` puede ser **0**: hay que devolver `null`, no un `ArithmeticException`.
+    **3 · El `== 0`.** El `UPDATE … WHERE ejemplares >= 1` es lo que impide el ejemplar negativo. Si en su lugar lees, compruebas y escribes, el ítem es 0 aunque funcione en tu portátil.
 
 ---
 
-## EP3 · Tienda
+## E2 · Instituto
 
-**Contexto.** Una tienda gestiona su catálogo y sus ventas. Cada producto pertenece a una categoría, y vender descuenta stock. Varios administradores pueden editar el mismo producto a la vez.
+Alumnos matriculados en un curso, con sus notas.
 
-### Modelo que hay que crear
+### El mapeador, que se te da
 
-```mermaid
-erDiagram
-    CATEGORIA ||--o{ PRODUCTO : "1:N"
+```java title="alumnos/mappers/AlumnoMapper.java"
+@Component
+public class AlumnoMapper {
+
+    public AlumnoResponse toResponse(Alumno a) {
+        return new AlumnoResponse(
+                a.getId(), a.getExpediente(), a.getNombre(), a.getApellidos(),
+                a.getNota(), a.getCurso().getCodigo(), a.getCurso().getNombre(),
+                a.isActivo());
+    }
+
+    public List<AlumnoResponse> toResponse(List<Alumno> alumnos) {
+        return alumnos.stream().map(this::toResponse).toList();
+    }
+
+    /** El curso lo resuelve el servicio a partir del código que manda el cliente. */
+    public Alumno toModel(AlumnoCreateRequest r, Curso curso) {
+        return new Alumno(r.expediente().trim().toUpperCase(),
+                          r.nombre().trim(), r.apellidos().trim(), curso);
+    }
+
+    public void parchear(Alumno alumno, AlumnoUpdateRequest r, Curso curso) {
+        if (r.nombre()    != null) alumno.setNombre(r.nombre().trim());
+        if (r.apellidos() != null) alumno.setApellidos(r.apellidos().trim());
+        if (curso         != null) alumno.setCurso(curso);
+    }
+}
 ```
 
-| Entidad | Campos |
-|---|---|
-| **`Categoria`** | `id`, `nombre` (único, máx. 40), `unidadesVendidas` (contador), `deleted` |
-| **`Producto`** | `id`, `sku` (único), `nombre`, `categoria` (**N:1**), `precio` (`BigDecimal(10,2)`), `stock`, `deleted`, **`@Version version`**, `createdAt`, `updatedAt` |
+```java title="cursos/mappers/CursoMapper.java"
+@Component
+public class CursoMapper {
 
-### Endpoints
+    public CursoResponse toResponse(Curso c) {
+        return new CursoResponse(c.getId(), c.getCodigo(), c.getNombre(),
+                                 c.getPlazas(), c.getMatriculados());
+    }
 
-| # | Método y ruta | Éxito |
+    public Curso toModel(CursoCreateRequest r) {
+        return new Curso(r.codigo().trim().toUpperCase(), r.nombre().trim(), r.plazas());
+    }
+}
+```
+
+!!! warning "Fíjate en lo que NO está en el mapeador"
+    - **No hay `setNota`.** La nota se pone por su propio endpoint, no por el PATCH.
+    - **No hay `setExpediente`.** El expediente es inmutable.
+    - **No hay `setMatriculados`.** Ese contador lo lleva el servicio con una `@Query`, no un `setter`.
+    - **`toModel` recibe el `Curso` ya resuelto.** El servicio lo busca por el **código** que manda el cliente: `"2DAW"`, no un `id`.
+
+    Y `toResponse` toca `getCurso()` **dos veces**: el `@EntityGraph` aquí no es opcional.
+
+### Los endpoints que escribes
+
+```
+GET    /api/v1/alumnos          ?page= &size= &sort= &curso= &apellidos= &notaMin=
+GET    /api/v1/alumnos/{id}
+POST   /api/v1/alumnos
+PATCH  /api/v1/alumnos/{id}
+DELETE /api/v1/alumnos/{id}      ← borrado lógico (activo = false)
+PUT    /api/v1/alumnos/{id}/nota   { "nota": 7.5 }
+
+GET    /api/v1/cursos            CRUD
+GET    /api/v1/cursos/{id}/alumnos
+GET    /api/v1/cursos/estadisticas    ← nota media por curso, con una @Query
+```
+
+### Las reglas de negocio
+
+| | Regla | Si falla |
 |:-:|---|:-:|
-| 1 | `GET /api/v1/productos` · **paginado**. Filtros opcionales y combinables `nombre` (contiene), `categoria` (nombre), `precioMax`, `conStock=true` | 200 |
-| 2 | `GET /api/v1/productos/{id}` · con **el nombre de la categoría** | 200 |
-| 3 | `POST /api/v1/productos` | 201 + `Location` |
-| 4 | `PATCH /api/v1/productos/{id}` | 200 |
-| 5 | `DELETE /api/v1/productos/{id}` · **borrado lógico** | 204 |
-| 6 | `POST /api/v1/productos/{id}/venta` · `{"cantidad":2}` · **toca las dos entidades** | 200 |
-| 7 | `POST /api/v1/productos/{id}/reposicion` · `{"cantidad":10}` | 200 |
-| 8 | `GET /api/v1/categorias` · `POST` · `DELETE` · `GET /{id}/productos` paginado | — |
+| **R1** | `expediente` de 4 a 12 caracteres; `nombre` y `apellidos` no vacíos; `plazas` > 0; `nota` entre 0 y 10 | **400** |
+| **R2** | El `expediente` y el `codigo` del curso **no se repiten** | **409** |
+| **R3** | Matricular **suma 1** al contador del curso; **no se puede pasar de `plazas`** | **409** |
+| **R4** | Un curso con alumnos activos **no se puede borrar** | **409** |
+| **R5** | Las estadísticas las calcula **la base de datos**, no un `stream` en Java | — |
+| **R6** | Un `id` o un código de curso que no existe | **404** |
 
-### Reglas de negocio
+### La R5 y el N+1
 
-| # | Regla | Respuesta |
+```java title="La consulta de las estadísticas"
+@Query("""
+       SELECT a.curso.codigo, count(a), avg(a.nota)
+         FROM Alumno a
+        WHERE a.activo = true AND a.nota IS NOT NULL
+        GROUP BY a.curso.codigo
+        ORDER BY a.curso.codigo
+       """)
+List<Object[]> estadisticasPorCurso();
+```
+
+!!! danger "Lo que NO vale"
+    ```java
+    var alumnos = repositorio.findAll();                       // ❌ trae la tabla entera
+    var media = alumnos.stream()
+            .collect(groupingBy(a -> a.getCurso().getCodigo(),
+                     averagingDouble(Alumno::getNota)));       // ❌ y un N+1 de propina
+    ```
+
+    Con 5.000 alumnos eso son **5.001 consultas** y toda la tabla en memoria, para devolver cuatro números.
+
+    **`count` y `avg` los hace la base de datos.** Es el ítem que separa a quien ha entendido el ORM de quien lo usa como un cargador de listas.
+
+!!! success "Cómo se corrige el N+1, exactamente"
+    ```bash
+    curl -s "localhost:8080/api/v1/alumnos?size=20" > /dev/null
+    ```
+
+    Y se cuentan las líneas `Hibernate:` del log:
+
+    | | Nota del ítem |
+    |---|---|
+    | **2** (la página y el `count`) | Total |
+    | **3–4** | Parcial |
+    | **21** | **Cero** |
+
+---
+
+## E3 · Tienda
+
+Productos de una categoría, con ventas y concurrencia.
+
+### El mapeador, que se te da
+
+```java title="productos/mappers/ProductoMapper.java"
+@Component
+public class ProductoMapper {
+
+    public ProductoResponse toResponse(Producto p) {
+        return new ProductoResponse(
+                p.getId(), p.getSku(), p.getNombre(), p.getPrecio(), p.getStock(),
+                p.getCategoria().getNombre(), p.getCreatedAt(), p.getUpdatedAt());
+    }
+
+    public List<ProductoResponse> toResponse(List<Producto> productos) {
+        return productos.stream().map(this::toResponse).toList();
+    }
+
+    public Producto toModel(ProductoCreateRequest r, Categoria categoria) {
+        return new Producto(r.sku().trim().toUpperCase(), r.nombre().trim(),
+                            r.precio(), r.stock(), categoria);
+    }
+
+    public void reemplazar(Producto p, ProductoCreateRequest r, Categoria categoria) {
+        p.setNombre(r.nombre().trim());
+        p.setPrecio(r.precio());
+        p.setStock(r.stock());
+        p.setCategoria(categoria);
+    }
+
+    public void parchear(Producto p, ProductoUpdateRequest r, Categoria categoria) {
+        if (r.nombre()  != null) p.setNombre(r.nombre().trim());
+        if (r.precio()  != null) p.setPrecio(r.precio());
+        if (r.stock()   != null) p.setStock(r.stock());
+        if (categoria   != null) p.setCategoria(categoria);
+    }
+}
+```
+
+```java title="categorias/mappers/CategoriaMapper.java"
+@Component
+public class CategoriaMapper {
+
+    public CategoriaResponse toResponse(Categoria c) {
+        return new CategoriaResponse(c.getId(), c.getNombre(), c.getUnidadesVendidas());
+    }
+
+    public Categoria toModel(CategoriaCreateRequest r) {
+        return new Categoria(r.nombre().trim().toUpperCase());
+    }
+}
+```
+
+### Los endpoints que escribes
+
+```
+GET    /api/v1/productos         ?page= &size= &sort= &categoria= &nombre= &conStock=
+GET    /api/v1/productos/{id}
+POST   /api/v1/productos
+PUT    /api/v1/productos/{id}
+PATCH  /api/v1/productos/{id}
+DELETE /api/v1/productos/{id}     ← borrado lógico
+POST   /api/v1/productos/{id}/venta   { "cantidad": 3 }
+
+GET    /api/v1/categorias         CRUD
+```
+
+### Las reglas de negocio
+
+| | Regla | Si falla |
 |:-:|---|:-:|
-| R1 | `sku` único, formato `SKU-\d{3}`; `nombre` no vacío | **400** / **409** |
-| R2 | `precio` ≥ 0 con dos decimales; `stock` ≥ 0; `cantidad` de venta ≥ 1 | **400** |
-| R3 | La `categoria` indicada **debe existir y no estar borrada** | **400** |
-| R4 | **No se puede vender** más de lo que hay en stock | **409** |
-| R5 | Vender descuenta `producto.stock` **y** suma a `categoria.unidadesVendidas`, de forma **atómica** | — |
-| R6 | **No se puede borrar** un producto con stock > 0, ni una categoría con productos | **409** |
-| R7 | **Dos administradores editando el mismo producto a la vez**: el segundo recibe un **409** con un mensaje claro | **409** |
+| **R1** | `sku` de 4 a 20 caracteres; `nombre` no vacío; `precio` > 0; `stock` ≥ 0; `cantidad` ≥ 1 | **400** |
+| **R2** | El `sku` **no se repite** | **409** |
+| **R3** | Vender **descuenta stock** y **suma al contador de la categoría**, o ninguna de las dos | **409** si no hay stock |
+| **R4** | El stock **nunca** puede quedar negativo, ni con peticiones simultáneas | **409** |
+| **R5** | Dos ediciones simultáneas del mismo producto: la segunda **falla** | **409** |
+| **R6** | Un `id` o una categoría que no existe | **404** / **400** |
 
-### La regla 7: bloqueo optimista
+### La R5: el bloqueo optimista
 
-```java
+```java title="En la entidad"
 @Version
 private Long version;
 ```
 
-Hibernate añade `AND version = ?` a cada `UPDATE` e incrementa el número. Si otro ya lo había cambiado, el `UPDATE` afecta a **0 filas** y lanza `ObjectOptimisticLockingFailureException`.
-
-```java
+```java title="Y el handler que lo traduce"
 @ResponseStatus(HttpStatus.CONFLICT)
 @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
 public Map<String, Object> conflictoDeEdicion(ObjectOptimisticLockingFailureException ex) {
     return Map.of("status", 409,
-            "error", "Otro usuario ha modificado este producto. "
-                   + "Recarga los datos y vuelve a intentarlo.");
+            "error", "Otro usuario ha modificado este producto. Recarga y reinténtalo.");
 }
 ```
 
-```java title="El test que lo demuestra"
-@Test
-void dosEdicionesSimultaneasProvocanConflicto() {
-    var a = repositorio.findById(1L).orElseThrow();   // version = 0
-    var b = repositorio.findById(1L).orElseThrow();   // version = 0
+!!! success "Cómo se comprueba"
+    ```bash
+    curl -s -X PATCH localhost:8080/api/v1/productos/1 \
+      -H "Content-Type: application/json" -d '{"nombre":"A"}' &
+    curl -s -X PATCH localhost:8080/api/v1/productos/1 \
+      -H "Content-Type: application/json" -d '{"nombre":"B"}' &
+    wait
+    ```
 
-    a.setNombre("Teclado nuevo");
-    repositorio.saveAndFlush(a);                      // version → 1
+    **Uno de los dos devuelve 409.** Sin `@Version`, los dos devuelven 200 y uno de los cambios **se pierde en silencio**: eso es un *lost update*.
 
-    b.setNombre("Teclado viejo");
-    assertThrows(ObjectOptimisticLockingFailureException.class,
-            () -> repositorio.saveAndFlush(b));       // version 0 ≠ 1
-}
-```
+!!! danger "Y la R4, con el bucle de 20 peticiones"
+    ```bash
+    # 20 ventas de 1 unidad sobre un producto con 10 de stock
+    for i in $(seq 1 20); do
+      curl -s -o /dev/null -w "%{http_code} " -X POST \
+        localhost:8080/api/v1/productos/1/venta \
+        -H "Content-Type: application/json" -d '{"cantidad":1}' &
+    done; wait; echo
+    ```
 
-!!! danger "Sin `@Version`, el último en guardar pisa al primero y nadie se entera"
-    Se llama *lost update*, y es el bug silencioso clásico de un panel de administración con dos personas trabajando. **Este es el único enunciado de la unidad que lo trabaja.**
+    **Diez 200, diez 409, y el stock en 0.** Si sale negativo, has leído-comprobado-escrito en vez de usar `UPDATE … WHERE stock >= :cantidad`.
 
-### Y la regla 4, con el `UPDATE` condicionado
-
-```java
-@Modifying(clearAutomatically = true, flushAutomatically = true)
-@Query("""
-       UPDATE Producto p SET p.stock = p.stock - :cantidad
-        WHERE p.id = :id AND p.stock >= :cantidad
-       """)
-int descontarStock(@Param("id") Long id, @Param("cantidad") int cantidad);
-```
-
-Si afecta a **0 filas**, no había bastante → 409. Nunca «leer, comprobar con un `if` y escribir»: con JPA es **más fácil caer en eso**, porque el `setStock` parece inofensivo.
+    Este bucle es parte de la corrección, y en el examen se lanza **contra PostgreSQL**, donde la concurrencia es real.
 
 ---
 
 ## ¿Cabe en cuatro horas?
 
-**Sí.** Las entidades son verbosas pero los repositorios **no tienen cuerpo**, así que el volumen total baja respecto a la UT4 aunque el modelo sea más rico.
+**Sí.** Los mapeadores dados quitan unas **90 líneas** y, más importante, **eliminan las dudas de diseño**: no hay que decidir qué DTOs hacer ni qué campos lleva cada uno.
 
 | | Ficheros que escribes | Líneas aprox. |
-|---|---|:-:|
-| Entidades (2 o 3) | 3 | 170 |
-| DTOs (`Response`, `CreateRequest`, `UpdateRequest`, el del resumen) | 4 | 60 |
-| Repositorios (**interfaces sin cuerpo**) | 2–3 | 50 |
-| Excepciones (base + 3) | 4 | 30 |
-| Mapeador | 1 | 60 |
-| Servicio (interfaz + impl) | 2 | 110 |
-| Controlador (con `Pageable` saneado) | 1–2 | 80 |
-| `@RestControllerAdvice` | 1 | 35 |
-| Tests | 2 | 60 |
+|---|:-:|:-:|
+| Entidades (2, con la relación) | 2 | 110 |
+| DTOs (`Response`, `Create`, `Update`, el de la operación) ×2 | 7 | 80 |
+| Repositorios (2 interfaces, **sin cuerpo**) | 2 | 30 |
+| Excepciones (3) | 3 | 25 |
+| Servicios (interfaz + impl) ×2 | 4 | 130 |
+| Controladores (2) | 2 | 90 |
+| `@RestControllerAdvice` | 1 | 40 |
+| Tests (`@DataJpaTest` + servicio) | 2 | 50 |
+| | **~23** | **~555** |
 
 !!! success "Lo que se recortó respecto a versiones anteriores de estos enunciados"
     | | Antes | Ahora |
     |---|:-:|:-:|
-    | Entidades | 4–5 | **2, o 3 en el EP2** |
-    | Endpoints | 13–14 | **8** |
-    | Reglas de negocio | 13–14 | **7** |
-    | Tests exigidos | 7 | **3** |
+    | **Los mapeadores** | Los escribía el alumno | **Dados** |
+    | Entidades | 3–5 | **2** |
+    | Relaciones | 1:N, N:M con datos propios | **Solo 1:N** |
+    | Endpoints | 10–11 | **7 + el CRUD de la segunda entidad** |
+    | Reglas de negocio | 7 | **5 + el 404** |
+    | Tests exigidos | 3 | **2** |
 
-    **Lo que se queda, porque es lo que evalúa el RA6:** una relación 1:N bien modelada, `LAZY` en todas partes, un `JOIN FETCH` que evita el N+1, la transacción de dos entidades y el `@Version` del EP3.
+    **Las N:M desaparecen.** Con `@ManyToOne` y `@OneToMany` se demuestra el RA6 entero, y una relación N:M con datos propios son dos 1:N con una entidad en medio: más volumen, el mismo criterio.
 
 ---
 
@@ -371,125 +476,104 @@ Si afecta a **0 filas**, no había bastante → 409. Nunca «leer, comprobar con
 
 **La misma para los tres enunciados y para el examen.** Sobre 10 puntos.
 
-!!! info "Lo que mide esta rúbrica y no la del RA5"
-    En el RA5 el peso estaba en las capas. **Aquí está en el modelo de datos, el rendimiento y la integridad.** Las capas se dan por sabidas y solo aparecen como penalización.
-
-### Bloque 1 · Modelo de datos y relaciones — 2,5 puntos
+### Bloque 1 · Las entidades y el mapeo — 2,5 puntos
 
 | | Se comprueba con | Puntos |
 |---|---|:-:|
-| 1.1 | **La relación del diagrama está bien**, con la cardinalidad correcta y la clave ajena en el lado que toca | **1,0** |
-| 1.2 | El `@OneToMany` lleva **`mappedBy`**, y no hay tabla intermedia fantasma | 0,5 |
-| 1.3 | **Sin `cascade` que pueda borrar un maestro**; las reglas de borrado son comprobaciones en el servicio | 0,4 |
-| 1.4 | `@Enumerated(EnumType.STRING)` en los `enum`, si usas alguno. `grep -rn "@Enumerated" src/` → ninguno sin `STRING` | 0,3 |
-| 1.5 | Dinero y notas con **`BigDecimal`** y `precision`/`scale`. `grep -rn "double\|float" src/main/java/**/models/` → vacío | 0,3 |
-
-!!! danger "Eliminatoria en el EP2"
-    Resolver las matrículas con `@ManyToMany` en lugar de una entidad intermedia → **0 en todo el bloque 1**.
+| 1.1 | Las entidades **compilan con los mapeadores dados sin tocarlos**: constructores, `getters` y `setters` exactos | **0,75** |
+| 1.2 | `@Entity`, `@Table`, `@Id` con `@GeneratedValue(IDENTITY)` y `@Column` con `nullable`, `unique` y `length` donde el enunciado los pide | 0,5 |
+| 1.3 | **El constructor `protected` sin argumentos** y uno con los campos del cliente. **Ningún builder** | 0,5 |
+| 1.4 | La relación con `@ManyToOne` + `@JoinColumn`, y el `mappedBy` si pones el lado inverso | 0,5 |
+| 1.5 | `BigDecimal` con `precision`/`scale` para el dinero, y `@Enumerated(STRING)` si usas un `enum` | 0,25 |
 
 ### Bloque 2 · Rendimiento: `LAZY` y el N+1 — 2,0 puntos
 
 | | Se comprueba con | Puntos |
 |---|---|:-:|
-| 2.1 | `grep -rn "FetchType.EAGER" src/` → **vacío**. Un solo `EAGER` → 0 en este ítem | **0,7** |
-| 2.2 | Con `show-sql=true`, **listar una página de 20 elementos con su relación son 2 consultas**, no 21 | **0,8** |
-| 2.3 | La consulta del resumen o las estadísticas trae la relación con `JOIN FETCH`, o agrupa con **`GROUP BY`** en el repositorio | 0,3 |
-| 2.4 | `spring.jpa.open-in-view=false` | 0,2 |
-
-!!! danger "El 2.2 se corrige con el log delante, y no hay otra forma"
-    Un programa con N+1 **funciona perfectamente** y pasa cualquier prueba manual.
-
-    | Consultas | Nota |
-    |---|:-:|
-    | 2 | **0,8** |
-    | 3 a 5 | 0,4 |
-    | 1 + tamaño de página | **0** |
+| 2.1 | `grep -rn "FetchType.EAGER" src/main/java/` → **vacío** | 0,5 |
+| 2.2 | Listar 20 elementos son **2 consultas**, no 21. Se cuentan las líneas `Hibernate:` | **1,0** |
+| 2.3 | Si usas `JOIN FETCH` con `Page`, está el **`countQuery`**; si usas `@EntityGraph`, no hace falta | 0,25 |
+| 2.4 | `spring.jpa.open-in-view=false` y **ningún** `LazyInitializationException` en el log | 0,25 |
 
 ### Bloque 3 · Repositorios y consultas — 1,5 puntos
 
 | | Se comprueba con | Puntos |
 |---|---|:-:|
-| 3.1 | Al menos **cuatro consultas derivadas del nombre**, con `IgnoreCase` donde el enunciado lo pide | 0,4 |
-| 3.2 | Al menos **una `@Query` con JPQL**, con `JOIN FETCH` o agregado | 0,4 |
-| 3.3 | Los **filtros opcionales y combinables** del listado con **`Specification`**, no con `if` anidados ni un método por combinación | 0,4 |
-| 3.4 | Los `@Modifying` llevan `@Transactional` en quien los llama y `clearAutomatically` | 0,3 |
+| 3.1 | Los repositorios son **interfaces sin implementación**. `grep -rln "implements .*Repository" src/main/java/` → **vacío** | 0,5 |
+| 3.2 | Los filtros van por **consultas derivadas** o `Specification`, no filtrando en Java con `stream` | 0,5 |
+| 3.3 | El agregado (contar, media) se hace con **`@Query`**, no cargando la tabla en memoria | 0,25 |
+| 3.4 | El `UPDATE` masivo lleva `@Modifying` **y** `clearAutomatically = true` | 0,25 |
 
-### Bloque 4 · Validaciones en tres niveles — 2,0 puntos
+### Bloque 4 · Capas, DTOs y validación — 2,0 puntos
 
 | | Se comprueba con | Puntos |
 |---|---|:-:|
-| 4.1 | **Formato en el DTO**: las reglas R1–R3 con Bean Validation, y `@Valid` en todos los `@RequestBody` | **0,6** |
-| 4.2 | Un POST inválido devuelve **400 con los errores campo a campo** | 0,4 |
-| 4.3 | **Negocio en el servicio**: cada regla que necesita consultar la BD devuelve **409**, no 400 ni 500 | **0,6** |
-| 4.4 | **Integridad en la entidad**: `nullable = false`, `unique = true`, `length`, y un handler de `DataIntegrityViolationException` → 409 | 0,4 |
+| 4.1 | `grep -rn "ResponseEntity\|HttpStatus" src/main/java/**/services/` → **vacío** | 0,5 |
+| 4.2 | Ningún controlador devuelve ni recibe una **entidad**: solo DTOs, y son `record` | 0,5 |
+| 4.3 | Todos los `@RequestBody` llevan **`@Valid`**, un POST inválido da **400** y los errores salen **campo a campo** | 0,5 |
+| 4.4 | El `Pageable` está **saneado**: lista blanca de campos y tope de tamaño. `?sort=inventado` **no da 500** | 0,5 |
 
 ### Bloque 5 · Integridad y transacciones — 2,0 puntos
 
 | | Se comprueba con | Puntos |
 |---|---|:-:|
-| 5.1 | **Las siete reglas** se cumplen y devuelven el código indicado. *0,15 por regla* | **1,05** |
-| 5.2 | La operación de dos entidades lleva `@Transactional`, y **se demuestra comparando los contadores antes y después de un fallo** | **0,6** |
-| 5.3 | El descuento usa un **`UPDATE … WHERE … >= :cantidad`**, no «leer, comprobar, escribir» | 0,35 |
+| 5.1 | La operación de las dos entidades lleva **`@Transactional`**, y se demuestra con el estado de **las dos tablas** antes y después de un fallo | **0,75** |
+| 5.2 | El contador no puede quedar negativo: **`UPDATE … WHERE … >=`** y mirar las filas afectadas | 0,5 |
+| 5.3 | Las lecturas llevan `@Transactional(readOnly = true)` | 0,25 |
+| 5.4 | Excepciones propias con `@ResponseStatus` y un `@RestControllerAdvice` que traduzca `DataIntegrityViolationException` a **409** | 0,5 |
 
-!!! danger "El 5.2 se demuestra, no se declara"
-    Se apuntan los dos contadores, se provoca el fallo de la última operación y se vuelve a mirar. **Los dos valores tienen que estar intactos.**
-
-    Si no lo están, 0 en el ítem **aunque la anotación esté puesta**: lo habitual es que la excepción se capture dentro del método transaccional, y entonces no hay *rollback*.
-
-### Bloque 6 · Tests — 1,0 punto
+### Bloque 6 · Configuración y persistencia — 1,0 punto
 
 | | Se comprueba con | Puntos |
 |---|---|:-:|
-| 6.1 | `./mvnw clean test` acaba en **BUILD SUCCESS**. Si no compila o hay tests comentados → **0 en el bloque** | 0,2 |
-| 6.2 | **Un test con `@DataJpaTest`**: la relación, una consulta derivada o el borrado lógico | 0,3 |
-| 6.3 | **Un test de servicio** con Mockito de una regla de negocio | 0,3 |
-| 6.4 | **Un test de la transacción** del 5.2, o del `@Version` en el EP3 | 0,2 |
+| 6.1 | `ddl-auto`: **`update`** en dev, **`validate`** en prod, **`create-drop`** en test | 0,4 |
+| 6.2 | Los datos **sobreviven** a parar y arrancar, y arranca **dos veces seguidas** sin error | 0,3 |
+| 6.3 | **Arranca también con PostgreSQL** (`SPRING_PROFILES_ACTIVE=postgres`) y `git diff src/main/java/` sale **vacío** | 0,3 |
 
-### Bloque 7 · Configuración y persistencia — 1,0 punto
+### Bloque 7 · Tests — 1,0 punto
 
 | | Se comprueba con | Puntos |
 |---|---|:-:|
-| 7.1 | Los datos **sobreviven** a parar y arrancar | 0,3 |
-| 7.2 | Tres perfiles: `dev` con `update`, `prod` con **`validate`**, `test` con `create-drop` y H2 `mem:` | 0,3 |
-| 7.3 | `?page=&size=&sort=` funcionan, con **tope de tamaño** y **lista blanca** de campos ordenables | 0,3 |
-| 7.4 | Sin credenciales en el código; `.env` ignorado si lo usas | 0,1 |
+| 7.1 | `./mvnw clean test` acaba en **BUILD SUCCESS**. Si no compila o hay tests comentados → **0 en el bloque** | 0,3 |
+| 7.2 | **Un `@DataJpaTest`** del borrado lógico o de la restricción única, **con `em.clear()`** | 0,4 |
+| 7.3 | **Un test de servicio** con Mockito de una de las reglas de negocio | 0,3 |
 
 !!! danger "Penalizaciones — se restan del total"
     | | |
     |---|:-:|
-    | Devolver una **entidad** desde un controlador | **−1,5** |
-    | Cualquier **`LazyInitializationException`** en algún endpoint | **−1,0** |
-    | `ddl-auto=create-drop` o `update` en el perfil `prod` | **−1,0** |
-    | Concatenar un valor de entrada en un `@Query` | **−2,0** |
-    | `ResponseEntity` o `HttpStatus` dentro de un `@Service` | **−1,0** |
-    | `@Valid` olvidado en algún `@RequestBody` | **−1,0** |
-    | `?sort=` sin lista blanca o `?size=` sin tope | **−0,5** |
-    | `equals`/`hashCode` generados por el IDE en una entidad | **−0,5** |
+    | Haber modificado los mapeadores dados para que encajen con tus entidades | **−1,5** |
+    | Un `FetchType.EAGER` en cualquier relación | **−1,0** |
+    | Serializar entidades en lugar de DTOs | **−1,0** |
+    | Cargar una tabla entera para filtrar o contar en Java | **−1,0** |
+    | `cascade = ALL` o `orphanRemoval` en el lado inverso sin que el enunciado lo pida | **−0,5** |
+    | `ddl-auto=create-drop` en `dev` (se pierden los datos) | **−0,5** |
+    | `equals`/`hashCode` generados por el IDE en una entidad | **−0,25** |
+    | `System.out.println` en lugar de un `Logger` | **−0,25** |
 
 !!! success "Nota mínima"
-    Se aprueba con **5,0**. **Dos mínimos:** el bloque 1 no puede quedar en 0, y tampoco el ítem 2.1.
+    Se aprueba con **5,0**, y **el bloque 2 no puede quedar en 0**: el RA6 habla de *«gestionar la persistencia de forma eficiente»*, y una API con un N+1 en el listado principal no lo es.
 
     | Bloque | Peso |
     |---|:-:|
-    | 1 · Modelo y relaciones | 25 % |
+    | 1 · Entidades y mapeo | 25 % |
     | 2 · `LAZY` y N+1 | 20 % |
     | 3 · Repositorios | 15 % |
-    | 4 · Validaciones | 20 % |
+    | 4 · Capas, DTOs y validación | 20 % |
     | 5 · Integridad y transacciones | 20 % |
-    | 6 · Tests | 10 % |
-    | 7 · Configuración | 10 % |
+    | 6 · Configuración | 10 % |
+    | 7 · Tests | 10 % |
 
-    *(Suman 12 puntos de criterios sobre un máximo de 10: permite compensar un bloque flojo, salvo los dos mínimos.)*
+    Suman **12 puntos de criterios sobre un máximo de 10**, lo que permite compensar un bloque flojo.
 
 !!! info "Orden de corrección"
-    1. `./mvnw clean test` → bloque 6.1.
-    2. **Los cuatro `grep`**: `FetchType.EAGER`, `@Enumerated` sin `STRING`, `double` en los modelos, `ResponseEntity` en los servicios. **Dos minutos y un 15 % de la nota.**
-    3. Abrir las entidades y dibujar el modelo → bloque 1.
-    4. `java -jar` con `show-sql=true`, pedir un listado paginado y **contar las consultas** → bloque 2.2.
-    5. Las peticiones del enunciado → bloque 5.1.
-    6. Un POST inválido → bloques 4.1 y 4.2.
-    7. Apuntar los contadores, provocar el fallo y volver a mirar → bloque 5.2.
-    8. Parar, arrancar y volver a listar → bloque 7.1.
-    9. `?size=99999` y `?sort=inventado` → bloque 7.3.
+    1. `git diff` de los mapeadores → bloque 1.1 y la penalización gorda.
+    2. `./mvnw clean test` → bloque 7.1.
+    3. **Los tres `grep`** (`EAGER`, `ResponseEntity` en servicios, `implements …Repository`) → **medio punto por `grep` y treinta segundos cada uno**.
+    4. `show-sql=true`, listar 20 elementos y **contar las líneas `Hibernate:`** → bloque 2.2.
+    5. Las peticiones del enunciado → bloques 4 y 5.
+    6. `?sort=inventado` y `?size=99999` → bloque 4.4.
+    7. Provocar el fallo de la operación transaccional y mirar **las dos tablas** → bloque 5.1.
+    8. El bucle de 20 peticiones simultáneas → bloque 5.2.
+    9. Parar, arrancar, y arrancar con `postgres` → bloque 6.
 
-    Se entrega comprimido **sin `target/` ni `datos/`**, con un `README.md` que incluya **el diagrama del modelo**.
+    Se entrega comprimido **sin `target/` ni `datos/`**, con un `README.md` de diez líneas que diga cómo arrancar con cada motor.

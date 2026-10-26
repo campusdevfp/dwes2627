@@ -30,7 +30,14 @@
 
 :material-laptop: **Examen práctico, 100 % de la nota de la unidad.** Cuatro horas, con el ordenador y **la [chuleta](../pdf/chuleta-ut4.pdf) impresa** como única documentación.
 
-**Se te da** el `pom.xml`, el `application.properties`, el `schema.sql`, el `data.sql` y la clase de arranque. **Escribes tú** el modelo, los DTOs, el `RowMapper`, el repositorio, el mapeador, las excepciones, el servicio, el controlador, el manejador global y los tests.
+**Se te da** el proyecto que arranca (`pom.xml`, los `application*.properties`, `schema.sql`, `data.sql` y la clase de arranque) **y, ya escritos, el repositorio —interfaz, implementación con `JdbcClient` y `RowMapper`— y el mapeador**.
+
+**Escribes tú** las carpetas por capas, los modelos, los DTOs, las excepciones, el servicio con las reglas, el controlador, el manejador global y dos tests.
+
+!!! success "El código dado es la especificación"
+    El repositorio y el mapeador **no compilan** al abrir el proyecto, porque usan clases que tú no has creado. De ellos sale **el nombre de cada clase y el orden de los componentes de cada `record`**.
+
+    Léelos antes de escribir nada. Y no los toques: si los modificas para que encajen con tus clases, hay **−1,5** de penalización.
 
 Es un enunciado **del mismo formato y tamaño** que los del [examen práctico](examen.md), con otro dominio.
 
@@ -39,10 +46,10 @@ Es un enunciado **del mismo formato y tamaño** que los del [examen práctico](e
 | | Bloque | Puntos |
 |---|---|:-:|
 | 1 | **Arquitectura por capas** | **2,5** |
-| 2 | API REST y códigos de estado | 2,0 |
-| 3 | DTOs y validación | 2,0 |
+| 2 | **El modelo y los DTOs** | 2,0 |
+| 3 | API REST y códigos de estado | 2,0 |
 | 4 | **Reglas de negocio y errores** | **2,5** |
-| 5 | Persistencia con JDBC | 1,0 |
+| 5 | Uso correcto del código dado | 1,0 |
 | 6 | Tests | 1,0 |
 
 Se aprueba con **5,0**. Cada ítem se comprueba con un comando o una petición concreta: la rúbrica completa, con las penalizaciones, está en [Examen práctico](examen.md).

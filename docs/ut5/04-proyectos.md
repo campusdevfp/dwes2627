@@ -1,11 +1,16 @@
 # 4. Dos proyectos paso a paso
 
-Los **dos proyectos de la UT4**, migrados a Spring Data JPA. Mismas APIs, **H2 en fichero**, y una fracción del código.
+Los **dos proyectos de la UT4**, migrados a Spring Data JPA. Mismas APIs, una fracción del código, y los dos se arrancan **con H2 en fichero y con PostgreSQL**.
 
 | | Proyecto | Entidades | Lo nuevo |
 |:-:|---|:-:|---|
 | **A** | [Funkos y categorías](#proyecto-a-funkos-y-categorias) | 2 | Entidades, relación 1:N, repositorios sin cuerpo, borrado lógico, paginación |
 | **B** | [La tienda](#proyecto-b-la-tienda) | 2 | El N+1 medido, la transacción de dos entidades y `@Version` |
+
+| | Los dos, con los dos motores |
+|---|---|
+| **H2 en fichero** | Por defecto. Nada que instalar |
+| **PostgreSQL** | `docker compose up -d` y `SPRING_PROFILES_ACTIVE=postgres`. [Cómo](#la-alternativa-postgresql) |
 
 !!! success "Lo primero que vas a hacer"
     Borrar `FunkosRepositoryJdbc` y `FunkoRowMapper` de la [UT4](../ut4/05-proyectos.md) y poner en su lugar una interfaz **sin cuerpo**.
@@ -40,7 +45,19 @@ Los **dos proyectos de la UT4**, migrados a Spring Data JPA. Mismas APIs, **H2 e
   <artifactId>h2</artifactId>
   <scope>runtime</scope>
 </dependency>
+
+<!-- NUEVO: el otro motor. Conviven sin problema -->
+<dependency>
+  <groupId>org.postgresql</groupId>
+  <artifactId>postgresql</artifactId>
+  <scope>runtime</scope>
+</dependency>
 ```
+
+!!! success "Los dos motores a la vez, y sin `if` en ningún sitio"
+    **Los dos proyectos se hacen con H2 en fichero y se arrancan también contra PostgreSQL**, cambiando una variable de entorno. Ni una línea de Java cambia.
+
+    Eso es lo que compra el ORM, y es el experimento más convincente de la unidad: el mismo código, dos motores distintos.
 
 !!! info "Quién es quién"
     - **JPA** es la **especificación**: un estándar de Java, solo interfaces y anotaciones.
@@ -111,6 +128,141 @@ spring.profiles.active=${SPRING_PROFILES_ACTIVE:dev}
     spring.sql.init.mode=always
     logging.level.root=WARN
     ```
+
+### La alternativa: PostgreSQL
+
+**H2 en fichero sirve para desarrollar; PostgreSQL es lo que hay en producción.** Los dos proyectos se arrancan contra los dos, y la única diferencia es el perfil.
+
+=== "1 · Levantar el servidor"
+
+    ```yaml title="compose.yaml — en la raíz del proyecto"
+    services:
+      postgres:
+        image: postgres:17-alpine
+        container_name: dwes-postgres
+        environment:
+          POSTGRES_DB: funkos
+          POSTGRES_USER: dwes
+          POSTGRES_PASSWORD: dwes2026
+        ports:
+          - "5432:5432"
+        volumes:
+          - postgres-datos:/var/lib/postgresql/data
+        healthcheck:
+          test: ["CMD-SHELL", "pg_isready -U dwes -d funkos"]
+          interval: 5s
+          retries: 5
+
+    volumes:
+      postgres-datos:
+    ```
+
+    ```bash
+    docker compose up -d
+    docker compose ps                     # healthy
+    docker compose logs -f postgres       # si algo no arranca
+    ```
+
+    !!! info "El `volumes` es lo que hace que los datos persistan"
+        Sin él, `docker compose down` se lleva la base entera. Con él, los datos sobreviven a parar y levantar el contenedor — igual que el fichero de H2.
+
+=== "2 · El perfil"
+
+    ```properties title="application-postgres.properties"
+    spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:5432/funkos}
+    spring.datasource.username=${DB_USER:dwes}
+    spring.datasource.password=${DB_PASSWORD:dwes2026}
+    spring.datasource.driver-class-name=org.postgresql.Driver
+
+    spring.jpa.hibernate.ddl-auto=update
+    spring.jpa.show-sql=true
+    spring.jpa.properties.hibernate.format_sql=true
+
+    # Las tablas las crea Hibernate; los datos, data.sql
+    spring.jpa.defer-datasource-initialization=true
+    spring.sql.init.mode=always
+
+    # La consola de H2 no existe aquí
+    spring.h2.console.enabled=false
+    ```
+
+=== "3 · Arrancar"
+
+    ```bash
+    # Con H2 en fichero (lo de siempre)
+    ./mvnw spring-boot:run
+
+    # Con PostgreSQL
+    SPRING_PROFILES_ACTIVE=postgres ./mvnw spring-boot:run
+    ```
+
+    ```bash
+    # Y el .jar, igual
+    java -jar target/funkos-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=postgres
+    ```
+
+    En IntelliJ: **Run → Edit Configurations → Active profiles: `postgres`**, o la variable de entorno `SPRING_PROFILES_ACTIVE=postgres`.
+
+=== "4 · Mirar los datos"
+
+    ```bash
+    docker compose exec postgres psql -U dwes -d funkos
+
+    \dt                              -- las tablas que ha creado Hibernate
+    \d funkos                        -- el detalle de una
+    SELECT * FROM funkos LIMIT 5;
+    \q
+    ```
+
+    **Fíjate en lo que ha creado Hibernate:** los tipos, los índices y la clave ajena con el nombre que le pusiste en `@ForeignKey`. Eso es el `schema.sql` que no has escrito.
+
+!!! success "Lo que de verdad cambia entre los dos motores"
+    | | H2 en fichero | PostgreSQL |
+    |---|---|---|
+    | **El Java** | — | **Ni una línea** |
+    | Dónde viven los datos | `./datos/funkos.mv.db` | En el contenedor, en un *volume* |
+    | Arrancar | Nada: va dentro de la aplicación | `docker compose up -d` |
+    | Mirar los datos | `/h2-console` | `psql` o cualquier cliente SQL |
+    | `BIGINT AUTO_INCREMENT` | Así se llama | **`BIGSERIAL`** |
+    | `TIMESTAMP` | Así se llama | `timestamp(6) without time zone` |
+    | Mayúsculas en los nombres | Las convierte a mayúsculas | **Las convierte a minúsculas** |
+    | `MERGE … KEY(id)` del `data.sql` | Funciona | **No existe**: hace falta otra sentencia |
+
+    **Las dos últimas filas son las que dan guerra**, y son el motivo de este apartado: el ORM te abstrae del SQL que genera Hibernate, **pero no del SQL que escribes tú**.
+
+!!! danger "El `data.sql` sí hay que tocarlo"
+    `MERGE INTO … KEY(id)` es de H2. El equivalente de PostgreSQL es:
+
+    ```sql title="data-postgres.sql"
+    INSERT INTO categorias (id, nombre, is_deleted, created_at, updated_at) VALUES
+      (1, 'DISNEY', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+      (2, 'MARVEL', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- Y poner la secuencia en su sitio, o el primer INSERT por la API choca
+    SELECT setval('categorias_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM categorias), false);
+    ```
+
+    ```properties title="application-postgres.properties"
+    spring.sql.init.data-locations=classpath:data-postgres.sql
+    ```
+
+    | | H2 | PostgreSQL |
+    |---|---|---|
+    | Insertar sin duplicar | `MERGE … KEY(id)` | `INSERT … ON CONFLICT (id) DO NOTHING` |
+    | Recolocar el contador | `ALTER TABLE … ALTER COLUMN id RESTART WITH 7` | `SELECT setval('tabla_id_seq', …)` |
+
+    **Sin el `setval`, el primer `POST` de la API falla** con `duplicate key value violates unique constraint`: la secuencia sigue en 1 y los ids 1 a 6 ya están ocupados. Es el error más desconcertante del cambio de motor, y ahora ya sabes de dónde viene.
+
+!!! warning "`ddl-auto=update` sigue sin saber renombrar, y en PostgreSQL duele más"
+    En H2 borras el fichero `./datos/` y vuelves a empezar. Aquí:
+
+    ```bash
+    docker compose down -v      # el -v borra el volume, y con él los datos
+    docker compose up -d
+    ```
+
+    **Y en producción eso no se puede hacer.** Por eso `prod` lleva `validate` y las migraciones se hacen con una herramienta (Flyway o Liquibase), que no entra en esta unidad pero es el siguiente paso natural.
 
 ### Las opciones de `ddl-auto`, y cuál elegir
 
@@ -822,6 +974,41 @@ spring.data.web.pageable.max-page-size=100
 
     Quita el `JOIN FETCH` y usa `findByDeletedFalse`: **1 + 20**. Eso es el N+1, y es lo que se mira en la corrección.
 
+=== "El mismo código con PostgreSQL"
+
+    ```bash
+    docker compose up -d
+    SPRING_PROFILES_ACTIVE=postgres ./mvnw spring-boot:run
+    ```
+
+    ```bash
+    # Las MISMAS peticiones, contra otro motor
+    curl -s "localhost:8080/api/v1/funkos?page=0&size=2" | jq '.totalElements'   # 6
+    curl -i -X DELETE localhost:8080/api/v1/categorias/1                          # 409
+    curl -s "localhost:8080/api/v1/funkos?categoria=anime" | jq '.totalElements'  # 2
+    ```
+
+    Y las tablas creadas por Hibernate:
+
+    ```bash
+    docker compose exec postgres psql -U dwes -d funkos -c '\d funkos'
+    ```
+
+    ```
+     id          | bigint                      | not null
+     nombre      | character varying(100)      | not null
+     precio      | numeric(10,2)               | not null
+     categoria_id| bigint                      | not null
+     is_deleted  | boolean                     | not null
+    Indexes:
+        "funkos_pkey" PRIMARY KEY, btree (id)
+        "idx_funko_nombre" btree (nombre)
+    Foreign-key constraints:
+        "fk_funko_categoria" FOREIGN KEY (categoria_id) REFERENCES categorias(id)
+    ```
+
+    **`git diff src/main/java/` después de este paso: vacío.** Eso es el resultado de aprendizaje.
+
 ---
 
 # Proyecto B · La tienda
@@ -1131,6 +1318,42 @@ public ProductoResponse vender(Long id, VentaRequest request) {
 
     **Dos líneas.** Quita el `@EntityGraph` y serán **veintiuna**.
 
+=== "La transacción, con PostgreSQL"
+
+    ```bash
+    docker compose up -d
+    SPRING_PROFILES_ACTIVE=postgres ./mvnw spring-boot:run
+    ```
+
+    ```bash
+    # La venta imposible
+    curl -i -X POST localhost:8080/api/v1/productos/3/venta \
+      -H "Content-Type: application/json" -d '{"cantidad":999}'        # 409
+
+    # Comprobado DESDE la base de datos, no desde la API
+    docker compose exec postgres psql -U dwes -d funkos \
+      -c 'SELECT sku, stock FROM productos ORDER BY id' \
+      -c 'SELECT nombre, unidades_vendidas FROM categorias ORDER BY id'
+    ```
+
+    **Ninguna de las dos tablas ha cambiado.** El `@Transactional` funciona igual, porque las transacciones no son de Spring: son de la base de datos. Spring solo dice cuándo empiezan y cuándo acaban.
+
+    !!! info "Y aquí sí hay una diferencia real entre motores"
+        H2 en fichero es **un proceso**, así que la concurrencia que puedes provocar es limitada. PostgreSQL es **un servidor de verdad**: si quieres ver una condición de carrera auténtica, lánzala aquí.
+
+        ```bash
+        # 20 ventas simultáneas de 1 unidad sobre un producto con 10 de stock
+        for i in $(seq 1 20); do
+          curl -s -o /dev/null -w "%{http_code} " -X POST \
+            localhost:8080/api/v1/productos/1/venta \
+            -H "Content-Type: application/json" -d '{"cantidad":1}' &
+        done; wait; echo
+        ```
+
+        **Diez `200` y diez `409`, y el stock en 0.** Nunca en negativo: eso lo garantiza el `UPDATE … WHERE stock >= :cantidad`, no tu código Java.
+
+        Prueba a cambiarlo por «leer, comprobar, escribir» y repite el bucle: verás el stock negativo.
+
 === "El bloqueo optimista"
 
     ```bash
@@ -1277,6 +1500,9 @@ flowchart TB
     - [ ] El controlador **no** devuelve entidades, solo DTOs
     - [ ] `ddl-auto=validate` en `prod`, `update` en `dev`, `create-drop` en `test`
     - [ ] **Ningún patrón builder**: constructor con los campos del cliente, y `setters`
+    - [ ] **Arranca con los dos motores**: por defecto con H2 y con `SPRING_PROFILES_ACTIVE=postgres`
+    - [ ] `git diff src/main/java/` después de cambiar de motor → **vacío**
+    - [ ] `data-postgres.sql` con `ON CONFLICT` **y el `setval`** de cada secuencia
 
     **Proyecto A**
 
