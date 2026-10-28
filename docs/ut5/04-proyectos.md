@@ -4,8 +4,8 @@ Los **dos proyectos de la UT4**, migrados a Spring Data JPA. Mismas APIs, una fr
 
 | | Proyecto | Entidades | Lo nuevo |
 |:-:|---|:-:|---|
-| **A** | [Funkos y categorías](#proyecto-a-funkos-y-categorias) | 2 | Entidades, relación 1:N, repositorios sin cuerpo, borrado lógico, paginación |
-| **B** | [La tienda](#proyecto-b-la-tienda) | 2 | El N+1 medido, la transacción de dos entidades y `@Version` |
+| **A** | [Funkos y categorías](#proyecto-a-funkos-y-categorias) | 2 | Entidades, relación 1:N, repositorios sin cuerpo, borrado lógico y **paginación con criterios** |
+| **B** | [La tienda](#proyecto-b-la-tienda) | 2 | El N+1 medido, la transacción de dos entidades, `@Version` y **paginación con `@EntityGraph`** |
 
 | | Los dos, con los dos motores |
 |---|---|
@@ -867,6 +867,40 @@ spring.data.web.pageable.default-page-size=20
 spring.data.web.pageable.max-page-size=100
 ```
 
+### Qué devuelve el endpoint
+
+```bash
+curl -s "localhost:8080/api/v1/funkos?page=0&size=2&sort=precio,desc" | jq
+```
+
+```json
+{
+  "content": [
+    { "id": 4, "nombre": "Iron Man", "precio": 21.50, "categoria": "MARVEL" },
+    { "id": 5, "nombre": "Goku",     "precio": 22.50, "categoria": "ANIME"  }
+  ],
+  "totalElements": 6,
+  "totalPages": 3,
+  "number": 0,
+  "size": 2,
+  "first": true,
+  "last": false,
+  "numberOfElements": 2
+}
+```
+
+| Campo | Qué es |
+|---|---|
+| `content` | **Los elementos de esta página**, ya mapeados a DTO |
+| `totalElements` · `totalPages` | El total de la consulta, **no de la página** |
+| `number` · `size` | Qué página es (empezando en 0) y de qué tamaño |
+| `first` · `last` | Si es la primera o la última |
+
+!!! info "Spring Data JPA pone los tres parámetros solo"
+    `page`, `size` y `sort` llegan resueltos dentro del `Pageable`: **no hay que leerlos ni convertirlos**. Y `sort` se puede repetir: `?sort=precio,desc&sort=nombre,asc`.
+
+    El [tema 2](02-resultados-avanzados.md#2132-pagination-link-en-el-header) explica además cómo devolver los enlaces de paginación en la cabecera `Link`, que es lo que espera un cliente REST estricto.
+
 ### Las tres opciones de paginación, y cuál elegir
 
 | | Qué trae | Consultas |
@@ -1270,7 +1304,132 @@ public ProductoResponse vender(Long id, VentaRequest request) {
 | **Si capturas la excepción dentro, no hay *rollback*** | Tiene que **salir** del método transaccional |
 | **Funciona por proxy** | `this.vender(...)` desde otro método del mismo bean **no abre transacción**. Igual que `@Cacheable` |
 
-## Paso 4 · Probar el proyecto B
+## Paso 4 · Paginación, orden y filtros
+
+El listado de productos es el que más se pide y el que más crece: va paginado desde el primer día.
+
+```java title="productos/repositories/ProductosRepository.java"
+/** Pagina Y trae la categoria en la misma consulta. */
+@EntityGraph(attributePaths = {"categoria"})
+Page<Producto> findByDeletedFalse(Pageable pageable);
+
+/** Con filtros opcionales: Specification + Pageable. */
+@EntityGraph(attributePaths = {"categoria"})
+Page<Producto> findAll(Specification<Producto> spec, Pageable pageable);
+```
+
+```java title="productos/services/ProductosServiceImpl.java"
+@Override
+@Transactional(readOnly = true)
+public Page<ProductoResponse> buscar(Optional<String> categoria,
+                                     Optional<String> nombre,
+                                     Optional<Boolean> conStock,
+                                     Pageable pageable) {
+
+    Specification<Producto> spec = (root, q, cb) -> cb.isFalse(root.get("deleted"));
+
+    spec = categoria.map(c -> spec.and((root, q, cb) ->
+                cb.equal(cb.upper(root.get("categoria").get("nombre")), c.toUpperCase())))
+            .orElse(spec);
+
+    spec = nombre.map(n -> spec.and((root, q, cb) ->
+                cb.like(cb.lower(root.get("nombre")), "%" + n.toLowerCase() + "%")))
+            .orElse(spec);
+
+    spec = conStock.map(c -> spec.and((root, q, cb) ->
+                c ? cb.greaterThan(root.get("stock"), 0)
+                  : cb.equal(root.get("stock"), 0)))
+            .orElse(spec);
+
+    return repositorio.findAll(spec, pageable).map(mapper::toResponse);
+}
+```
+
+```java title="productos/controllers/ProductosRestController.java"
+@GetMapping
+public ResponseEntity<Page<ProductoResponse>> buscar(
+        @RequestParam Optional<String> categoria,
+        @RequestParam Optional<String> nombre,
+        @RequestParam Optional<Boolean> conStock,
+        @PageableDefault(size = 20, sort = "id") Pageable pageable) {
+
+    return ResponseEntity.ok(
+            servicio.buscar(categoria, nombre, conStock, sanear(pageable)));
+}
+
+/** Lista blanca de campos ordenables y tope de tamaño. */
+private Pageable sanear(Pageable p) {
+    var permitidos = Set.of("id", "sku", "nombre", "precio", "stock", "createdAt");
+    var orden = p.getSort().stream()
+            .filter(o -> permitidos.contains(o.getProperty()))
+            .toList();
+    return PageRequest.of(p.getPageNumber(),
+                          Math.min(p.getPageSize(), 100),
+                          orden.isEmpty() ? Sort.by("id") : Sort.by(orden));
+}
+```
+
+### Comprobar la paginación
+
+=== "Páginas y orden"
+
+    ```bash
+    curl -s "localhost:8080/api/v1/productos?page=0&size=3" \
+      | jq '{total: .totalElements, paginas: .totalPages, pagina: .number,
+             skus: [.content[].sku]}'
+
+    curl -s "localhost:8080/api/v1/productos?page=1&size=3" | jq '.content[].sku'
+
+    curl -s "localhost:8080/api/v1/productos?sort=precio,desc&size=3" \
+      | jq '[.content[] | {nombre, precio}]'
+    ```
+
+=== "Filtros, combinados con la paginación"
+
+    ```bash
+    curl -s "localhost:8080/api/v1/productos?categoria=informatica&size=5" | jq '.totalElements'
+    curl -s "localhost:8080/api/v1/productos?conStock=true" | jq '[.content[].stock] | min'
+    curl -s "localhost:8080/api/v1/productos?nombre=tec&conStock=true" \
+      | jq '[.content[].nombre]'
+    ```
+
+    **Los filtros se aplican antes de paginar**, así que `totalElements` es el total **de lo filtrado**, no de la tabla.
+
+=== "Los casos límite"
+
+    ```bash
+    # Página fuera de rango: 200 con lista vacía, NO 404
+    curl -s "localhost:8080/api/v1/productos?page=500" | jq '{content, totalElements}'
+
+    # Campo de orden inventado: 200 ordenando por id, NO 500
+    curl -s -o /dev/null -w "%{http_code}\n" "localhost:8080/api/v1/productos?sort=inventado"
+
+    # Tamaño enorme: se recorta a 100
+    curl -s "localhost:8080/api/v1/productos?size=99999" | jq '.pageable.pageSize'
+    ```
+
+=== "Y las consultas que genera"
+
+    ```bash
+    curl -s "localhost:8080/api/v1/productos?size=20" > /dev/null
+    ```
+
+    En el log, **dos líneas** `Hibernate:`: la de la página (con el `JOIN` del `@EntityGraph`) y el `SELECT count(*)` del total.
+
+    Si salen **veintiuna**, falta el `@EntityGraph`: estás paginando bien y trayendo las categorías de una en una.
+
+!!! danger "Paginar una colección con `JOIN FETCH` no se puede"
+    Con `@ManyToOne` —una categoría por producto— `@EntityGraph` y `Pageable` conviven sin problema.
+
+    Con `@OneToMany` —una lista— Hibernate avisa y **trae la tabla entera para paginar en memoria**:
+
+    ```
+    HHH90003004: firstResult/maxResults specified with collection fetch; applying in memory
+    ```
+
+    Por eso el listado pagina **productos**, que es el lado «muchos», y no categorías con sus productos dentro.
+
+## Paso 5 · Probar el proyecto B
 
 === "Una venta correcta"
 
@@ -1367,7 +1526,7 @@ public ProductoResponse vender(Long id, VentaRequest request) {
 
     Uno de los dos devuelve **409** con el mensaje de recargar. Sin `@Version`, los dos devolverían 200 y **uno de los cambios se perdería en silencio**.
 
-## Paso 5 · Los tests
+## Paso 6 · Los tests
 
 ```java title="Repositorio · @DataJpaTest"
 @DataJpaTest
@@ -1496,7 +1655,10 @@ flowchart TB
     - [ ] `spring.jpa.open-in-view=false` y **ningún** `LazyInitializationException`
     - [ ] `grep -rn "FetchType.EAGER" src/` → **vacío**
     - [ ] Dinero con `BigDecimal` y `precision`/`scale`
-    - [ ] `?page=&size=&sort=` funcionan; `?size=99999` se recorta; `?sort=inventado` no da 500
+    - [ ] `?page=&size=&sort=` funcionan en **los dos listados**; `?size=99999` se recorta; `?sort=inventado` no da 500
+    - [ ] La respuesta paginada trae `content`, `totalElements`, `totalPages`, `number` y `size`
+    - [ ] Los filtros se aplican **antes** de paginar: `totalElements` es el total de lo filtrado
+    - [ ] Una página fuera de rango devuelve **200 con lista vacía**, no 404
     - [ ] El controlador **no** devuelve entidades, solo DTOs
     - [ ] `ddl-auto=validate` en `prod`, `update` en `dev`, `create-drop` en `test`
     - [ ] **Ningún patrón builder**: constructor con los campos del cliente, y `setters`

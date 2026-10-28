@@ -196,9 +196,9 @@ nav:
       - Chuleta (PDF): ut4/chuleta.md
     - UT5 · RA6 · Spring Data con JPA y SQL:
       - ut5/index.md
-      - "1. Spring Data JPA: el ORM en la práctica": ut5/01-spring-data-jpa-sql.md
-      - 2. Paginación, criterios y el N+1: ut5/02-resultados-avanzados.md
-      - 3. Referencia de JPA y validaciones: ut5/03-referencias.md
+      - 1. Spring Data y Spring Data JPA: ut5/01-spring-data-jpa-sql.md
+      - 2. Negociación de contenido y paginación: ut5/02-resultados-avanzados.md
+      - 3. Referencia de Spring Data JPA: ut5/03-referencias.md
       - 4. Dos proyectos paso a paso: ut5/04-proyectos.md
       - Examen práctico: ut5/examen.md
       - Chuleta (PDF): ut5/chuleta.md

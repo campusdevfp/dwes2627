@@ -897,13 +897,13 @@ PORT=9090 SPRING_PROFILES_ACTIVE=prod java -jar target/funkos-api-0.0.1-SNAPSHOT
 
 # Proyecto B · API de una tienda
 
-Dos tablas con clave ajena, y una operación que toca las dos. Es donde `@Transactional` deja de ser una anotación que se copia.
+**Dos tablas y una operación que toca las dos.** Mismas capas que el proyecto A, con dos cosas nuevas: **dos repositorios** y **la venta transaccional**.
 
 ```
-GET    /api/v1/categorias        CRUD
-GET    /api/v1/categorias/{id}/productos
+GET    /api/v1/categorias
+GET    /api/v1/categorias/{id}
 
-GET    /api/v1/productos         ?categoria= &nombre= &conStock=
+GET    /api/v1/productos            ?categoria= &nombre= &conStock=
 GET    /api/v1/productos/{id}
 POST   /api/v1/productos
 PATCH  /api/v1/productos/{id}
@@ -911,15 +911,52 @@ DELETE /api/v1/productos/{id}
 POST   /api/v1/productos/{id}/venta      ← toca las DOS tablas
 ```
 
-## Paso 1 · El esquema
+| Paso | Qué se escribe |
+|:-:|---|
+| **1** | El esquema y los datos |
+| **2** | Los modelos |
+| **3** | Los DTOs |
+| **4** | El repositorio de **categorías**, completo |
+| **5** | El repositorio de **productos**, completo |
+| **6** | Las excepciones y el mapeador |
+| **7** | El servicio, completo |
+| **8** | El controlador, completo |
+| **9** | La caché |
+| **10** | **Probarlo todo**: lo que va bien, lo que falla y la caché |
+
+---
+
+## Paso 1 · El esquema y los datos
+
+```mermaid
+erDiagram
+    CATEGORIAS ||--o{ PRODUCTOS : "agrupa"
+
+    CATEGORIAS {
+        bigint id PK
+        varchar_40 nombre "UNIQUE"
+        int unidades_vendidas "contador de ventas"
+    }
+
+    PRODUCTOS {
+        bigint id PK
+        varchar_20 sku "UNIQUE"
+        varchar_150 nombre
+        decimal precio
+        int stock "nunca negativo"
+        bigint categoria_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+```
 
 ```sql title="src/main/resources/schema.sql"
 CREATE TABLE IF NOT EXISTS categorias (
     id                BIGINT AUTO_INCREMENT PRIMARY KEY,
     nombre            VARCHAR(40) NOT NULL,
     unidades_vendidas INT         NOT NULL DEFAULT 0,
-    CONSTRAINT uk_categoria_nombre UNIQUE (nombre),
-    CONSTRAINT ck_categoria_vendidas CHECK (unidades_vendidas >= 0)
+    CONSTRAINT uk_categoria_nombre   UNIQUE (nombre),
+    CONSTRAINT ck_categoria_vendidas CHECK  (unidades_vendidas >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS productos (
@@ -931,14 +968,11 @@ CREATE TABLE IF NOT EXISTS productos (
     categoria_id BIGINT        NOT NULL,
     created_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uk_producto_sku UNIQUE (sku),
-    CONSTRAINT fk_producto_categoria
-        FOREIGN KEY (categoria_id) REFERENCES categorias (id),
-    CONSTRAINT ck_producto_precio CHECK (precio >= 0),
-    CONSTRAINT ck_producto_stock  CHECK (stock  >= 0)
+    CONSTRAINT uk_producto_sku    UNIQUE (sku),
+    CONSTRAINT ck_producto_precio CHECK  (precio >= 0),
+    CONSTRAINT ck_producto_stock  CHECK  (stock  >= 0),
+    CONSTRAINT fk_producto_categoria FOREIGN KEY (categoria_id) REFERENCES categorias (id)
 );
-
-CREATE INDEX IF NOT EXISTS idx_producto_categoria ON productos (categoria_id);
 ```
 
 ```sql title="src/main/resources/data.sql"
@@ -950,41 +984,28 @@ MERGE INTO categorias (id, nombre, unidades_vendidas) KEY(id) VALUES
 MERGE INTO productos (id, sku, nombre, precio, stock, categoria_id) KEY(id) VALUES
   (1, 'SKU-001', 'Teclado mecánico', 79.90, 10, 1),
   (2, 'SKU-002', 'Ratón vertical',   45.50,  3, 1),
-  (3, 'SKU-003', 'Monitor 27"',     229.00,  1, 1),
+  (3, 'SKU-003', 'Monitor 27 pulgadas', 229.00, 1, 1),
   (4, 'SKU-004', 'Cuaderno A4',       4.95, 50, 2),
-  (5, 'SKU-005', 'Silla de oficina', 149.00, 0, 3);
+  (5, 'SKU-005', 'Silla de oficina', 149.00,  0, 3);
 
 ALTER TABLE categorias ALTER COLUMN id RESTART WITH 4;
 ALTER TABLE productos  ALTER COLUMN id RESTART WITH 6;
 ```
 
-```mermaid
-erDiagram
-    CATEGORIAS ||--o{ PRODUCTOS : "1:N"
-    CATEGORIAS {
-        bigint id PK
-        varchar nombre UK
-        int unidades_vendidas
-    }
-    PRODUCTOS {
-        bigint id PK
-        varchar sku UK
-        decimal precio
-        int stock
-        bigint categoria_id FK
-    }
-```
-
 !!! success "Las tres decisiones del esquema"
-    **1 · `fk_producto_categoria` sin cascada.** Borrar una categoría que tiene productos **tiene que fallar**, y la base de datos lo impide. Eso se traduce en un 409.
+    **1 · La clave ajena, sin cascada.** Borrar una categoría con productos **tiene que fallar**, y de eso se encarga la base de datos. Se traduce en un **409**.
 
-    **2 · `CHECK (stock >= 0)`.** La última defensa contra vender más de lo que hay. Aunque tu código tenga un bug, el stock no queda negativo.
+    **2 · `CHECK (stock >= 0)`.** La última defensa: aunque tu código tenga un fallo, el stock nunca queda negativo.
 
-    **3 · `unidades_vendidas` en la categoría.** Es el contador que hace que la venta toque **dos tablas**, que es el punto del proyecto.
+    **3 · `unidades_vendidas` en la categoría.** Es el contador que hace que **una venta escriba en las dos tablas**, que es el punto de este proyecto.
+
+---
 
 ## Paso 2 · Los modelos
 
 ```java title="categorias/models/Categoria.java"
+package es.iesx.tienda.categorias.models;
+
 public record Categoria(
         Long id,
         String nombre,
@@ -993,6 +1014,11 @@ public record Categoria(
 ```
 
 ```java title="productos/models/Producto.java"
+package es.iesx.tienda.productos.models;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 public record Producto(
         Long id,
         String sku,
@@ -1006,13 +1032,15 @@ public record Producto(
 ```
 
 !!! info "`categoriaId`, no `Categoria categoria`"
-    El modelo guarda **el id de la clave ajena**, no el objeto entero. Es lo que hay en la columna.
+    El modelo guarda **lo que hay en la columna**: el id. Sin JPA no hay navegación automática entre tablas, y aquí eso es una ventaja, porque **se ve exactamente qué consulta se lanza**.
 
-    Cuando el controlador necesite devolver el **nombre** de la categoría, el repositorio hace un `JOIN` y el DTO lo lleva. Sin JPA no hay navegación automática, y aquí eso es una ventaja: **se ve exactamente qué consulta se lanza**.
+    El nombre de la categoría, que es lo que quiere el cliente, lo pone el servicio juntando los dos repositorios. Lo verás en el paso 7.
+
+---
 
 ## Paso 3 · Los DTOs
 
-```java title="productos/dto/"
+```java title="productos/dto/ProductoResponse.java"
 /** Sale hacia el cliente: con el NOMBRE de la categoría, no su id. */
 public record ProductoResponse(
         Long id,
@@ -1024,66 +1052,228 @@ public record ProductoResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {}
+```
 
+```java title="productos/dto/ProductoCreateRequest.java"
 /** Entra en el POST: la categoría se indica por NOMBRE. */
 public record ProductoCreateRequest(
 
-        @NotBlank @Pattern(regexp = "SKU-\\d{3}", message = "El SKU debe ser SKU-nnn")
+        @NotBlank
+        @Pattern(regexp = "SKU-\\d{3}", message = "El SKU debe tener el formato SKU-nnn")
         String sku,
 
-        @NotBlank @Size(max = 150) String nombre,
+        @NotBlank @Size(max = 150)
+        String nombre,
 
         @NotNull @DecimalMin(value = "0.0", message = "El precio no puede ser negativo")
         BigDecimal precio,
 
-        @NotNull @PositiveOrZero Integer stock,
+        @NotNull @PositiveOrZero
+        Integer stock,
 
-        @NotBlank(message = "La categoría es obligatoria") String categoria
+        @NotBlank(message = "La categoría es obligatoria")
+        String categoria
 ) {}
+```
 
+```java title="productos/dto/ProductoUpdateRequest.java"
+/** Entra en el PATCH: todo opcional, solo reglas de formato. */
 public record ProductoUpdateRequest(
         @Size(max = 150) String nombre,
         @DecimalMin("0.0") BigDecimal precio,
         @PositiveOrZero Integer stock,
         String categoria
 ) {}
+```
 
-/** El cuerpo de la venta. */
+```java title="productos/dto/VentaRequest.java"
 public record VentaRequest(
-        @NotNull @Min(value = 1, message = "La cantidad mínima es 1") Integer cantidad
+        @NotNull @Min(value = 1, message = "La cantidad mínima es 1")
+        Integer cantidad
 ) {}
 ```
 
-## Paso 4 · Los repositorios
+```java title="categorias/dto/CategoriaResponse.java"
+public record CategoriaResponse(
+        Long id,
+        String nombre,
+        Integer unidadesVendidas
+) {}
+```
+
+---
+
+## Paso 4 · El repositorio de categorías
+
+**Primero la interfaz:** cuatro métodos, y ya está.
+
+```java title="categorias/repositories/CategoriasRepository.java"
+package es.iesx.tienda.categorias.repositories;
+
+import es.iesx.tienda.categorias.models.Categoria;
+import java.util.List;
+import java.util.Optional;
+
+public interface CategoriasRepository {
+
+    List<Categoria> findAll();
+
+    Optional<Categoria> findById(Long id);
+
+    Optional<Categoria> findByNombre(String nombre);
+
+    /** Suma unidades al contador de ventas. Devuelve las filas afectadas. */
+    int sumarVendidas(Long id, int cantidad);
+}
+```
+
+**El `RowMapper`:** convierte una fila en un `Categoria`.
+
+```java title="categorias/repositories/CategoriaRowMapper.java"
+package es.iesx.tienda.categorias.repositories;
+
+import es.iesx.tienda.categorias.models.Categoria;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Component;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+@Component
+public class CategoriaRowMapper implements RowMapper<Categoria> {
+
+    @Override
+    public Categoria mapRow(ResultSet rs, int rowNum) throws SQLException {
+        return new Categoria(
+                rs.getLong("id"),
+                rs.getString("nombre"),
+                rs.getInt("unidades_vendidas"));
+    }
+}
+```
+
+**Y la implementación, completa:**
+
+```java title="categorias/repositories/CategoriasRepositoryJdbc.java"
+package es.iesx.tienda.categorias.repositories;
+
+import es.iesx.tienda.categorias.models.Categoria;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public class CategoriasRepositoryJdbc implements CategoriasRepository {
+
+    private final JdbcClient jdbc;
+    private final CategoriaRowMapper rowMapper;
+
+    public CategoriasRepositoryJdbc(JdbcClient jdbc, CategoriaRowMapper rowMapper) {
+        this.jdbc = jdbc;
+        this.rowMapper = rowMapper;
+    }
+
+    @Override
+    public List<Categoria> findAll() {
+        return jdbc.sql("SELECT * FROM categorias ORDER BY id")
+                .query(rowMapper)
+                .list();
+    }
+
+    @Override
+    public Optional<Categoria> findById(Long id) {
+        return jdbc.sql("SELECT * FROM categorias WHERE id = :id")
+                .param("id", id)
+                .query(rowMapper)
+                .optional();
+    }
+
+    @Override
+    public Optional<Categoria> findByNombre(String nombre) {
+        return jdbc.sql("SELECT * FROM categorias WHERE UPPER(nombre) = UPPER(:nombre)")
+                .param("nombre", nombre)
+                .query(rowMapper)
+                .optional();
+    }
+
+    @Override
+    public int sumarVendidas(Long id, int cantidad) {
+        return jdbc.sql("""
+                UPDATE categorias
+                   SET unidades_vendidas = unidades_vendidas + :cantidad
+                 WHERE id = :id
+                """)
+                .param("id", id)
+                .param("cantidad", cantidad)
+                .update();
+    }
+}
+```
+
+!!! success "Comprueba que arranca"
+    ```bash
+    ./mvnw spring-boot:run
+    ```
+
+    Todavía no hay endpoints de categorías, pero si la aplicación levanta sin errores, **el repositorio está bien cableado**. Un `JdbcClient` mal inyectado o un `@Repository` olvidado fallan aquí, no más tarde.
+
+---
+
+## Paso 5 · El repositorio de productos
+
+**La interfaz:**
 
 ```java title="productos/repositories/ProductosRepository.java"
-public interface ProductosRepository {
-    List<ProductoConCategoria> buscar(Optional<String> categoria, Optional<String> nombre,
-                                      Optional<Boolean> conStock);
-    Optional<ProductoConCategoria> findById(Long id);
-    boolean   existsBySku(String sku);
-    long      contarPorCategoria(Long categoriaId);
-    Producto  save(Producto producto);
-    void      update(Producto producto);
-    boolean   deleteById(Long id);
+package es.iesx.tienda.productos.repositories;
 
-    /** Descuenta SOLO si hay suficiente. Devuelve las filas afectadas. */
+import es.iesx.tienda.productos.models.Producto;
+import java.util.List;
+import java.util.Optional;
+
+public interface ProductosRepository {
+
+    /** Listado con tres filtros opcionales. Un null significa "no filtrar por esto". */
+    List<Producto> buscar(Long categoriaId, String nombre, Boolean conStock);
+
+    Optional<Producto> findById(Long id);
+
+    boolean existsBySku(String sku);
+
+    /** Cuántos productos tiene esa categoría. Para poder borrarla o no. */
+    long contarPorCategoria(Long categoriaId);
+
+    Producto save(Producto producto);
+
+    Producto update(Producto producto);
+
+    /** Devuelve true si ha borrado algo. */
+    boolean deleteById(Long id);
+
+    /** Descuenta stock SOLO si hay suficiente. Devuelve las filas afectadas. */
     int descontarStock(Long id, int cantidad);
 }
 ```
 
-```java title="productos/repositories/ProductoConCategoria.java"
-/** Lo que devuelve el JOIN: el producto y el nombre de su categoría. */
-public record ProductoConCategoria(Producto producto, String categoriaNombre) {}
-```
+**El `RowMapper`:**
 
-```java title="productos/repositories/ProductoConCategoriaRowMapper.java"
+```java title="productos/repositories/ProductoRowMapper.java"
+package es.iesx.tienda.productos.repositories;
+
+import es.iesx.tienda.productos.models.Producto;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Component;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 @Component
-public class ProductoConCategoriaRowMapper implements RowMapper<ProductoConCategoria> {
+public class ProductoRowMapper implements RowMapper<Producto> {
 
     @Override
-    public ProductoConCategoria mapRow(ResultSet rs, int rowNum) throws SQLException {
-        var producto = new Producto(
+    public Producto mapRow(ResultSet rs, int rowNum) throws SQLException {
+        return new Producto(
                 rs.getLong("id"),
                 rs.getString("sku"),
                 rs.getString("nombre"),
@@ -1092,66 +1282,128 @@ public class ProductoConCategoriaRowMapper implements RowMapper<ProductoConCateg
                 rs.getLong("categoria_id"),
                 rs.getTimestamp("created_at").toLocalDateTime(),
                 rs.getTimestamp("updated_at").toLocalDateTime());
-
-        return new ProductoConCategoria(producto, rs.getString("categoria_nombre"));
     }
 }
 ```
 
-```java title="productos/repositories/ProductosRepositoryJdbc.java (lo relevante)"
+**La implementación, completa:**
+
+```java title="productos/repositories/ProductosRepositoryJdbc.java"
+package es.iesx.tienda.productos.repositories;
+
+import es.iesx.tienda.productos.models.Producto;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.stereotype.Repository;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
+
 @Repository
 public class ProductosRepositoryJdbc implements ProductosRepository {
 
-    private static final String SELECT_CON_CATEGORIA = """
-            SELECT p.*, c.nombre AS categoria_nombre
-              FROM productos p
-              JOIN categorias c ON c.id = p.categoria_id
-            """;
-
     private final JdbcClient jdbc;
-    private final ProductoConCategoriaRowMapper rowMapper;
+    private final ProductoRowMapper rowMapper;
 
-    public ProductosRepositoryJdbc(JdbcClient jdbc, ProductoConCategoriaRowMapper rowMapper) {
+    public ProductosRepositoryJdbc(JdbcClient jdbc, ProductoRowMapper rowMapper) {
         this.jdbc = jdbc;
         this.rowMapper = rowMapper;
     }
 
     @Override
-    public List<ProductoConCategoria> buscar(Optional<String> categoria,
-                                             Optional<String> nombre,
-                                             Optional<Boolean> conStock) {
-        var sql = new StringBuilder(SELECT_CON_CATEGORIA).append(" WHERE 1 = 1");
+    public List<Producto> buscar(Long categoriaId, String nombre, Boolean conStock) {
+        var sql = new StringBuilder("SELECT * FROM productos WHERE 1 = 1");
         var params = new HashMap<String, Object>();
 
-        categoria.ifPresent(c -> {
-            sql.append(" AND UPPER(c.nombre) = UPPER(:categoria)");
-            params.put("categoria", c);
-        });
-        nombre.ifPresent(n -> {
-            sql.append(" AND LOWER(p.nombre) LIKE LOWER(:nombre)");
-            params.put("nombre", "%" + n + "%");
-        });
-        conStock.filter(Boolean::booleanValue).ifPresent(x -> sql.append(" AND p.stock > 0"));
-        sql.append(" ORDER BY p.id");
+        if (categoriaId != null) {
+            sql.append(" AND categoria_id = :categoriaId");
+            params.put("categoriaId", categoriaId);
+        }
+        if (nombre != null) {
+            sql.append(" AND UPPER(nombre) LIKE UPPER(:nombre)");
+            params.put("nombre", "%" + nombre + "%");
+        }
+        if (conStock != null) {
+            sql.append(conStock ? " AND stock > 0" : " AND stock = 0");
+        }
+        sql.append(" ORDER BY id");
 
-        return jdbc.sql(sql.toString()).params(params).query(rowMapper).list();
+        return jdbc.sql(sql.toString())
+                .params(params)
+                .query(rowMapper)
+                .list();
     }
 
     @Override
-    public Optional<ProductoConCategoria> findById(Long id) {
-        return jdbc.sql(SELECT_CON_CATEGORIA + " WHERE p.id = :id")
-                   .param("id", id)
-                   .query(rowMapper).optional();
+    public Optional<Producto> findById(Long id) {
+        return jdbc.sql("SELECT * FROM productos WHERE id = :id")
+                .param("id", id)
+                .query(rowMapper)
+                .optional();
+    }
+
+    @Override
+    public boolean existsBySku(String sku) {
+        return jdbc.sql("SELECT count(*) FROM productos WHERE UPPER(sku) = UPPER(:sku)")
+                .param("sku", sku)
+                .query(Long.class)
+                .single() > 0;
     }
 
     @Override
     public long contarPorCategoria(Long categoriaId) {
-        return jdbc.sql("SELECT COUNT(*) FROM productos WHERE categoria_id = :id")
-                   .param("id", categoriaId)
-                   .query(Long.class).single();
+        return jdbc.sql("SELECT count(*) FROM productos WHERE categoria_id = :id")
+                .param("id", categoriaId)
+                .query(Long.class)
+                .single();
     }
 
-    /** La pieza central del proyecto. */
+    @Override
+    public Producto save(Producto p) {
+        var keys = new GeneratedKeyHolder();
+
+        jdbc.sql("""
+                INSERT INTO productos (sku, nombre, precio, stock, categoria_id,
+                                       created_at, updated_at)
+                VALUES (:sku, :nombre, :precio, :stock, :categoriaId,
+                        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """)
+                .param("sku", p.sku())
+                .param("nombre", p.nombre())
+                .param("precio", p.precio())
+                .param("stock", p.stock())
+                .param("categoriaId", p.categoriaId())
+                .update(keys);
+
+        return findById(keys.getKey().longValue()).orElseThrow();
+    }
+
+    @Override
+    public Producto update(Producto p) {
+        jdbc.sql("""
+                UPDATE productos
+                   SET nombre = :nombre, precio = :precio, stock = :stock,
+                       categoria_id = :categoriaId, updated_at = CURRENT_TIMESTAMP
+                 WHERE id = :id
+                """)
+                .param("id", p.id())
+                .param("nombre", p.nombre())
+                .param("precio", p.precio())
+                .param("stock", p.stock())
+                .param("categoriaId", p.categoriaId())
+                .update();
+
+        return findById(p.id()).orElseThrow();
+    }
+
+    @Override
+    public boolean deleteById(Long id) {
+        return jdbc.sql("DELETE FROM productos WHERE id = :id")
+                .param("id", id)
+                .update() > 0;
+    }
+
     @Override
     public int descontarStock(Long id, int cantidad) {
         return jdbc.sql("""
@@ -1159,150 +1411,73 @@ public class ProductosRepositoryJdbc implements ProductosRepository {
                    SET stock = stock - :cantidad, updated_at = CURRENT_TIMESTAMP
                  WHERE id = :id AND stock >= :cantidad
                 """)
-            .param("cantidad", cantidad).param("id", id)
-            .update();
+                .param("id", id)
+                .param("cantidad", cantidad)
+                .update();
     }
 }
 ```
 
-```java title="categorias/repositories/CategoriasRepository.java"
-public interface CategoriasRepository {
-    List<Categoria>     findAll();
-    Optional<Categoria> findById(Long id);
-    Optional<Categoria> findByNombre(String nombre);
-    Categoria           save(Categoria categoria);
-    boolean             deleteById(Long id);
+!!! danger "Los dos métodos que no son un CRUD normal"
+    **`descontarStock`** lleva la comprobación **dentro del `UPDATE`**:
 
-    /** Suma unidades al contador de la categoría. */
-    int sumarVendidas(Long id, int cantidad);
-}
-```
-
-!!! success "El `JOIN` está en una constante"
-    `SELECT_CON_CATEGORIA` se reutiliza en `buscar` y en `findById`. Si mañana hay que añadir una columna al `SELECT`, se toca **un sitio**.
-
-## Paso 5 · La venta: la operación que toca dos tablas
-
-```java title="productos/services/ProductosServiceImpl.java (el método clave)"
-/**
- * Vende unidades de un producto: descuenta su stock y suma al contador
- * de su categoría. Las dos cosas, o ninguna.
- */
-@Override
-@Transactional
-public ProductoResponse vender(Long id, VentaRequest request) {
-
-    // 1 · el producto tiene que existir
-    var actual = repositorio.findById(id)
-            .orElseThrow(() -> new ProductoNotFoundException(id));
-
-    // 2 · descontar stock, de forma atómica
-    if (repositorio.descontarStock(id, request.cantidad()) == 0)
-        throw new ProductoConflictException(
-                "Stock insuficiente de %s: piden %d, hay %d"
-                        .formatted(actual.producto().nombre(),
-                                   request.cantidad(),
-                                   actual.producto().stock()));
-
-    // 3 · sumar al contador de la categoría
-    categoriasRepository.sumarVendidas(actual.producto().categoriaId(), request.cantidad());
-
-    log.info("Vendidas {} unidades de {}", request.cantidad(), actual.producto().sku());
-
-    // 4 · devolver el estado nuevo
-    return mapper.toResponse(repositorio.findById(id).orElseThrow());
-}
-```
-
-!!! danger "El `@Transactional` es todo el proyecto en una anotación"
-    Sigue el camino de una venta que falla en el paso 3:
-
-    ```
-    1 · el producto existe                       OK
-    2 · descontar stock        → UPDATE ejecutado
-    3 · sumar a la categoría   → falla
-    ───────────────────────────────────────────────
-    ROLLBACK: el UPDATE del paso 2 se deshace
+    ```sql
+    WHERE id = :id AND stock >= :cantidad
     ```
 
-    **Sin `@Transactional`**, cada `update()` se confirma solo: el stock se queda descontado y el contador sin subir. **Has perdido stock sin vender nada, y nadie recibe ningún error.**
+    Si no hay bastante, afecta a **0 filas** y no cambia nada. El servicio mira ese número y lanza el 409. Si en su lugar hicieras «leer, comprobar con un `if`, escribir», dos peticiones simultáneas podrían colarse las dos y dejar el stock negativo.
 
-!!! danger "Y el `AND stock >= :cantidad` evita el stock negativo"
-    === "❌ Mal: comprobar y después restar"
+    **`deleteById`** devuelve `boolean` en vez de `void`, porque `update()` da **las filas afectadas**. Sin eso, borrar un id que no existe devolvería 204 en lugar de 404.
 
-        ```java
-        var p = repositorio.findById(id).orElseThrow();
-        if (p.producto().stock() < cantidad)
-            throw new ProductoConflictException("Sin stock");
-        repositorio.actualizarStock(id, p.producto().stock() - cantidad);
-        ```
+---
 
-        Entre el `if` y el `UPDATE` **cabe otra petición**. Las dos leen stock 5, las dos creen que pueden vender 3, y el stock acaba en **−1**.
+## Paso 6 · Las excepciones y el mapeador
 
-        En desarrollo nunca se reproduce, porque hay un solo usuario.
+```java title="productos/exceptions/"
+@ResponseStatus(HttpStatus.NOT_FOUND)
+public class ProductoNotFoundException extends RuntimeException {
+    public ProductoNotFoundException(Long id) {
+        super("No se ha encontrado el producto con id: " + id);
+    }
+}
 
-    === "✅ Bien: una sola sentencia"
+@ResponseStatus(HttpStatus.CONFLICT)
+public class ProductoConflictException extends RuntimeException {
+    public ProductoConflictException(String mensaje) { super(mensaje); }
+}
 
-        ```java
-        if (repositorio.descontarStock(id, cantidad) == 0)
-            throw new ProductoConflictException("Stock insuficiente…");
-        ```
-
-        El `UPDATE … WHERE stock >= :cantidad` es **atómico**: la base de datos garantiza que nadie se cuela. Si no había bastante, afecta a **0 filas**.
-
-### Y las otras dos reglas
-
-```java
-@Override
-@Transactional
-public ProductoResponse save(ProductoCreateRequest request) {
-    if (repositorio.existsBySku(request.sku()))
-        throw new ProductoConflictException("Ya existe un producto con el SKU " + request.sku());
-
-    var categoria = categoriasRepository.findByNombre(request.categoria())
-            .orElseThrow(() -> new ProductoBadRequestException(
-                    "La categoría " + request.categoria() + " no existe"));
-
-    return mapper.toResponse(repositorio.findById(
-            repositorio.save(mapper.toModel(request, categoria.id())).id()).orElseThrow());
+@ResponseStatus(HttpStatus.BAD_REQUEST)
+public class ProductoBadRequestException extends RuntimeException {
+    public ProductoBadRequestException(String mensaje) { super(mensaje); }
 }
 ```
 
-```java title="categorias/services/CategoriasServiceImpl.java"
-@Override
-@Transactional
-public void deleteById(Long id) {
-    categoriasRepository.findById(id)
-            .orElseThrow(() -> new CategoriaNotFoundException(id));
-
-    long productos = productosRepository.contarPorCategoria(id);
-    if (productos > 0)
-        throw new CategoriaConflictException(
-                "No se puede borrar la categoría: tiene %d productos".formatted(productos));
-
-    categoriasRepository.deleteById(id);
+```java title="categorias/exceptions/"
+@ResponseStatus(HttpStatus.NOT_FOUND)
+public class CategoriaNotFoundException extends RuntimeException {
+    public CategoriaNotFoundException(Long id) {
+        super("No se ha encontrado la categoría con id: " + id);
+    }
 }
 ```
-
-## Paso 6 · El mapeador con dos tablas
 
 ```java title="productos/mappers/ProductoMapper.java"
+package es.iesx.tienda.productos.mappers;
+
+import org.springframework.stereotype.Component;
+import java.time.LocalDateTime;
+
 @Component
 public class ProductoMapper {
 
-    /** El JOIN ya trae el nombre de la categoría: lo pasamos al DTO. */
-    public ProductoResponse toResponse(ProductoConCategoria pc) {
-        var p = pc.producto();
-        return new ProductoResponse(p.id(), p.sku(), p.nombre(), p.precio(),
-                                    p.stock(), pc.categoriaNombre(),
-                                    p.createdAt(), p.updatedAt());
+    /** Modelo + nombre de su categoría → lo que ve el cliente. */
+    public ProductoResponse toResponse(Producto p, String categoriaNombre) {
+        return new ProductoResponse(
+                p.id(), p.sku(), p.nombre(), p.precio(), p.stock(),
+                categoriaNombre, p.createdAt(), p.updatedAt());
     }
 
-    public List<ProductoResponse> toResponse(List<ProductoConCategoria> lista) {
-        return lista.stream().map(this::toResponse).toList();
-    }
-
-    /** POST: recibe el id de la categoría ya resuelto por el servicio. */
+    /** POST → modelo nuevo. El servicio ya ha resuelto el id de la categoría. */
     public Producto toModel(ProductoCreateRequest r, Long categoriaId) {
         var ahora = LocalDateTime.now();
         return new Producto(
@@ -1316,7 +1491,7 @@ public class ProductoMapper {
                 ahora);
     }
 
-    /** PATCH: conserva lo que no llega. La categoría también viene resuelta. */
+    /** PATCH → copia con solo lo que ha llegado distinto de null. */
     public Producto parchear(Producto original, ProductoUpdateRequest r, Long categoriaId) {
         return new Producto(
                 original.id(),
@@ -1324,89 +1499,372 @@ public class ProductoMapper {
                 r.nombre() != null ? r.nombre().trim() : original.nombre(),
                 r.precio() != null ? r.precio()        : original.precio(),
                 r.stock()  != null ? r.stock()         : original.stock(),
-                categoriaId,
+                categoriaId != null ? categoriaId      : original.categoriaId(),
                 original.createdAt(),
                 LocalDateTime.now());
     }
 }
 ```
 
-!!! info "Quién resuelve el nombre de la categoría"
-    El cliente manda `"categoria": "INFORMATICA"`. **El servicio** lo busca y obtiene el id; **el mapeador** solo recibe el `Long` ya resuelto.
+```java title="categorias/mappers/CategoriaMapper.java"
+@Component
+public class CategoriaMapper {
 
-    Así el mapeador no necesita repositorios: sigue siendo una clase que solo convierte datos.
+    public CategoriaResponse toResponse(Categoria c) {
+        return new CategoriaResponse(c.id(), c.nombre(), c.unidadesVendidas());
+    }
 
-## Paso 7 · Probar el proyecto B
+    public List<CategoriaResponse> toResponse(List<Categoria> categorias) {
+        return categorias.stream().map(this::toResponse).toList();
+    }
+}
+```
 
-=== "Una venta correcta"
+---
 
-    ```bash
-    curl -s localhost:8080/api/v1/productos/1 | jq '{nombre, stock, categoria}'
-    # { "nombre": "Teclado mecánico", "stock": 10, "categoria": "INFORMATICA" }
+## Paso 7 · El servicio
 
-    curl -s -X POST localhost:8080/api/v1/productos/1/venta \
-      -H "Content-Type: application/json" -d '{"cantidad":3}' | jq '{nombre, stock}'
-    # { "nombre": "Teclado mecánico", "stock": 7 }
+**Aquí está toda la lógica, y se escribe de una vez.** Seis métodos públicos y dos auxiliares privados.
 
-    curl -s localhost:8080/api/v1/categorias | jq '.[] | select(.nombre=="INFORMATICA")'
-    # { "id": 1, "nombre": "INFORMATICA", "unidadesVendidas": 3 }
+```java title="productos/services/ProductosService.java"
+public interface ProductosService {
+    List<ProductoResponse> findAll(Optional<String> categoria,
+                                   Optional<String> nombre,
+                                   Optional<Boolean> conStock);
+    ProductoResponse findById(Long id);
+    ProductoResponse save(ProductoCreateRequest request);
+    ProductoResponse update(Long id, ProductoUpdateRequest request);
+    void deleteById(Long id);
+    ProductoResponse vender(Long id, VentaRequest request);
+}
+```
+
+```java title="productos/services/ProductosServiceImpl.java"
+package es.iesx.tienda.productos.services;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+@Service
+public class ProductosServiceImpl implements ProductosService {
+
+    private static final Logger log = LoggerFactory.getLogger(ProductosServiceImpl.class);
+
+    private final ProductosRepository productosRepository;
+    private final CategoriasRepository categoriasRepository;
+    private final ProductoMapper mapper;
+
+    public ProductosServiceImpl(ProductosRepository productosRepository,
+                                CategoriasRepository categoriasRepository,
+                                ProductoMapper mapper) {
+        this.productosRepository = productosRepository;
+        this.categoriasRepository = categoriasRepository;
+        this.mapper = mapper;
+    }
+
+    // ─────────────────────────── LECTURAS ───────────────────────────
+
+    @Override
+    public List<ProductoResponse> findAll(Optional<String> categoria,
+                                          Optional<String> nombre,
+                                          Optional<Boolean> conStock) {
+
+        // Si se filtra por categoria, hay que traducir el NOMBRE a su id
+        Long categoriaId = categoria
+                .map(this::buscarCategoriaPorNombre)
+                .map(Categoria::id)
+                .orElse(null);
+
+        var productos = productosRepository.buscar(
+                categoriaId, nombre.orElse(null), conStock.orElse(null));
+
+        // Una sola consulta para TODAS las categorias, y se mapea en memoria
+        var nombresPorId = nombresDeCategorias();
+
+        return productos.stream()
+                .map(p -> mapper.toResponse(p, nombresPorId.get(p.categoriaId())))
+                .toList();
+    }
+
+    @Override
+    public ProductoResponse findById(Long id) {
+        var producto = productosRepository.findById(id)
+                .orElseThrow(() -> new ProductoNotFoundException(id));
+
+        return mapper.toResponse(producto, nombreDeCategoria(producto.categoriaId()));
+    }
+
+    // ─────────────────────────── ESCRITURAS ───────────────────────────
+
+    @Override
+    @Transactional
+    public ProductoResponse save(ProductoCreateRequest request) {
+
+        // R1 · el SKU no puede repetirse
+        if (productosRepository.existsBySku(request.sku())) {
+            throw new ProductoConflictException("Ya existe un producto con el SKU " + request.sku());
+        }
+
+        // R2 · la categoria tiene que existir
+        var categoria = buscarCategoriaPorNombre(request.categoria());
+
+        var guardado = productosRepository.save(mapper.toModel(request, categoria.id()));
+
+        log.info("Producto creado: {} ({})", guardado.sku(), guardado.id());
+        return mapper.toResponse(guardado, categoria.nombre());
+    }
+
+    @Override
+    @Transactional
+    public ProductoResponse update(Long id, ProductoUpdateRequest request) {
+
+        var original = productosRepository.findById(id)
+                .orElseThrow(() -> new ProductoNotFoundException(id));
+
+        // Si llega categoria, se valida; si no, se conserva la que tenia
+        Long categoriaId = request.categoria() == null
+                ? null
+                : buscarCategoriaPorNombre(request.categoria()).id();
+
+        var actualizado = productosRepository.update(
+                mapper.parchear(original, request, categoriaId));
+
+        return mapper.toResponse(actualizado, nombreDeCategoria(actualizado.categoriaId()));
+    }
+
+    @Override
+    @Transactional
+    public void deleteById(Long id) {
+
+        var producto = productosRepository.findById(id)
+                .orElseThrow(() -> new ProductoNotFoundException(id));
+
+        // R3 · no se borra un producto que todavia tiene stock
+        if (producto.stock() > 0) {
+            throw new ProductoConflictException(
+                    "No se puede borrar %s: todavía tiene %d unidades en stock"
+                            .formatted(producto.sku(), producto.stock()));
+        }
+
+        productosRepository.deleteById(id);
+        log.info("Producto borrado: {}", id);
+    }
+
+    /**
+     * R4 · Vender: descuenta stock del producto Y suma al contador de su categoria.
+     * Las dos cosas, o ninguna.
+     */
+    @Override
+    @Transactional
+    public ProductoResponse vender(Long id, VentaRequest request) {
+
+        var producto = productosRepository.findById(id)
+                .orElseThrow(() -> new ProductoNotFoundException(id));
+
+        // 1 · descontar de forma atomica: 0 filas = no habia bastante
+        if (productosRepository.descontarStock(id, request.cantidad()) == 0) {
+            throw new ProductoConflictException(
+                    "Stock insuficiente de %s: se piden %d y hay %d"
+                            .formatted(producto.nombre(), request.cantidad(), producto.stock()));
+        }
+
+        // 2 · sumar al contador de la categoria
+        categoriasRepository.sumarVendidas(producto.categoriaId(), request.cantidad());
+
+        log.info("Vendidas {} unidades de {}", request.cantidad(), producto.sku());
+
+        var actualizado = productosRepository.findById(id).orElseThrow();
+        return mapper.toResponse(actualizado, nombreDeCategoria(actualizado.categoriaId()));
+    }
+
+    // ─────────────────────────── AUXILIARES ───────────────────────────
+
+    /** Busca una categoria por nombre, o lanza 400 si no existe. */
+    private Categoria buscarCategoriaPorNombre(String nombre) {
+        return categoriasRepository.findByNombre(nombre)
+                .orElseThrow(() -> new ProductoBadRequestException(
+                        "La categoría '" + nombre + "' no existe"));
+    }
+
+    /** El nombre de una categoria por su id. */
+    private String nombreDeCategoria(Long categoriaId) {
+        return categoriasRepository.findById(categoriaId)
+                .map(Categoria::nombre)
+                .orElse("SIN CATEGORÍA");
+    }
+
+    /** Todas las categorias de una vez: id → nombre. */
+    private Map<Long, String> nombresDeCategorias() {
+        return categoriasRepository.findAll().stream()
+                .collect(Collectors.toMap(Categoria::id, Categoria::nombre));
+    }
+}
+```
+
+```java title="categorias/services/CategoriasServiceImpl.java"
+@Service
+public class CategoriasServiceImpl implements CategoriasService {
+
+    private final CategoriasRepository categoriasRepository;
+    private final ProductosRepository productosRepository;
+    private final CategoriaMapper mapper;
+
+    public CategoriasServiceImpl(CategoriasRepository categoriasRepository,
+                                 ProductosRepository productosRepository,
+                                 CategoriaMapper mapper) {
+        this.categoriasRepository = categoriasRepository;
+        this.productosRepository = productosRepository;
+        this.mapper = mapper;
+    }
+
+    @Override
+    public List<CategoriaResponse> findAll() {
+        return mapper.toResponse(categoriasRepository.findAll());
+    }
+
+    @Override
+    public CategoriaResponse findById(Long id) {
+        return categoriasRepository.findById(id)
+                .map(mapper::toResponse)
+                .orElseThrow(() -> new CategoriaNotFoundException(id));
+    }
+}
+```
+
+!!! success "Lo que hace el `vender`, en tres líneas"
+    | | Qué pasa |
+    |:-:|---|
+    | 1 | **Descuenta el stock** con el `UPDATE` condicionado. Si devuelve 0, lanza **409** y aquí se acaba |
+    | 2 | **Suma al contador** de la categoría |
+    | 3 | Relee el producto y lo devuelve ya mapeado |
+
+    **El `@Transactional` es lo que une los pasos 1 y 2.** Si el segundo fallara, el primero se deshace: no se puede descontar stock sin registrar la venta.
+
+!!! danger "Por qué el listado no hace una consulta por producto"
+    El `findAll` necesita el **nombre** de la categoría de cada producto. La forma ingenua sería preguntar por cada uno:
+
+    ```java
+    productos.stream()
+             .map(p -> mapper.toResponse(p, nombreDeCategoria(p.categoriaId())))  // ❌
     ```
 
-    **Las dos tablas han cambiado con una sola petición.**
+    Con 50 productos eso son **51 consultas**. Como las categorías son pocas, se traen **todas de una vez** y se mapean en memoria:
 
-=== "La transacción, comprobada"
-
-    ```bash
-    # Antes
-    curl -s localhost:8080/api/v1/productos | jq '[.[] | {sku, stock}]'
-    curl -s localhost:8080/api/v1/categorias | jq '[.[] | {nombre, unidadesVendidas}]'
-
-    # Venta de más unidades de las que hay
-    curl -i -X POST localhost:8080/api/v1/productos/3/venta \
-      -H "Content-Type: application/json" -d '{"cantidad":5}'
-    # 409 · "Stock insuficiente de Monitor 27\": piden 5, hay 1"
-
-    # Después: NINGUNA de las dos tablas ha cambiado
-    curl -s localhost:8080/api/v1/productos | jq '[.[] | {sku, stock}]'
-    curl -s localhost:8080/api/v1/categorias | jq '[.[] | {nombre, unidadesVendidas}]'
+    ```java
+    var nombresPorId = nombresDeCategorias();      // ✅ 1 consulta, y vale para todos
     ```
 
-    **Esos dos pares de salidas idénticas son el resultado de aprendizaje del proyecto.**
+    **Dos consultas en total, pase lo que pase.** En la [UT5](../ut5/02-resultados-avanzados.md) verás que este problema tiene nombre —el N+1— y que con JPA es todavía más fácil caer en él.
 
-=== "Los errores"
+---
 
-    ```bash
-    # 409: borrar una categoría con productos
-    curl -i -X DELETE localhost:8080/api/v1/categorias/1
-    # 409 · "No se puede borrar la categoría: tiene 3 productos"
+## Paso 8 · El controlador
 
-    # 400: categoría que no existe
-    curl -i -X POST localhost:8080/api/v1/productos \
-      -H "Content-Type: application/json" \
-      -d '{"sku":"SKU-010","nombre":"Mesa","precio":99.00,"stock":2,"categoria":"COCINA"}'
-    # 400
+```java title="productos/controllers/ProductosRestController.java"
+package es.iesx.tienda.productos.controllers;
 
-    # 400: SKU con formato malo
-    curl -s -X POST localhost:8080/api/v1/productos \
-      -H "Content-Type: application/json" \
-      -d '{"sku":"ABC","nombre":"Mesa","precio":99.00,"stock":2,"categoria":"PAPELERIA"}' \
-      | jq .campos
-    # { "sku": "El SKU debe ser SKU-nnn" }
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-    # 400: cantidad 0 en la venta
-    curl -s -X POST localhost:8080/api/v1/productos/1/venta \
-      -H "Content-Type: application/json" -d '{"cantidad":0}' | jq .campos
-    # { "cantidad": "La cantidad mínima es 1" }
+import java.net.URI;
+import java.util.List;
+import java.util.Optional;
 
-    # 409: vender un producto sin stock
-    curl -i -X POST localhost:8080/api/v1/productos/5/venta \
-      -H "Content-Type: application/json" -d '{"cantidad":1}'
-    # 409
-    ```
+@RestController
+@RequestMapping("${api.path:/api}/${api.version:v1}/productos")
+public class ProductosRestController {
 
-## Paso 8 · La caché
+    private final ProductosService servicio;
 
-El listado de productos y la ficha de un producto se piden mucho y cambian poco: son el caso de libro para una caché.
+    public ProductosRestController(ProductosService servicio) {
+        this.servicio = servicio;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<ProductoResponse>> findAll(
+            @RequestParam Optional<String> categoria,
+            @RequestParam Optional<String> nombre,
+            @RequestParam Optional<Boolean> conStock) {
+
+        return ResponseEntity.ok(servicio.findAll(categoria, nombre, conStock));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ProductoResponse> findById(@PathVariable Long id) {
+        return ResponseEntity.ok(servicio.findById(id));
+    }
+
+    @PostMapping
+    public ResponseEntity<ProductoResponse> save(@Valid @RequestBody ProductoCreateRequest dto) {
+        var creado = servicio.save(dto);
+        return ResponseEntity
+                .created(URI.create("/api/v1/productos/" + creado.id()))
+                .body(creado);
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<ProductoResponse> update(
+            @PathVariable Long id,
+            @Valid @RequestBody ProductoUpdateRequest dto) {
+
+        return ResponseEntity.ok(servicio.update(id, dto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteById(@PathVariable Long id) {
+        servicio.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/venta")
+    public ResponseEntity<ProductoResponse> vender(
+            @PathVariable Long id,
+            @Valid @RequestBody VentaRequest dto) {
+
+        return ResponseEntity.ok(servicio.vender(id, dto));
+    }
+}
+```
+
+```java title="categorias/controllers/CategoriasRestController.java"
+@RestController
+@RequestMapping("${api.path:/api}/${api.version:v1}/categorias")
+public class CategoriasRestController {
+
+    private final CategoriasService servicio;
+
+    public CategoriasRestController(CategoriasService servicio) {
+        this.servicio = servicio;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<CategoriaResponse>> findAll() {
+        return ResponseEntity.ok(servicio.findAll());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<CategoriaResponse> findById(@PathVariable Long id) {
+        return ResponseEntity.ok(servicio.findById(id));
+    }
+}
+```
+
+**El manejador de errores es el mismo del proyecto A**, sin cambios: validación, JSON ilegible, tipo erróneo e integridad de la tabla.
+
+---
+
+## Paso 9 · La caché
+
+El listado y la ficha de un producto se piden mucho y cambian poco.
 
 ```xml title="pom.xml"
 <dependency>
@@ -1425,29 +1883,20 @@ public class TiendaApiApplication {
 }
 ```
 
+**Y en el servicio, dos anotaciones en las lecturas y una en cada escritura:**
+
 ```java title="productos/services/ProductosServiceImpl.java"
 @Service
 @CacheConfig(cacheNames = {"productos"})
 public class ProductosServiceImpl implements ProductosService {
 
-    // ───── LECTURAS: guardan en la caché ─────
-
     @Override
     @Cacheable
-    public List<ProductoResponse> findAll(Optional<String> categoria,
-                                          Optional<String> nombre) {
-        return mapper.toResponse(repositorio.buscar(categoria, nombre));
-    }
+    public List<ProductoResponse> findAll(…) { … }
 
     @Override
     @Cacheable(key = "#id")
-    public ProductoResponse findById(Long id) {
-        return repositorio.findById(id)
-                .map(mapper::toResponse)
-                .orElseThrow(() -> new ProductoNotFoundException(id));
-    }
-
-    // ───── ESCRITURAS: vacían la caché. LAS CUATRO ─────
+    public ProductoResponse findById(Long id) { … }
 
     @Override
     @Transactional
@@ -1464,73 +1913,301 @@ public class ProductosServiceImpl implements ProductosService {
     @CacheEvict(allEntries = true)
     public void deleteById(Long id) { … }
 
-    /** La venta también escribe: cambia el stock. */
     @Override
     @Transactional
-    @CacheEvict(allEntries = true)
+    @CacheEvict(allEntries = true)          // ← la venta TAMBIÉN escribe
     public ProductoResponse vender(Long id, VentaRequest request) { … }
 }
 ```
 
+| | Qué hace |
+|---|---|
+| `@Cacheable` | Si ya está guardado, **devuelve sin ejecutar el método** |
+| `@CacheEvict(allEntries = true)` | Ejecuta el método y **vacía la caché entera** |
+
 !!! danger "El `vender` es el que se olvida"
-    Es el único método de escritura que no se llama `save`, `update` ni `delete`, y por eso se queda sin `@CacheEvict` la primera vez que alguien hace esto.
+    Es el único método de escritura que no se llama `save`, `update` ni `delete`.
 
-    La consecuencia: **vendes tres unidades, el stock baja en la base de datos, y el `GET` sigue devolviendo el stock de antes.** Nadie recibe ningún error.
+    Si se queda sin `@CacheEvict`: vendes tres unidades, el stock baja en la base de datos, y **el `GET` sigue devolviendo el stock de antes**. Nadie recibe ningún error.
 
-### Comprobar que funciona
-
-```properties title="application-dev.properties"
+```properties title="application-dev.properties — para verlo en el log"
 logging.level.org.springframework.jdbc.core=DEBUG
 ```
 
-=== "La caché, funcionando"
+---
+
+## Paso 10 · Probarlo todo
+
+```bash
+./mvnw clean package
+java -jar target/tienda-api-0.0.1-SNAPSHOT.jar
+```
+
+### 10.1 · Lo que tiene que ir bien
+
+```bash
+# ── Categorías ────────────────────────────────────────────────────────────
+curl -s localhost:8080/api/v1/categorias | jq
+# [ {"id":1,"nombre":"INFORMATICA","unidadesVendidas":0}, … ]
+
+curl -s localhost:8080/api/v1/categorias/1 | jq '.nombre'
+# "INFORMATICA"
+
+
+# ── Listado y filtros ─────────────────────────────────────────────────────
+curl -s localhost:8080/api/v1/productos | jq length
+# 5
+
+curl -s "localhost:8080/api/v1/productos?categoria=informatica" | jq '[.[].sku]'
+# ["SKU-001","SKU-002","SKU-003"]          ← el filtro NO distingue mayúsculas
+
+curl -s "localhost:8080/api/v1/productos?nombre=teclado" | jq '[.[].nombre]'
+# ["Teclado mecánico"]
+
+curl -s "localhost:8080/api/v1/productos?conStock=false" | jq '[.[].sku]'
+# ["SKU-005"]                              ← el único con stock 0
+
+curl -s "localhost:8080/api/v1/productos?categoria=informatica&conStock=true" \
+  | jq '[.[] | {sku, stock}]'
+
+
+# ── Ficha de un producto ──────────────────────────────────────────────────
+curl -s localhost:8080/api/v1/productos/1 | jq
+# { "id":1, "sku":"SKU-001", "nombre":"Teclado mecánico",
+#   "precio":79.90, "stock":10, "categoria":"INFORMATICA", … }
+#                                ↑ el NOMBRE, no el categoria_id
+
+
+# ── Alta ──────────────────────────────────────────────────────────────────
+curl -i -X POST localhost:8080/api/v1/productos \
+  -H "Content-Type: application/json" \
+  -d '{"sku":"SKU-006","nombre":"Webcam HD","precio":59.90,"stock":7,
+       "categoria":"INFORMATICA"}'
+# HTTP/1.1 201
+# Location: /api/v1/productos/6
+
+
+# ── Modificación parcial ──────────────────────────────────────────────────
+curl -s -X PATCH localhost:8080/api/v1/productos/6 \
+  -H "Content-Type: application/json" -d '{"precio":49.90}' \
+  | jq '{sku, nombre, precio, stock}'
+# { "sku":"SKU-006", "nombre":"Webcam HD", "precio":49.90, "stock":7 }
+#                     ↑ el nombre y el stock SE CONSERVAN
+
+
+# ── Venta: la operación que toca las dos tablas ───────────────────────────
+curl -s localhost:8080/api/v1/productos/1 | jq '.stock'
+# 10
+curl -s localhost:8080/api/v1/categorias/1 | jq '.unidadesVendidas'
+# 0
+
+curl -s -X POST localhost:8080/api/v1/productos/1/venta \
+  -H "Content-Type: application/json" -d '{"cantidad":3}' | jq '{nombre, stock}'
+# { "nombre":"Teclado mecánico", "stock":7 }
+
+curl -s localhost:8080/api/v1/categorias/1 | jq '.unidadesVendidas'
+# 3                                        ← ha cambiado la OTRA tabla
+
+
+# ── Borrado ───────────────────────────────────────────────────────────────
+curl -s -X PATCH localhost:8080/api/v1/productos/6 \
+  -H "Content-Type: application/json" -d '{"stock":0}' > /dev/null
+
+curl -i -X DELETE localhost:8080/api/v1/productos/6
+# HTTP/1.1 204
+
+
+# ── Persistencia ──────────────────────────────────────────────────────────
+# Para la aplicación (Ctrl+C), arráncala otra vez y repite:
+curl -s localhost:8080/api/v1/productos/1 | jq '.stock'
+# 7                                        ← el stock vendido SIGUE descontado
+```
+
+### 10.2 · Lo que tiene que fallar
+
+```bash
+# ── 404 · no existe ───────────────────────────────────────────────────────
+curl -i localhost:8080/api/v1/productos/9999
+# HTTP/1.1 404
+# "No se ha encontrado el producto con id: 9999"
+
+curl -i -X DELETE localhost:8080/api/v1/productos/9999
+# HTTP/1.1 404                             ← NO 204
+
+curl -i localhost:8080/api/v1/categorias/9999
+# HTTP/1.1 404
+
+
+# ── 400 · validación del DTO ──────────────────────────────────────────────
+curl -s -X POST localhost:8080/api/v1/productos \
+  -H "Content-Type: application/json" \
+  -d '{"sku":"XX","nombre":"","precio":-5,"stock":-1,"categoria":""}' | jq
+# {
+#   "status": 400,
+#   "error": "Datos de entrada inválidos",
+#   "campos": {
+#     "sku":       "El SKU debe tener el formato SKU-nnn",
+#     "nombre":    "no debe estar vacío",
+#     "precio":    "El precio no puede ser negativo",
+#     "stock":     "debe ser mayor o igual que 0",
+#     "categoria": "La categoría es obligatoria"
+#   }
+# }
+#                                          ← los CINCO campos de una vez
+
+
+# ── 400 · la categoría no existe ──────────────────────────────────────────
+curl -i -X POST localhost:8080/api/v1/productos \
+  -H "Content-Type: application/json" \
+  -d '{"sku":"SKU-007","nombre":"Lámpara","precio":19.90,"stock":4,
+       "categoria":"ILUMINACION"}'
+# HTTP/1.1 400
+# "La categoría 'ILUMINACION' no existe"
+
+
+# ── 400 · el id no es un número ───────────────────────────────────────────
+curl -i localhost:8080/api/v1/productos/abc
+# HTTP/1.1 400
+# "El parámetro 'id' no tiene el tipo esperado"
+
+
+# ── 400 · JSON roto ───────────────────────────────────────────────────────
+curl -i -X POST localhost:8080/api/v1/productos \
+  -H "Content-Type: application/json" -d '{"sku": }'
+# HTTP/1.1 400
+# "El cuerpo no es un JSON válido"
+
+
+# ── 415 · sin Content-Type ────────────────────────────────────────────────
+curl -i -X POST localhost:8080/api/v1/productos \
+  -d '{"sku":"SKU-008","nombre":"X","precio":1,"stock":1,"categoria":"PAPELERIA"}'
+# HTTP/1.1 415
+
+
+# ── 409 · SKU repetido ────────────────────────────────────────────────────
+curl -i -X POST localhost:8080/api/v1/productos \
+  -H "Content-Type: application/json" \
+  -d '{"sku":"SKU-001","nombre":"Otro teclado","precio":30,"stock":2,
+       "categoria":"INFORMATICA"}'
+# HTTP/1.1 409
+# "Ya existe un producto con el SKU SKU-001"
+
+
+# ── 409 · borrar un producto con stock ────────────────────────────────────
+curl -i -X DELETE localhost:8080/api/v1/productos/1
+# HTTP/1.1 409
+# "No se puede borrar SKU-001: todavía tiene 7 unidades en stock"
+
+
+# ── 409 · vender más de lo que hay ────────────────────────────────────────
+curl -i -X POST localhost:8080/api/v1/productos/3/venta \
+  -H "Content-Type: application/json" -d '{"cantidad":999}'
+# HTTP/1.1 409
+# "Stock insuficiente de Monitor 27 pulgadas: se piden 999 y hay 1"
+
+
+# ── 400 · vender cero unidades ────────────────────────────────────────────
+curl -s -X POST localhost:8080/api/v1/productos/1/venta \
+  -H "Content-Type: application/json" -d '{"cantidad":0}' | jq '.campos'
+# { "cantidad": "La cantidad mínima es 1" }
+```
+
+!!! danger "La prueba que de verdad importa: el *rollback*"
+    Una venta que falla **no puede dejar nada a medias**. Se comprueba mirando las dos tablas antes y después:
 
     ```bash
-    curl -s localhost:8080/api/v1/productos/1 > /dev/null    # ← SELECT en el log
-    curl -s localhost:8080/api/v1/productos/1 > /dev/null    # ← nada
-    curl -s localhost:8080/api/v1/productos/1 > /dev/null    # ← nada
+    # ANTES
+    curl -s localhost:8080/api/v1/productos   | jq '[.[] | {sku, stock}]'
+    curl -s localhost:8080/api/v1/categorias  | jq '[.[] | {nombre, unidadesVendidas}]'
+
+    # La venta imposible
+    curl -i -X POST localhost:8080/api/v1/productos/3/venta \
+      -H "Content-Type: application/json" -d '{"cantidad":999}'      # 409
+
+    # DESPUÉS — tiene que salir EXACTAMENTE lo mismo
+    curl -s localhost:8080/api/v1/productos   | jq '[.[] | {sku, stock}]'
+    curl -s localhost:8080/api/v1/categorias  | jq '[.[] | {nombre, unidadesVendidas}]'
     ```
 
-    **Una consulta, tres peticiones.**
+    **Esas dos parejas de salidas idénticas son el resultado de aprendizaje del proyecto.**
 
-=== "La escritura, vaciándola"
+    Quita el `@Transactional` del `vender`, provoca un fallo entre los dos pasos y repite: verás el stock descontado y el contador sin subir.
 
-    ```bash
-    curl -s -X POST localhost:8080/api/v1/productos/1/venta \
-      -H "Content-Type: application/json" -d '{"cantidad":2}' > /dev/null
+### 10.3 · La caché
 
-    curl -s localhost:8080/api/v1/productos/1 | jq '.stock'   # ← SELECT otra vez
-    ```
+Con `logging.level.org.springframework.jdbc.core=DEBUG`, **mira el log mientras lanzas esto**:
 
-    **El stock que sale es el nuevo.** Quita el `@CacheEvict` del `vender` y repite: el stock que sale es el viejo, y ahí tienes el error en tres comandos.
+```bash
+# ── 1 · Tres peticiones iguales: solo la primera consulta ─────────────────
+curl -s localhost:8080/api/v1/productos/1 > /dev/null     # ← SELECT en el log
+curl -s localhost:8080/api/v1/productos/1 > /dev/null     # ← nada
+curl -s localhost:8080/api/v1/productos/1 > /dev/null     # ← nada
 
-=== "Sin `@EnableCaching`"
 
-    ```bash
-    curl -s localhost:8080/api/v1/productos/1 > /dev/null
-    curl -s localhost:8080/api/v1/productos/1 > /dev/null
-    ```
+# ── 2 · Una escritura vacía la caché ──────────────────────────────────────
+curl -s -X POST localhost:8080/api/v1/productos/1/venta \
+  -H "Content-Type: application/json" -d '{"cantidad":1}' > /dev/null
 
-    **Dos `SELECT`.** Si te pasa esto con todas las anotaciones puestas, es que falta esa línea en la clase de arranque.
+curl -s localhost:8080/api/v1/productos/1 | jq '.stock'   # ← SELECT otra vez
+# 6                                        ← y el stock es el NUEVO
+
+
+# ── 3 · El listado se cachea igual ────────────────────────────────────────
+curl -s localhost:8080/api/v1/productos > /dev/null       # ← dos SELECT
+curl -s localhost:8080/api/v1/productos > /dev/null       # ← nada
+
+curl -s -X POST localhost:8080/api/v1/productos \
+  -H "Content-Type: application/json" \
+  -d '{"sku":"SKU-009","nombre":"Alfombrilla","precio":9.90,"stock":20,
+       "categoria":"INFORMATICA"}' > /dev/null
+
+curl -s localhost:8080/api/v1/productos | jq length       # ← consulta de nuevo
+# 6                                        ← y el nuevo producto APARECE
+```
+
+| Si ves esto | Es que |
+|---|---|
+| Un `SELECT` en **las tres** peticiones iguales | Falta **`@EnableCaching`** en la clase de arranque |
+| Después de vender, el `GET` devuelve **el stock viejo** | Falta **`@CacheEvict`** en el `vender` |
+| El producto nuevo **no aparece** en el listado | Falta `@CacheEvict` en el `save`, o no es `allEntries = true` |
 
 !!! success "Comprueba el proyecto B"
+    **Funciona**
+
+    - [ ] Los **ocho endpoints** responden con el código correcto
+    - [ ] El `ProductoResponse` lleva el **nombre** de la categoría, no su id
+    - [ ] Los tres filtros funcionan por separado y combinados
+    - [ ] El PATCH **conserva** los campos que no mandas
     - [ ] Una venta correcta cambia **las dos tablas**
-    - [ ] Una venta sin stock devuelve **409** y **ninguna de las dos cambia**
-    - [ ] El `UPDATE … WHERE stock >= :cantidad` impide el stock negativo
-    - [ ] El `JOIN` del listado trae el nombre de la categoría, no el `categoriaId`
-    - [ ] La segunda petición de `GET /productos/1` **no** genera consulta
+    - [ ] Los datos **sobreviven** a parar y arrancar
+
+    **Falla cuando tiene que fallar**
+
+    - [ ] 404 en `GET` y `DELETE` de un id inexistente
+    - [ ] 400 con los **cinco campos** a la vez
+    - [ ] 400 si la categoría no existe · 400 si el id no es un número
+    - [ ] 409 con un SKU repetido · 409 al borrar con stock · 409 al vender de más
+    - [ ] **Una venta fallida no cambia ninguna de las dos tablas**
+
+    **La caché**
+
+    - [ ] La segunda petición del mismo producto **no genera consulta**
     - [ ] Después de vender, el `GET` devuelve el **stock nuevo**
     - [ ] `grep -rn "@CacheEvict" src/main/java/` → **las cuatro escrituras**
-    - [ ] El `.jar` se genera y arranca
 
----
+    **El código**
+
+    - [ ] `grep -rn "ResponseEntity\|HttpStatus" src/main/java/**/services/` → **vacío**
+    - [ ] `grep -rn "@Autowired" src/main/java/` → **vacío**
+    - [ ] Ni una concatenación de valores en el SQL: todo con `:parametro`
+    - [ ] El `.jar` se genera y arranca
 
 ## Lo que has construido
 
 ```mermaid
 flowchart TB
     Cliente["curl / Postman"] -->|HTTP + JSON| C["@RestController"]
-    C -->|DTOs| S["@Service<br/>reglas + @Transactional"]
+    C -->|DTOs| S["@Service<br/>reglas + @Transactional + cache"]
     S --> R1["@Repository productos"]
     S --> R2["@Repository categorias"]
     R1 --> BD[("H2 en fichero")]
@@ -1539,31 +2216,15 @@ flowchart TB
     G -.->|400 / 404 / 409| Cliente
 ```
 
-!!! success "Comprueba los dos proyectos"
-    **Comunes**
+| | Proyecto A | Proyecto B |
+|---|---|---|
+| Tablas | 1 | **2 con clave ajena** |
+| Repositorios | 1 | **2** |
+| Lo que añade | Las ocho capas, de cero a `.jar` | **Transacción de dos tablas** y **caché** |
 
-    - [ ] `./mvnw clean package` en verde y el `.jar` arranca
-    - [ ] Arranca **dos veces seguidas** sin error (`IF NOT EXISTS` y `MERGE`)
-    - [ ] Los datos **sobreviven** a parar y arrancar
-    - [ ] GET de un id inexistente → **404**, no 500
-    - [ ] POST inválido → **400 con los campos**
-    - [ ] DELETE de un id inexistente → **404**, no 204
-    - [ ] POST correcto → **201** con `Location`
-    - [ ] El PATCH conserva lo que no mandas
-    - [ ] El `@Service` no contiene la palabra `ResponseEntity`
-    - [ ] Ni una concatenación de valores en el SQL
-    - [ ] **Ningún patrón builder**: `record` y `new`
-
-    **Solo el proyecto B**
-
-    - [ ] Una venta correcta cambia **las dos tablas**
-    - [ ] Una venta sin stock → **409 y ninguna de las dos cambia**
-    - [ ] Borrar una categoría con productos → **409**
-    - [ ] El `ProductoResponse` lleva el **nombre** de la categoría, no su id
-    - [ ] La segunda petición del mismo producto **no** genera consulta
-    - [ ] Después de vender, el `GET` devuelve el **stock nuevo**
+Las listas de comprobación están al final de cada proyecto: [la del A](#paso-13-generar-el-jar) y [la del B](#103-la-cache).
 
 !!! info "En la UT5 se cambia una sola capa"
-    Los `…RepositoryJdbc` y los `RowMapper` desaparecen; en su lugar, interfaces que extienden `JpaRepository` y los modelos pasan a ser `@Entity`.
+    Los `…RepositoryJdbc` y los `RowMapper` desaparecen; en su lugar, interfaces que extienden `JpaRepository`, y los modelos pasan a ser `@Entity`.
 
-    **Controlador, servicio, DTOs, mapeador, excepciones y la caché no se tocan.**
+    **Controlador, servicio, DTOs, mapeador, excepciones y caché no se tocan.**

@@ -1,9 +1,18 @@
-# 3. Referencia de JPA y validaciones
+# 3. Referencia de Spring Data JPA
 
-Página de consulta. **No se estudia: se mira mientras programas.** Todas las anotaciones de JPA y de Bean Validation que se usan en el módulo, con qué hacen y dónde van.
+Página de consulta de **Spring Data JPA**. No se estudia: **se mira mientras programas**. Todas las anotaciones de JPA, de Spring Data y de Bean Validation que se usan en el módulo, con qué hacen y dónde van.
+
+| | De dónde viene cada cosa |
+|---|---|
+| `@Entity`, `@Id`, `@Column`, `@ManyToOne`… | **JPA** (`jakarta.persistence`), la especificación |
+| `JpaRepository`, consultas derivadas, `@Query`, `Pageable`, `Specification`, `@EntityGraph` | **Spring Data JPA** (`org.springframework.data`) |
+| `@NotBlank`, `@Size`, `@Valid`… | **Bean Validation** (`jakarta.validation`) |
+| `@Transactional` | **Spring** (`org.springframework.transaction.annotation`) |
 
 !!! info "Para qué sirve esta página"
-    La [chuleta](chuleta.md) es la hoja de una cara que se lleva al examen. Esto es lo otro: la lista completa, con los valores por defecto y las trampas, para tenerla abierta en una pestaña mientras montas las entidades.
+    La [chuleta](chuleta.md) es la hoja que se lleva al examen. Esto es lo otro: la lista completa, con los valores por defecto y las trampas, para tenerla abierta en una pestaña mientras montas las entidades y los repositorios.
+
+    Los temas [1](01-spring-data-jpa-sql.md) y [2](02-resultados-avanzados.md) son la explicación; esto es el diccionario.
 
     Los enlaces de cada apartado llevan a la documentación oficial.
 
@@ -280,7 +289,7 @@ pedido.getLineas().remove(linea);      // con orphanRemoval = true → DELETE
 
 ---
 
-## 3.5. Consultas derivadas del nombre
+## 3.5. Spring Data JPA · consultas derivadas del nombre
 
 | Palabra | SQL |
 |---|---|
@@ -326,7 +335,7 @@ long        countByCategoriaId(Long id);
 
 ---
 
-## 3.6. `@Query`
+## 3.6. Spring Data JPA · `@Query`
 
 ```java
 // JPQL: habla de ENTIDADES y campos Java
@@ -377,7 +386,7 @@ int borradoLogico(@Param("id") Long id);
 
 ---
 
-## 3.7. Paginación y ordenación
+## 3.7. Spring Data JPA · paginación y ordenación
 
 ```java
 Page<Funko>  findAll(Pageable pageable);          // + count(*): 2 consultas

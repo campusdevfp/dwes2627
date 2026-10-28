@@ -267,8 +267,22 @@ spring.data.web.pageable.max-page-size=100
 return repositorio.findAll(spec, pageable).map(mapper::toResponse);   // Page<DTO>
 ```
 
+**El JSON que sale:**
+
+```json
+{ "content": [ … ], "totalElements": 6, "totalPages": 3,
+  "number": 0, "size": 2, "first": true, "last": false, "numberOfElements": 2 }
+```
+
+| Situación | Respuesta correcta |
+|---|:-:|
+| `?page=500` fuera de rango | **200** con `content: []`, no 404 |
+| `?sort=inventado` | **200** ordenando por `id` (o **400**), nunca **500** |
+| `?size=99999` | Se recorta al tope |
+
 :material-alert: Sin tope de `size`, `?size=1000000` carga la tabla entera: has paginado para nada.
 :material-alert: Sin lista blanca de `sort`, se puede ordenar por **cualquier** campo de la entidad.
+:material-alert: Sin sanear, `?sort=inventado` lanza `PropertyReferenceException` → **500**.
 
 ## `Specification` — criterios combinables
 
@@ -371,6 +385,78 @@ class IntegracionTest {
 ./mvnw test -Dtest="FunkosRepositoryTest#noDevuelveBorrados"
 ```
 
+## Bruno · pruebas de la API
+
+Ficheros `.bru` que viajan con el proyecto y se versionan en Git.
+
+```
+bruno/
+├── bruno.json
+├── environments/local.bru      → vars { baseUrl: http://localhost:8080 }
+└── 01-listar.bru  02-crear.bru  …
+```
+
+```
+meta {
+  name: Listar paginado
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/funkos?page=0&size=3&sort=id,asc
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.totalElements: gte 1
+}
+
+tests {
+  test("pagina de 3 como maximo", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().content.length).to.be.at.most(3);
+  });
+}
+```
+
+**Encadenar peticiones:**
+
+```
+script:post-response {
+  bru.setVar("creadoId", res.getBody().id);
+}
+```
+
+…y después `url: {{baseUrl}}/api/v1/funkos/{{creadoId}}`
+
+| Bloque | Para qué |
+|---|---|
+| `meta` | Nombre y **orden** (`seq`) |
+| `get` / `post` / `patch` / `delete` | Verbo y URL |
+| `body:json` | El cuerpo |
+| `assert` | Comprobaciones de una línea: `eq` `neq` `gt` `gte` `isNumber` |
+| `tests` | Comprobaciones con código y `expect(...)` |
+| `script:post-response` | `bru.setVar("x", res.getBody().campo)` |
+
+```bash
+npm install -g @usebruno/cli
+cd bruno && bru run --env local          # la coleccion entera
+bru run 03-crear.bru --env local         # una sola
+```
+
+| Dentro de `tests` | Devuelve |
+|---|---|
+| `res.getStatus()` | El código de estado |
+| `res.getBody()` | El cuerpo ya convertido |
+| `res.getHeader("location")` | Una cabecera |
+| `bru.getVar("creadoId")` | Una variable guardada antes |
+
+:material-alert: Comprobar solo `res.status: eq 200` **no puntúa**: hay que mirar también algo del cuerpo.
+:material-alert: Ids fijos (`/funkos/1`) rompen la colección en cuanto cambian los datos: usa `bru.setVar`.
+
 ## Docker
 
 ```yaml
@@ -408,7 +494,7 @@ docker compose down -v                # el -v BORRA los datos
 
 ---
 
-## Los diez errores del examen
+## Los catorce errores del examen
 
 | | Síntoma | Causa |
 |:-:|---|---|
@@ -424,3 +510,5 @@ docker compose down -v                # el -v BORRA los datos
 | 10 | Base de datos vacía tras reiniciar | `ddl-auto=create-drop` en `dev` o `prod` |
 | 11 | `duplicate key value` en el primer POST con PostgreSQL | Falta el `setval` de la secuencia |
 | 12 | `?sort=inventado` → 500 | `Pageable` sin lista blanca de campos |
+| 13 | El listado devuelve una `List` con toda la tabla | Falta `Pageable` en el repositorio y el controlador |
+| 14 | `bru run` falla sin llegar a lanzar peticiones | Falta `bruno.json`, o el entorno no se pasa con `--env local` |
