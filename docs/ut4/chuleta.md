@@ -1,7 +1,7 @@
 # Chuleta de la UT4 — Spring Boot: capas, REST y JDBC
 
 !!! tip ":material-file-pdf-box: Descárgala para el examen"
-    **[:material-download: chuleta-ut4.pdf](../pdf/chuleta-ut4.pdf)** — cuatro caras, lista para imprimir. Es la única documentación permitida en el examen práctico de RA5.
+    **[:material-download: chuleta-ut4.pdf](../pdf/chuleta-ut4.pdf)** — lista para imprimir. Es la única documentación permitida en el examen práctico de RA5.
 
     También puedes generarla desde esta página con <kbd>Ctrl</kbd>+<kbd>P</kbd> → *Guardar como PDF*.
 
@@ -195,17 +195,28 @@ record ReservaRequest(@NotNull LocalTime desde, @NotNull LocalTime hasta) {
 ## 6 · Excepciones
 
 ```java
-public abstract class FunkoException extends RuntimeException {
-    protected FunkoException(String m) { super(m); }
-}
-
+// Tres clases independientes: extienden RuntimeException DIRECTAMENTE
 @ResponseStatus(HttpStatus.NOT_FOUND)
-public class FunkoNotFoundException extends FunkoException {
+public class FunkoNotFoundException extends RuntimeException {
     public FunkoNotFoundException(Long id) { super("No existe el funko con id: " + id); }
 }
-@ResponseStatus(HttpStatus.CONFLICT)    public class FunkoConflictException   extends FunkoException { … }
-@ResponseStatus(HttpStatus.BAD_REQUEST) public class FunkoBadRequestException extends FunkoException { … }
+
+@ResponseStatus(HttpStatus.CONFLICT)
+public class FunkoConflictException extends RuntimeException {
+    public FunkoConflictException(String mensaje) { super(mensaje); }
+}
+
+@ResponseStatus(HttpStatus.BAD_REQUEST)
+public class FunkoBadRequestException extends RuntimeException {
+    public FunkoBadRequestException(String mensaje) { super(mensaje); }
+}
 ```
+
+| La excepción | El código | Cuándo la lanza el servicio |
+|---|:-:|---|
+| `…NotFoundException` | **404** | El `id` no existe |
+| `…ConflictException` | **409** | Una regla de negocio no se cumple |
+| `…BadRequestException` | **400** | Un valor de entrada no es válido para el dominio |
 
 ```java
 // En el servicio: lanza, SIN mencionar HTTP
@@ -225,9 +236,10 @@ public class GlobalExceptionHandler {
         return Map.of("status", 400, "error", "Datos inválidos", "campos", campos);
     }
 
-    @ExceptionHandler(HttpMessageNotReadableException.class)        // JSON roto      → 400
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)    // /funkos/abc    → 400
-    @ExceptionHandler(DataIntegrityViolationException.class)        // UNIQUE, FK, CHECK → 409
+    // Un método más por cada uno de estos, con el mismo patrón de tres lineas:
+    @ExceptionHandler(HttpMessageNotReadableException.class)         // JSON roto         → 400
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)     // /funkos/abc       → 400
+    @ExceptionHandler(DataIntegrityViolationException.class)         // UNIQUE, FK, CHECK → 409
 }
 ```
 
@@ -236,18 +248,36 @@ public class GlobalExceptionHandler {
 
 ## 7 · Caché
 
+La caché es **un mapa en memoria**: clave → objeto devuelto. Las lecturas lo rellenan, las escrituras lo vacían.
+
 ```java
 @Service
-@CacheConfig(cacheNames = {"funkos"})
+@CacheConfig(cacheNames = {"funkos"})       // el nombre del mapa, una vez
 public class S {
-    @Cacheable(key = "#id")        public R findById(Long id) { … }
-    @CacheEvict(allEntries = true) public R save(C dto)       { … }   // y update, replace, delete
-    @CachePut(key = "#result.id")  public R actualizar(…)     { … }
+
+    // LECTURAS: si la clave esta, NO ejecutan el metodo
+    @Cacheable                      public List<R> findAll()      { … }
+    @Cacheable(key = "#id")         public R findById(Long id)    { … }
+
+    // ESCRITURAS: vacian el mapa ENTERO. Todas, sin excepcion
+    @CacheEvict(allEntries = true)  public R save(C dto)          { … }
+    @CacheEvict(allEntries = true)  public R update(Long id, U d) { … }
+    @CacheEvict(allEntries = true)  public void deleteById(Long i){ … }
+    @CacheEvict(allEntries = true)  public R vender(Long i, V d)  { … }   // ← tambien
 }
 ```
 
-:material-alert: Sin `@EnableCaching` en la clase principal, **no hace nada**.
-:material-alert: **Los cuatro** métodos de escritura necesitan `@CacheEvict(allEntries = true)`, o `findAll` devuelve datos viejos.
+| | Qué hace |
+|---|---|
+| `@Cacheable(key = "#id")` | Si la clave `id` está guardada, la devuelve **sin ejecutar el método** |
+| `@CacheEvict(allEntries = true)` | Ejecuta el método y **vacía el mapa entero** |
+| `@CachePut` | Ejecuta **y** actualiza la caché con el resultado. Casi nunca hace falta |
+
+**Se comprueba con el log:** pide el mismo recurso tres veces y solo la primera genera consulta; escribe, y la siguiente lectura vuelve a consultar.
+
+:material-alert: Sin `@EnableCaching` en la clase principal, **no hace nada y no avisa**.
+:material-alert: `allEntries = true` y no `key = "#id"`: un elemento nuevo invalida **todas** las listas guardadas.
+:material-alert: El método de escritura que se olvida es **el de la operación de negocio** (`vender`, `prestar`, `cambiarEstado`), porque no se llama `save` ni `update`.
 :material-alert: Una llamada **interna** (`this.findById(...)`) **no pasa por la caché**: el proxy solo intercepta lo que entra de fuera. Igual que `@Transactional`.
 
 ## 8 · H2 y JDBC con `JdbcClient`
@@ -315,12 +345,12 @@ public class R {
     jdbc.sql("SELECT COUNT(*) FROM funkos WHERE nombre = :n")
         .param("n", nombre).query(Integer.class).single();
 
-    // INSERT con id generado
+    // INSERT con id generado. El modelo es un record: NO hay setId
     var keys = new GeneratedKeyHolder();
     jdbc.sql("INSERT INTO funkos (nombre, precio) VALUES (:nombre, :precio)")
-        .param("nombre", f.getNombre()).param("precio", f.getPrecio())
+        .param("nombre", f.nombre()).param("precio", f.precio())
         .update(keys);
-    f.setId(((Number) keys.getKeys().get("id")).longValue());
+    return findById(keys.getKey().longValue()).orElseThrow();   // se relee con su id
 
     // UPDATE / DELETE: devuelven filas afectadas
     int filas = jdbc.sql("DELETE FROM funkos WHERE id = :id").param("id", id).update();
@@ -478,14 +508,24 @@ header().string("Location", "/api/v1/funkos/1")
 ```
 
 ```java
-// 3 · La transacción: comparar el estado antes y después de un fallo
-@Test void siFallaUnaLineaNoSeDescuentaNingunStock() {
-    var antes = productos.findAll().stream()
-            .collect(Collectors.toMap(Producto::getId, Producto::getStock));
-    assertThrows(StockInsuficienteException.class, () -> pedidos.crear(peticionQueFalla));
-    var despues = productos.findAll().stream()
-            .collect(Collectors.toMap(Producto::getId, Producto::getStock));
-    assertEquals(antes, despues);
+// 3 · La transacción: comparar LAS DOS TABLAS antes y después de un fallo
+@SpringBootTest
+@ActiveProfiles("test")
+class VentaTest {
+    @Autowired ProductosService servicio;
+    @Autowired ProductosRepository productos;
+    @Autowired CategoriasRepository categorias;
+
+    @Test void siFallaLaVentaNoCambiaNingunaDeLasDos() {
+        var stockAntes    = productos.findById(3L).orElseThrow().stock();
+        var vendidasAntes = categorias.findById(1L).orElseThrow().unidadesVendidas();
+
+        assertThrows(ProductoConflictException.class,
+                () -> servicio.vender(3L, new VentaRequest(999)));
+
+        assertEquals(stockAntes,    productos.findById(3L).orElseThrow().stock());
+        assertEquals(vendidasAntes, categorias.findById(1L).orElseThrow().unidadesVendidas());
+    }
 }
 ```
 
@@ -508,9 +548,25 @@ curl -i -X PATCH localhost:8080/api/v1/funkos/1 \
 curl -i -X DELETE localhost:8080/api/v1/funkos/1
 ```
 
+## 13 · En el examen te dan esto hecho
+
+| Entregado | Lo escribes tú |
+|---|---|
+| `pom.xml`, los `.properties`, `schema.sql`, `data.sql` y la clase de arranque | Los paquetes **por capas** |
+| **El repositorio**: interfaz, implementación con `JdbcClient` y `RowMapper` | **El modelo** (`record`) |
+| **El mapeador**: `toResponse`, `toModel` y `parchear` | **Los DTOs** con sus validaciones |
+| | **Las excepciones** con `@ResponseStatus` |
+| | **El servicio** con las reglas |
+| | **El controlador** y el `@RestControllerAdvice` |
+| | **Dos tests** |
+
+:material-alert: El proyecto **no compila al abrirlo**: el repositorio y el mapeador usan el modelo y los DTOs, que no existen aún. **Eso es la especificación**: de ahí sale el nombre de cada clase y el orden de los componentes de cada `record`.
+:material-alert: **No se toca ni una línea** del repositorio ni del mapeador. Si los cambias para que encajen con tus clases, la penalización es de **1,5 puntos**.
+:material-alert: Lo primero que se hace es **leerlos** y apuntar: nombres de clase, componentes y su orden, y qué DTOs hacen falta.
+
 ---
 
-## Los quince errores del examen
+## Los dieciséis errores del examen
 
 | | Síntoma | Causa |
 |:-:|---|---|
@@ -528,4 +584,5 @@ curl -i -X DELETE localhost:8080/api/v1/funkos/1
 | 12 | El primer POST choca con un id existente | Falta `ALTER TABLE … RESTART WITH n` |
 | 13 | `Database may be already in use` | Falta `AUTO_SERVER=TRUE` en la URL de H2 |
 | 14 | Stock negativo con dos peticiones a la vez | «Leer, comprobar, escribir» en vez de `UPDATE … WHERE stock >= :n` |
-| 15 | Stock descontado sin pedido creado | Falta `@Transactional`, o la excepción se capturó dentro |
+| 15 | Stock descontado sin la segunda tabla actualizada | Falta `@Transactional`, o la excepción se capturó dentro |
+| 16 | «He tenido que cambiar el repositorio para que compile» | El modelo o los DTOs no respetan el código entregado |

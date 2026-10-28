@@ -28,7 +28,7 @@
 
 ## Cómo se evalúa
 
-:material-laptop: **Examen práctico, 100 % de la nota de la unidad.** Cuatro horas, con el ordenador y **la [chuleta](../pdf/chuleta-ut4.pdf) impresa** como única documentación.
+:material-laptop: **Examen práctico, 100 % de la nota de la unidad.** Con el ordenador y **la [chuleta](../pdf/chuleta-ut4.pdf) impresa** como única documentación.
 
 **Se te da** el proyecto que arranca (`pom.xml`, los `application*.properties`, `schema.sql`, `data.sql` y la clase de arranque) **y, ya escritos, el repositorio —interfaz, implementación con `JdbcClient` y `RowMapper`— y el mapeador**.
 

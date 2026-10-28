@@ -661,46 +661,82 @@ if (repositorio.existsByNombre(request.nombre()))
 
 ### 3 · El manejador de errores
 
-Una sola clase que convierte los fallos de formato en respuestas útiles.
+**El problema que resuelve.** Hay fallos que no lanza tu código: los lanza **Spring**, antes de que tu método se ejecute. Un JSON mal escrito, un `@Valid` que no pasa, un `/funkos/abc` donde esperas un número. Si nadie los recoge, Spring devuelve un **500** con una página de error que no le sirve a nadie.
+
+**Qué es `@RestControllerAdvice`.** Una clase con métodos que dicen: *«cuando salte esta excepción, devuelve este JSON con este código»*. Spring la consulta **para todos los controladores**, así que se escribe una vez.
+
+```java title="El patrón: siempre son estas tres líneas"
+@ResponseStatus(HttpStatus.BAD_REQUEST)              // 1 · qué código devolver
+@ExceptionHandler(HttpMessageNotReadableException.class)   // 2 · qué excepción recoge
+public Map<String, Object> jsonIlegible() {          // 3 · qué cuerpo devolver
+    return Map.of("status", 400, "error", "El cuerpo no es un JSON válido");
+}
+```
+
+**Y ya está: un método por tipo de fallo.** Estos son los cuatro que hacen falta:
 
 ```java title="common/GlobalExceptionHandler.java"
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    /** 400 con los errores campo a campo. */
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public Map<String, Object> validacion(MethodArgumentNotValidException ex) {
-        Map<String, String> campos = new LinkedHashMap<>();
-        ex.getBindingResult().getFieldErrors()
-          .forEach(e -> campos.put(e.getField(), e.getDefaultMessage()));
-        return Map.of("status", 400, "error", "Datos de entrada inválidos", "campos", campos);
-    }
-
-    /** 400 cuando el JSON no se puede ni leer. */
+    /** El JSON no se puede ni leer: una coma de más, una llave sin cerrar. */
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public Map<String, Object> jsonIlegible(HttpMessageNotReadableException ex) {
-        return Map.of("status", 400, "error", "El cuerpo no es un JSON valido");
+    public Map<String, Object> jsonIlegible() {
+        return Map.of("status", 400, "error", "El cuerpo no es un JSON válido");
     }
 
-    /** 400 cuando /funkos/abc intenta ser un Long. */
+    /** GET /funkos/abc, donde el controlador espera un Long. */
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public Map<String, Object> tipoMalo(MethodArgumentTypeMismatchException ex) {
         return Map.of("status", 400,
-                "error", "El parametro '%s' no tiene el tipo esperado".formatted(ex.getName()));
+                "error", "El parámetro '%s' no tiene el tipo esperado".formatted(ex.getName()));
     }
 
-    /** 409 cuando salta una restriccion de la tabla: UNIQUE, CHECK, FK. */
+    /** Una restricción de la tabla: UNIQUE, CHECK o clave ajena. */
     @ResponseStatus(HttpStatus.CONFLICT)
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public Map<String, Object> integridad(DataIntegrityViolationException ex) {
+    public Map<String, Object> integridad() {
         return Map.of("status", 409,
-                "error", "La operacion viola una restriccion de la base de datos");
+                "error", "La operación viola una restricción de la base de datos");
+    }
+
+    /** El @Valid no ha pasado. Este es el único con algo de código dentro. */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public Map<String, Object> validacion(MethodArgumentNotValidException ex) {
+        Map<String, String> campos = new LinkedHashMap<>();
+        for (var error : ex.getBindingResult().getFieldErrors()) {
+            campos.put(error.getField(), error.getDefaultMessage());
+        }
+        return Map.of("status", 400, "error", "Datos de entrada inválidos", "campos", campos);
     }
 }
 ```
+
+!!! success "El único método con código dentro, línea a línea"
+    ```java
+    Map<String, String> campos = new LinkedHashMap<>();
+    ```
+    Un mapa vacío donde vamos a meter `campo → mensaje`. **`LinkedHashMap`** y no `HashMap` para que los campos salgan en el orden en que están en el DTO, y el JSON se lea igual siempre.
+
+    ```java
+    for (var error : ex.getBindingResult().getFieldErrors()) {
+    ```
+    La excepción **trae dentro la lista de todo lo que ha fallado**: un elemento por cada anotación que no se ha cumplido. `getFieldErrors()` es esa lista.
+
+    ```java
+    campos.put(error.getField(), error.getDefaultMessage());
+    ```
+    De cada fallo saco **el nombre del campo** (`"precio"`) y **el mensaje que escribiste en la anotación** (`"El precio no puede ser negativo"`), y los meto en el mapa.
+
+    ```java
+    return Map.of("status", 400, "error", "…", "campos", campos);
+    ```
+    Devuelvo el mapa. **Spring lo convierte a JSON** igual que convierte tus DTOs.
+
+**Qué ve el cliente**, con un POST que falla en dos campos a la vez:
 
 ```json
 {
@@ -713,10 +749,22 @@ public class GlobalExceptionHandler {
 }
 ```
 
-!!! success "Aquí NO van las excepciones del dominio"
-    `FunkoNotFoundException` y `FunkoConflictException` **no necesitan handler**: llevan su `@ResponseStatus` y Spring las traduce solas.
+**Eso es lo que compra esta clase:** el cliente sabe qué campos corregir, en una sola respuesta, en lugar de arreglarlos de uno en uno o recibir un 500.
 
-    En esta clase solo van los errores de **hablar HTTP**: validación, JSON roto, tipo de parámetro malo e integridad de la tabla.
+!!! info "El recorrido completo de un error, para verlo entero"
+    | Lo que pasa | Quién lanza la excepción | Quién la recoge | Respuesta |
+    |---|---|---|---|
+    | `{"precio": }` | Spring, al leer el JSON | **El handler** | 400 «JSON no válido» |
+    | `/funkos/abc` | Spring, al convertir a `Long` | **El handler** | 400 «tipo esperado» |
+    | `precio: -5` con `@PositiveOrZero` | Spring, al validar el `@Valid` | **El handler** | 400 + los campos |
+    | `INSERT` con un nombre repetido | El driver de la base de datos | **El handler** | 409 |
+    | Un `id` que no existe | **Tu servicio**: `FunkoNotFoundException` | Nadie: su `@ResponseStatus` | 404 |
+    | Un nombre repetido detectado por ti | **Tu servicio**: `FunkoConflictException` | Nadie: su `@ResponseStatus` | 409 |
+
+!!! success "Por eso tus excepciones NO van aquí"
+    `FunkoNotFoundException` y `FunkoConflictException` ya llevan su `@ResponseStatus` en la propia clase ([§3.3](#33-las-excepciones)), así que **Spring las traduce sin que nadie haga nada**.
+
+    En esta clase solo van los fallos de **hablar HTTP**, que son los que no puedes anotar porque no son tus clases.
 
 ---
 
@@ -858,54 +906,156 @@ En **todos** los `@RequestBody`. En el PUT va con `FunkoCreateRequest` (reemplaz
 
 ## 3.8. La caché
 
-**Qué hace:** guardar en memoria el resultado de un método para no repetir la consulta.
+**La idea, en una frase:** la primera vez que alguien pide el funko 1 vamos a la base de datos; **las siguientes veces devolvemos lo que ya tenemos en memoria**, sin consultar nada.
 
-```xml
-<dependency>
-  <groupId>org.springframework.boot</groupId>
-  <artifactId>spring-boot-starter-cache</artifactId>
-</dependency>
-```
+**Por qué.** Si cien clientes piden el mismo funko en un minuto, son cien consultas idénticas para devolver cien veces la misma fila. La caché las convierte en una.
 
-```java
-@SpringBootApplication
-@EnableCaching                     // sin esto, todo lo de abajo es decoración
-public class FunkosApiApplication { … }
-```
+### Qué es, literalmente
 
-```java
-@Service
-@CacheConfig(cacheNames = {"funkos"})
-public class FunkosServiceImpl implements FunkosService {
+Un **mapa en memoria** dentro de la aplicación:
 
-    @Cacheable(key = "#id")                     // si está en caché, no ejecuta
-    public FunkoResponse findById(Long id) { … }
-
-    @CacheEvict(allEntries = true)              // invalida TODO al escribir
-    public FunkoResponse save(FunkoCreateRequest dto) { … }
-}
-```
-
-| | Qué significa |
+| Clave | Valor guardado |
 |---|---|
-| `@Cacheable` | «Si ya lo tengo, devuelvo la caché» |
-| `@CacheEvict` | «Borro la caché» |
-| `@CachePut` | «Lo ejecuto **y** actualizo la caché» |
+| `1` | el `FunkoResponse` de Mickey Mouse |
+| `3` | el `FunkoResponse` de Spider-Man |
 
-!!! danger "Las tres trampas, y las tres caen en el examen"
-    **1.** Sin **`@EnableCaching`** no hace nada, y no avisa.
+Spring lo gestiona por ti. Tú solo marcas **qué métodos lo usan** y **cuándo hay que vaciarlo**.
 
-    **2.** **Todos** los métodos que escriben necesitan `@CacheEvict(allEntries = true)`. Si cacheas `findAll()` y creas un funko, la lista cacheada sigue siendo la antigua: el cliente ve datos viejos **sin ningún error**. Tiene que ser `allEntries` porque un elemento nuevo invalida **todas** las listas.
+### Los tres pasos para activarla
 
-    **3.** Una llamada **interna** no pasa por la caché:
+=== "1 · La dependencia"
+
+    ```xml
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-cache</artifactId>
+    </dependency>
+    ```
+
+=== "2 · Encenderla"
 
     ```java
-    public FunkoResponse metodoA(Long id) { return findById(id); }   // ← NO cachea
-    @Cacheable
+    @SpringBootApplication
+    @EnableCaching                 // ← sin esto, las anotaciones no hacen NADA
+    public class FunkosApiApplication { … }
+    ```
+
+=== "3 · Marcar los métodos"
+
+    ```java
+    @Service
+    @CacheConfig(cacheNames = {"funkos"})      // el nombre del mapa, una vez
+    public class FunkosServiceImpl implements FunkosService {
+
+        @Cacheable(key = "#id")
+        public FunkoResponse findById(Long id) { … }
+
+        @CacheEvict(allEntries = true)
+        public FunkoResponse save(FunkoCreateRequest dto) { … }
+
+        @CacheEvict(allEntries = true)
+        public FunkoResponse update(Long id, FunkoUpdateRequest dto) { … }
+
+        @CacheEvict(allEntries = true)
+        public void deleteById(Long id) { … }
+    }
+    ```
+
+### Qué hace cada anotación
+
+| | Qué significa | Dónde se pone |
+|---|---|---|
+| `@Cacheable(key = "#id")` | «Antes de ejecutar, mira si ya tienes la clave `id`. **Si está, devuélvela y no ejecutes el método.** Si no, ejecútalo y guarda el resultado» | **Lecturas** |
+| `@CacheEvict(allEntries = true)` | «**Vacía el mapa entero.**» El método se ejecuta siempre | **Escrituras** |
+| `@CachePut` | «Ejecuta el método **y además** actualiza la caché con el resultado» | Casi nunca |
+| `@CacheConfig(cacheNames = …)` | El nombre del mapa, para no repetirlo en cada método | En la clase |
+
+!!! success "El `key = \"#id\"` es el parámetro del método"
+    La almohadilla significa *«el parámetro que se llama así»*:
+
+    ```java
+    @Cacheable(key = "#id")
+    public FunkoResponse findById(Long id)        // guarda con clave 1, 2, 3…
+    ```
+
+    Si el método no tiene parámetros —`findAll()`— no hace falta `key`: hay una sola entrada.
+
+### Qué pasa en cada petición
+
+```mermaid
+flowchart TD
+    A["GET /api/v1/funkos/1"] --> B{"¿La clave 1<br/>está en la caché?"}
+    B -->|"Sí"| C["Devuelve lo guardado<br/>CERO consultas"]
+    B -->|"No"| D["Ejecuta findById<br/>1 consulta"]
+    D --> E["Guarda el resultado<br/>con la clave 1"]
+    E --> F["Lo devuelve"]
+    G["POST / PUT / DELETE"] --> H["@CacheEvict<br/>VACÍA la caché entera"]
+```
+
+**Se comprueba con el log**, que es la forma de ver que funciona:
+
+```properties
+spring.jpa.show-sql=true          # o el logger de JdbcClient
+```
+
+```bash
+curl -s localhost:8080/api/v1/funkos/1 > /dev/null   # ← aparece el SELECT
+curl -s localhost:8080/api/v1/funkos/1 > /dev/null   # ← NO aparece nada
+curl -s localhost:8080/api/v1/funkos/1 > /dev/null   # ← tampoco
+
+curl -s -X PATCH localhost:8080/api/v1/funkos/1 \
+  -H "Content-Type: application/json" -d '{"precio":16.99}' > /dev/null
+
+curl -s localhost:8080/api/v1/funkos/1 > /dev/null   # ← vuelve a aparecer el SELECT
+```
+
+**Esas cinco líneas son la caché explicada:** una consulta, dos peticiones gratis, una escritura que vacía, y otra consulta.
+
+!!! danger "Por qué `allEntries = true` y no borrar solo esa clave"
+    Parece más fino borrar únicamente el funko que has cambiado:
+
+    ```java
+    @CacheEvict(key = "#id")        // ❌ insuficiente
+    ```
+
+    Pero si también cacheas `findAll()`, **esa lista sigue en el mapa con los datos viejos**. Y un funko nuevo no tiene `id` que invalidar: afecta a **todas** las listas.
+
+    ```java
+    @CacheEvict(allEntries = true)  // ✅ vacía todo: simple y correcto
+    ```
+
+    Con una caché pequeña, vaciarla entera cuesta nada. **Afinar aquí es optimizar lo que no duele y arriesgar datos obsoletos.**
+
+!!! danger "Las dos trampas que caen en el examen"
+    **1 · Sin `@EnableCaching` no hace absolutamente nada.** Las anotaciones se quedan ahí, el proyecto arranca sin un aviso y cada petición va a la base de datos. La forma de detectarlo es el log: si el `SELECT` sale en las tres peticiones, falta esa línea.
+
+    **2 · Una llamada interna no pasa por la caché:**
+
+    ```java
+    public FunkoResponse metodoA(Long id) {
+        return findById(id);            // ← NO cachea, aunque findById esté anotado
+    }
+
+    @Cacheable(key = "#id")
     public FunkoResponse findById(Long id) { … }
     ```
 
-    Spring intercepta las llamadas **que entran desde fuera** del bean, con un proxy. A `@Transactional` le pasa lo mismo.
+    Spring envuelve el bean en un **proxy** y solo intercepta las llamadas **que entran desde fuera** (desde el controlador). Una llamada de un método al otro va por dentro y se salta el proxy. **A `@Transactional` le pasa exactamente lo mismo.**
+
+!!! warning "Y el peligro de verdad: servir datos que ya no existen"
+    Si a un método de escritura **se le olvida** el `@CacheEvict`, la aplicación sigue funcionando y **nadie recibe ningún error**: simplemente el cliente ve el precio viejo, o un funko que ya has borrado.
+
+    | Síntoma | Causa |
+    |---|---|
+    | El PATCH devuelve 200 pero el GET sigue dando el valor anterior | Falta `@CacheEvict` en el `update` |
+    | Un funko borrado sigue apareciendo en `findById` | Falta `@CacheEvict` en el `deleteById` |
+
+    **La regla sin excepciones:** si un método toca la base de datos para escribir, lleva `@CacheEvict(allEntries = true)`. Los tres: `save`, `update` y `deleteById`.
+
+!!! info "Esta caché vive en la memoria de la aplicación"
+    Con la implementación por defecto (`ConcurrentMapCacheManager`) **el mapa se pierde al reiniciar** y, si mañana levantas dos instancias de la API, **cada una tiene la suya** y pueden no coincidir.
+
+    Para eso están Caffeine (una sola máquina, con tamaño máximo y caducidad) o Redis (una caché compartida entre instancias). No entran en esta unidad: lo que se evalúa aquí es **que las escrituras invaliden lo que las lecturas guardan**.
 
 ---
 

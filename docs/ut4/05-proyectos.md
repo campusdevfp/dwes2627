@@ -5,7 +5,7 @@ Dos APIs REST completas con **Maven, Spring Web y H2 por JDBC**. Se teclean de a
 | | Proyecto | Tablas | Lo nuevo |
 |:-:|---|:-:|---|
 | **A** | [API de Funkos](#proyecto-a-api-de-funkos) | 1 | Las ocho capas completas, de cero a `.jar` |
-| **B** | [API de una tienda](#proyecto-b-api-de-una-tienda) | 2 | Clave ajena y **una operación que toca las dos tablas** |
+| **B** | [API de una tienda](#proyecto-b-api-de-una-tienda) | 2 | Clave ajena, **una operación que toca las dos tablas** y la **caché** |
 
 !!! danger "Aquí no hay JPA ni Hibernate"
     El SQL lo escribes tú. **JPA es la [UT5](../ut5/index.md)**, y entonces se cambiará solo el repositorio.
@@ -14,6 +14,8 @@ Dos APIs REST completas con **Maven, Spring Web y H2 por JDBC**. Se teclean de a
     No se lee: se teclea. **`git commit` al final de cada paso**, que es la única forma de volver atrás cuando el paso 8 rompe algo del paso 3.
 
     El orden es el del [tema 3](03-repositorios-servicios-dtos.md): modelo → repositorio → excepciones → DTOs → mapeador → servicio → controlador → errores.
+
+    **Aquí no se escriben tests.** Estos dos proyectos se comprueban **ejecutándolos**: cada paso acaba con las peticiones `curl` que demuestran que funciona, y cada proyecto con su lista de comprobación. Los tests se trabajan aparte, con tiempo propio.
 
 ---
 
@@ -869,129 +871,27 @@ public class GlobalExceptionHandler {
     # 1   ← el fichero datos/funkos.mv.db lo ha guardado
     ```
 
-## Paso 13 · Los tests y el `.jar`
-
-```java title="src/test/java/.../FunkosServiceImplTest.java"
-@ExtendWith(MockitoExtension.class)
-class FunkosServiceImplTest {
-
-    @Mock FunkosRepository repositorio;
-    @Spy  FunkoMapper mapper = new FunkoMapper();
-    @InjectMocks FunkosServiceImpl servicio;
-
-    private Funko unFunko(Long id, String nombre, String precio, int cantidad) {
-        var ahora = LocalDateTime.now();
-        return new Funko(id, nombre, new BigDecimal(precio), cantidad, "ANIME", ahora, ahora);
-    }
-
-    @Test
-    void findByIdQueNoExisteLanzaNotFound() {
-        when(repositorio.findById(99L)).thenReturn(Optional.empty());
-
-        var ex = assertThrows(FunkoNotFoundException.class, () -> servicio.findById(99L));
-
-        assertTrue(ex.getMessage().contains("99"));
-        verify(repositorio, times(1)).findById(99L);
-    }
-
-    @Test
-    void saveConNombreRepetidoLanzaConflictYNoInserta() {
-        when(repositorio.existsByNombre("Goku")).thenReturn(true);
-
-        var request = new FunkoCreateRequest("Goku", new BigDecimal("10.00"), 1, "ANIME");
-
-        assertThrows(FunkoConflictException.class, () -> servicio.save(request));
-        verify(repositorio, never()).save(any());
-    }
-
-    @Test
-    void deleteDeUnIdQueNoExisteLanzaNotFound() {
-        when(repositorio.deleteById(99L)).thenReturn(false);
-
-        assertThrows(FunkoNotFoundException.class, () -> servicio.deleteById(99L));
-    }
-
-    @Test
-    void elPatchConservaLosCamposQueNoLlegan() {
-        var original = unFunko(1L, "Goku", "22.50", 3);
-        when(repositorio.findById(1L)).thenReturn(Optional.of(original));
-
-        var r = servicio.update(1L, new FunkoUpdateRequest(
-                null, new BigDecimal("30.00"), null, null));
-
-        assertEquals("Goku", r.nombre());                       // conservado
-        assertEquals(3, r.cantidad());                          // conservado
-        assertEquals(new BigDecimal("30.00"), r.precio());      // cambiado
-    }
-}
-```
-
-```java title="src/test/java/.../FunkosRestControllerTest.java"
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-class FunkosRestControllerTest {
-
-    @Autowired MockMvc mockMvc;
-    @MockitoBean FunkosService servicio;
-
-    @Test
-    void postConNombreVacioDevuelve400ConElCampoSenalado() throws Exception {
-        mockMvc.perform(post("/api/v1/funkos")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {"nombre":"","precio":10.00,"cantidad":1,"categoria":"ANIME"}"""))
-               .andExpect(status().isBadRequest())
-               .andExpect(jsonPath("$.campos.nombre").exists());
-    }
-
-    @Test
-    void getDeUnIdQueNoExisteDevuelve404() throws Exception {
-        when(servicio.findById(99L)).thenThrow(new FunkoNotFoundException(99L));
-
-        mockMvc.perform(get("/api/v1/funkos/99"))
-               .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void elPostDevuelve201ConLocation() throws Exception {
-        var ahora = LocalDateTime.now();
-        when(servicio.save(any())).thenReturn(new FunkoResponse(
-                7L, "Pikachu", new BigDecimal("20.00"), 7, "ANIME", ahora, ahora));
-
-        mockMvc.perform(post("/api/v1/funkos")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {"nombre":"Pikachu","precio":20.00,"cantidad":7,"categoria":"ANIME"}"""))
-               .andExpect(status().isCreated())
-               .andExpect(header().string("Location", "/api/v1/funkos/7"));
-    }
-}
-```
-
-```properties title="src/test/resources/application-test.properties"
-spring.datasource.url=jdbc:h2:mem:test;DB_CLOSE_DELAY=-1
-spring.sql.init.mode=always
-logging.level.root=WARN
-```
+## Paso 13 · Generar el `.jar`
 
 ```bash
 ./mvnw clean package
 java -jar target/funkos-api-0.0.1-SNAPSHOT.jar
 ```
 
-!!! success "Los dos tipos de test"
-    | | Mockito | `@SpringBootTest` + `MockMvc` |
-    |---|---|---|
-    | Qué prueba | Las reglas del servicio | La capa HTTP |
-    | Levanta Spring | **No** | Sí |
-    | Tarda | milisegundos | ~2 s |
-    | Detecta | un 409 que falta, el PATCH que borra campos | **`@Valid` olvidado**, rutas, códigos, `Location` |
+```bash
+# Y comprobar que arranca con otro perfil y otro puerto
+PORT=9090 SPRING_PROFILES_ACTIVE=prod java -jar target/funkos-api-0.0.1-SNAPSHOT.jar
+```
 
-    El `@Valid` olvidado **solo** lo caza el segundo.
-
-!!! info "`@MockitoBean`, no `@MockBean`"
-    `@MockBean` está obsoleta desde Spring Boot 3.4.
+!!! success "Comprueba el proyecto A"
+    - [ ] Los **seis endpoints** responden con el código correcto
+    - [ ] Los datos **sobreviven** a parar y arrancar, y arranca **dos veces seguidas** sin error
+    - [ ] Un `POST` inválido devuelve **400 con los campos**
+    - [ ] Un `id` inexistente devuelve **404**, no 500
+    - [ ] El `POST` correcto devuelve **201** y la cabecera `Location`
+    - [ ] `grep -rn "ResponseEntity\|HttpStatus" src/main/java/**/services/` → **vacío**
+    - [ ] `grep -rn "@Autowired" src/main/java/` → **vacío**
+    - [ ] El `.jar` se genera y arranca
 
 ---
 
@@ -1504,50 +1404,124 @@ public class ProductoMapper {
     # 409
     ```
 
-## Paso 8 · El test de la transacción
+## Paso 8 · La caché
 
-```java
-@SpringBootTest
-@ActiveProfiles("test")
-class VentaTransaccionTest {
+El listado de productos y la ficha de un producto se piden mucho y cambian poco: son el caso de libro para una caché.
 
-    @Autowired ProductosService servicio;
-    @Autowired ProductosRepository productos;
-    @Autowired CategoriasRepository categorias;
+```xml title="pom.xml"
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-cache</artifactId>
+</dependency>
+```
 
-    @Test
-    void siFallaLaVentaNoCambiaNingunaDeLasDosTablas() {
-        var stockAntes = productos.findById(3L).orElseThrow().producto().stock();
-        var vendidasAntes = categorias.findById(1L).orElseThrow().unidadesVendidas();
-
-        assertThrows(ProductoConflictException.class,
-                () -> servicio.vender(3L, new VentaRequest(999)));
-
-        assertEquals(stockAntes,
-                productos.findById(3L).orElseThrow().producto().stock(),
-                "El stock no puede haber cambiado");
-        assertEquals(vendidasAntes,
-                categorias.findById(1L).orElseThrow().unidadesVendidas(),
-                "El contador de la categoría no puede haber cambiado");
-    }
-
-    @Test
-    void unaVentaCorrectaCambiaLasDosTablas() {
-        var stockAntes = productos.findById(1L).orElseThrow().producto().stock();
-        var vendidasAntes = categorias.findById(1L).orElseThrow().unidadesVendidas();
-
-        servicio.vender(1L, new VentaRequest(2));
-
-        assertEquals(stockAntes - 2,
-                productos.findById(1L).orElseThrow().producto().stock());
-        assertEquals(vendidasAntes + 2,
-                categorias.findById(1L).orElseThrow().unidadesVendidas());
+```java title="TiendaApiApplication.java"
+@SpringBootApplication
+@EnableCaching                     // ← sin esto, lo de abajo no hace nada
+public class TiendaApiApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(TiendaApiApplication.class, args);
     }
 }
 ```
 
-!!! success "El primer test es el que vale el proyecto"
-    Comprueba **las dos tablas** antes y después de un fallo. Quita el `@Transactional` del servicio y este test se pone rojo: eso es exactamente lo que un test tiene que hacer.
+```java title="productos/services/ProductosServiceImpl.java"
+@Service
+@CacheConfig(cacheNames = {"productos"})
+public class ProductosServiceImpl implements ProductosService {
+
+    // ───── LECTURAS: guardan en la caché ─────
+
+    @Override
+    @Cacheable
+    public List<ProductoResponse> findAll(Optional<String> categoria,
+                                          Optional<String> nombre) {
+        return mapper.toResponse(repositorio.buscar(categoria, nombre));
+    }
+
+    @Override
+    @Cacheable(key = "#id")
+    public ProductoResponse findById(Long id) {
+        return repositorio.findById(id)
+                .map(mapper::toResponse)
+                .orElseThrow(() -> new ProductoNotFoundException(id));
+    }
+
+    // ───── ESCRITURAS: vacían la caché. LAS CUATRO ─────
+
+    @Override
+    @Transactional
+    @CacheEvict(allEntries = true)
+    public ProductoResponse save(ProductoCreateRequest request) { … }
+
+    @Override
+    @Transactional
+    @CacheEvict(allEntries = true)
+    public ProductoResponse update(Long id, ProductoUpdateRequest request) { … }
+
+    @Override
+    @Transactional
+    @CacheEvict(allEntries = true)
+    public void deleteById(Long id) { … }
+
+    /** La venta también escribe: cambia el stock. */
+    @Override
+    @Transactional
+    @CacheEvict(allEntries = true)
+    public ProductoResponse vender(Long id, VentaRequest request) { … }
+}
+```
+
+!!! danger "El `vender` es el que se olvida"
+    Es el único método de escritura que no se llama `save`, `update` ni `delete`, y por eso se queda sin `@CacheEvict` la primera vez que alguien hace esto.
+
+    La consecuencia: **vendes tres unidades, el stock baja en la base de datos, y el `GET` sigue devolviendo el stock de antes.** Nadie recibe ningún error.
+
+### Comprobar que funciona
+
+```properties title="application-dev.properties"
+logging.level.org.springframework.jdbc.core=DEBUG
+```
+
+=== "La caché, funcionando"
+
+    ```bash
+    curl -s localhost:8080/api/v1/productos/1 > /dev/null    # ← SELECT en el log
+    curl -s localhost:8080/api/v1/productos/1 > /dev/null    # ← nada
+    curl -s localhost:8080/api/v1/productos/1 > /dev/null    # ← nada
+    ```
+
+    **Una consulta, tres peticiones.**
+
+=== "La escritura, vaciándola"
+
+    ```bash
+    curl -s -X POST localhost:8080/api/v1/productos/1/venta \
+      -H "Content-Type: application/json" -d '{"cantidad":2}' > /dev/null
+
+    curl -s localhost:8080/api/v1/productos/1 | jq '.stock'   # ← SELECT otra vez
+    ```
+
+    **El stock que sale es el nuevo.** Quita el `@CacheEvict` del `vender` y repite: el stock que sale es el viejo, y ahí tienes el error en tres comandos.
+
+=== "Sin `@EnableCaching`"
+
+    ```bash
+    curl -s localhost:8080/api/v1/productos/1 > /dev/null
+    curl -s localhost:8080/api/v1/productos/1 > /dev/null
+    ```
+
+    **Dos `SELECT`.** Si te pasa esto con todas las anotaciones puestas, es que falta esa línea en la clase de arranque.
+
+!!! success "Comprueba el proyecto B"
+    - [ ] Una venta correcta cambia **las dos tablas**
+    - [ ] Una venta sin stock devuelve **409** y **ninguna de las dos cambia**
+    - [ ] El `UPDATE … WHERE stock >= :cantidad` impide el stock negativo
+    - [ ] El `JOIN` del listado trae el nombre de la categoría, no el `categoriaId`
+    - [ ] La segunda petición de `GET /productos/1` **no** genera consulta
+    - [ ] Después de vender, el `GET` devuelve el **stock nuevo**
+    - [ ] `grep -rn "@CacheEvict" src/main/java/` → **las cuatro escrituras**
+    - [ ] El `.jar` se genera y arranca
 
 ---
 
@@ -1568,7 +1542,7 @@ flowchart TB
 !!! success "Comprueba los dos proyectos"
     **Comunes**
 
-    - [ ] `./mvnw clean package` en verde, con los tests
+    - [ ] `./mvnw clean package` en verde y el `.jar` arranca
     - [ ] Arranca **dos veces seguidas** sin error (`IF NOT EXISTS` y `MERGE`)
     - [ ] Los datos **sobreviven** a parar y arrancar
     - [ ] GET de un id inexistente → **404**, no 500
@@ -1586,8 +1560,10 @@ flowchart TB
     - [ ] Una venta sin stock → **409 y ninguna de las dos cambia**
     - [ ] Borrar una categoría con productos → **409**
     - [ ] El `ProductoResponse` lleva el **nombre** de la categoría, no su id
+    - [ ] La segunda petición del mismo producto **no** genera consulta
+    - [ ] Después de vender, el `GET` devuelve el **stock nuevo**
 
 !!! info "En la UT5 se cambia una sola capa"
     Los `…RepositoryJdbc` y los `RowMapper` desaparecen; en su lugar, interfaces que extienden `JpaRepository` y los modelos pasan a ser `@Entity`.
 
-    **Controlador, servicio, DTOs, mapeador, excepciones y tests de capa web no se tocan.**
+    **Controlador, servicio, DTOs, mapeador, excepciones y la caché no se tocan.**
