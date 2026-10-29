@@ -202,6 +202,11 @@ nav:
       - 4. Dos proyectos paso a paso: ut5/04-proyectos.md
       - Examen práctico: ut5/examen.md
       - Chuleta (PDF): ut5/chuleta.md
+  - 2.º trimestre · 80 h:
+    - Proyecto · Pulso de Madrid:
+      - proyecto/index.md
+      - Los seis retos: proyecto/retos.md
+      - Cómo se defiende cada entrega: proyecto/defensa.md
     - UT6 · RA7 · Servicios web:
       - ut6/index.md
       - 1. WebSockets: ut6/01-websockets.md
@@ -212,12 +217,6 @@ nav:
       - 6. Proyecto · CORS y OpenAPI: ut6/06-proyecto-openapi.md
       - Examen práctico: ut6/examen.md
       - Chuleta (PDF): ut6/chuleta.md
-
-  - 2.º trimestre · 80 h:
-    - Proyecto · Pulso de Madrid:
-      - proyecto/index.md
-      - Los seis retos: proyecto/retos.md
-      - Cómo se defiende cada entrega: proyecto/defensa.md
     - UT7 · RA4 · Estado, sesiones y seguridad:
       - ut7/index.md
       - 1. El estado en la web: ut7/01-estado-en-la-web.md

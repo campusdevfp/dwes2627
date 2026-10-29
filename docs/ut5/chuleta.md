@@ -330,61 +330,6 @@ return repositorio.findAll(spec, pageable).map(mapper::toResponse);
 
 Dentro de una transacción las entidades están **gestionadas**: un `setter` ya persiste, sin `save()`.
 
-## Tests
-
-```java
-// 1 · Repositorio — solo JPA, H2, rollback automático. ~1 s
-@DataJpaTest @ActiveProfiles("test")
-class RepoTest {
-    @Autowired FunkosRepository repo;
-    @Autowired TestEntityManager em;
-
-    @Test void noDevuelveBorrados() {
-        em.persistAndFlush(funko("Goku", false));
-        em.persistAndFlush(funko("Naruto", true));
-        assertThat(repo.findByDeletedFalse()).hasSize(1);
-    }
-}
-```
-
-```java
-// 2 · Servicio — sin Spring. ms
-@ExtendWith(MockitoExtension.class)
-class ServicioTest {
-    @Mock FunkosRepository repo;  @Spy FunkoMapper mapper = new FunkoMapper();
-    @InjectMocks FunkosServiceImpl servicio;
-
-    @Test void noBorraConStock() {
-        when(repo.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(funko(5)));
-        assertThrows(FunkoConflictException.class, () -> servicio.deleteById(1L));
-        verify(repo, never()).borradoLogico(anyLong());
-    }
-}
-```
-
-```java
-// 3 · Integración — todo junto. ~3 s
-@SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test")
-class IntegracionTest {
-    @Autowired MockMvc mockMvc;
-
-    @Test void paginado() throws Exception {
-        mockMvc.perform(get("/api/v1/funkos?page=0&size=2"))
-               .andExpect(status().isOk())
-               .andExpect(jsonPath("$.content", hasSize(2)))
-               .andExpect(jsonPath("$.totalElements").exists());
-    }
-}
-```
-
-:material-alert: Sin `persistAndFlush`, el `INSERT` se queda en la caché de Hibernate y la consulta no lo ve.
-
-```bash
-./mvnw test
-./mvnw test -Dtest="*RepositoryTest"
-./mvnw test -Dtest="FunkosRepositoryTest#noDevuelveBorrados"
-```
-
 ## Bruno · pruebas de la API
 
 Ficheros `.bru` que viajan con el proyecto y se versionan en Git.

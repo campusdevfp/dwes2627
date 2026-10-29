@@ -300,11 +300,13 @@ public class FunkosRepositoryJdbc implements FunkosRepository {
             .param("categoria", f.categoria())
             .param("creado", f.createdAt())
             .param("actualizado", f.updatedAt())
-            .update(keys);
+            .update(keys, "ID");                 // ← el nombre de la columna, en MAYUSCULAS
 
-        Long id = ((Number) keys.getKeys().get("id")).longValue();
-        return new Funko(id, f.nombre(), f.precio(), f.cantidad(),
-                         f.categoria(), f.createdAt(), f.updatedAt());
+        Number id = (Number) keys.getKeys().get("ID");
+        if (id == null) {
+            throw new IllegalStateException("La base de datos no ha devuelto la clave ID");
+        }
+        return findById(id.longValue()).orElseThrow();
     }
 
     @Override
@@ -1374,9 +1376,13 @@ public class ProductosRepositoryJdbc implements ProductosRepository {
                 .param("precio", p.precio())
                 .param("stock", p.stock())
                 .param("categoriaId", p.categoriaId())
-                .update(keys);
+                .update(keys, "ID");             // ← el nombre de la columna, en MAYUSCULAS
 
-        return findById(keys.getKey().longValue()).orElseThrow();
+        Number id = (Number) keys.getKeys().get("ID");
+        if (id == null) {
+            throw new IllegalStateException("La base de datos no ha devuelto la clave ID");
+        }
+        return findById(id.longValue()).orElseThrow();
     }
 
     @Override

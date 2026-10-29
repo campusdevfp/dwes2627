@@ -1,6 +1,6 @@
 # UT9 — Aplicaciones web híbridas
 
-**34 h · 34 sesiones · Trimestre 2.º** · Evaluación: :material-laptop: **examen práctico (100 %)** · Peso: **10 %** del módulo, más el **10 % de la FFE**, que se evidencia en el proyecto final de esta unidad
+**22 h · 22 sesiones · Trimestre 2.º** · Evaluación: :material-laptop: **examen práctico (100 %)** · Peso: **10 %** del módulo, más el **10 % de la FFE**, que se evidencia en el proyecto final de esta unidad
 
 > **RA9:** Desarrolla aplicaciones web híbridas seleccionando y utilizando tecnologías, frameworks servidor y repositorios heterogéneos de información.
 
@@ -32,40 +32,28 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 
 | Sesión (55') | En clase | Lectura previa |
 |---|---|---|
-| **S1** | Qué es una aplicación híbrida · el ejemplo del portal inmobiliario | [1. Aplicaciones híbridas](01-aplicaciones-hibridas.md) §1–2 |
-| **S2** | El precio de reutilizar: dependencia, licencias, casos reales | [1. Aplicaciones híbridas](01-aplicaciones-hibridas.md) §3 |
-| **S3** | Consumir, ingerir o incorporar: cómo se decide | [1. Aplicaciones híbridas](01-aplicaciones-hibridas.md) §4 |
-| **S4** | Dónde buscar datos abiertos · formatos y el CSV español | [1. Aplicaciones híbridas](01-aplicaciones-hibridas.md) §5–7 |
-| **S5** | Cliente HTTP bien montado: claves fuera y *timeouts* | [2. Servicios externos](02-consumir-servicios-externos.md) §1 |
-| **S6** | DTO propio, no el del tercero | [2. Servicios externos](02-consumir-servicios-externos.md) §2 |
-| **S7** | Valor de reserva y reintentos con espera creciente | [2. Servicios externos](02-consumir-servicios-externos.md) §3 |
-| **S8** | Cortacircuitos: dejar de insistir | [2. Servicios externos](02-consumir-servicios-externos.md) §3 |
-| **S9** | Caché: menos latencia y menos factura | [2. Servicios externos](02-consumir-servicios-externos.md) §4 |
-| **S10** | Cuotas, 429 y buenos modales | [2. Servicios externos](02-consumir-servicios-externos.md) §5–7 |
-| **S11** | Componer varias fuentes en paralelo | [2. Servicios externos](02-consumir-servicios-externos.md) §6 |
-| **S12** | Taller: montar el cliente HTTP del proyecto propio | [Batería de ejercicios](ejercicios.md) |
-| **S13** | Taller: tolerancia a fallos sobre ese cliente | [Batería de ejercicios](ejercicios.md) |
-| **S14** | Ingerir: por qué y las tres fases | [3. Tu repositorio](03-crear-tu-repositorio.md) §1–3 |
-| **S15** | Transformar datos sucios de verdad | [3. Tu repositorio](03-crear-tu-repositorio.md) §4 |
-| **S16** | Normalizar categorías · la trampa de `split` | [3. Tu repositorio](03-crear-tu-repositorio.md) §4 |
-| **S17** | Cargar sin duplicar: idempotencia y *upsert* | [3. Tu repositorio](03-crear-tu-repositorio.md) §5 |
-| **S18** | Qué hacer con lo que desaparece del origen | [3. Tu repositorio](03-crear-tu-repositorio.md) §5 |
-| **S19** | Automatizar con `@Scheduled` · registrar cada ejecución | [3. Tu repositorio](03-crear-tu-repositorio.md) §6–7 |
-| **S20** | Taller: ingerir un fichero abierto real de principio a fin | [Batería de ejercicios](ejercicios.md) |
-| **S21** | Taller: dejar la carga automatizada y con registro | [Batería de ejercicios](ejercicios.md) |
-| **S22** | Elegir una dependencia con criterio · licencias | [4. Librerías](04-librerias-y-dependencias.md) §1–3 |
-| **S23** | Seguridad de las dependencias · Log4Shell | [4. Librerías](04-librerias-y-dependencias.md) §4 |
-| **S24** | PDF, Excel, QR y mapas | [4. Librerías](04-librerias-y-dependencias.md) §5 |
-| **S25** | Aislar la librería detrás de una interfaz propia | [4. Librerías](04-librerias-y-dependencias.md) §6 |
-| **S26** | Dato, información, conocimiento · agregar en SQL | [5. Analítica](05-analitica-y-cuadros-de-mando.md) §1–3 |
-| **S27** | Taller: incorporar una librería y aislarla tras una interfaz | [Batería de ejercicios](ejercicios.md) |
-| **S28** | Cruzar fuentes · el cuadro de mando | [5. Analítica](05-analitica-y-cuadros-de-mando.md) §4–5 |
-| **S29** | Cuándo esto deja de valer: OLTP, OLAP y *big data* | [5. Analítica](05-analitica-y-cuadros-de-mando.md) §6–7 |
-| **S30** | Probar sin internet · documentar · desplegar | [6. Probar y desplegar](06-probar-documentar-desplegar.md) |
-| **S31** | Laboratorio libre: cerrar la integración y el README | [Reto con tests](practicas.md) |
-| **S32** | Proyecto integrador: cerrar la aplicación híbrida completa | [Reto con tests](practicas.md) |
-| **S33** | :material-laptop: **Examen práctico de RA9 (100 %)** · 1.ª sesión | [Preparar el examen](examen.md) |
-| **S34** | :material-laptop: **Examen práctico de RA9 (100 %)** · 2.ª sesión | — |
+| **S1** | Qué es una aplicación híbrida · el precio de reutilizar: dependencia y licencias | [1. Aplicaciones híbridas](01-aplicaciones-hibridas.md) §1–3 |
+| **S2** | Consumir, ingerir o incorporar · dónde buscar datos abiertos y el CSV español | [1. Aplicaciones híbridas](01-aplicaciones-hibridas.md) §4–7 |
+| **S3** | Cliente HTTP bien montado: claves fuera, *timeouts* y **DTO propio** | [2. Servicios externos](02-consumir-servicios-externos.md) §1–2 |
+| **S4** | Tolerancia a fallos: valor de reserva, reintentos y **cortacircuitos** | [2. Servicios externos](02-consumir-servicios-externos.md) §3 |
+| **S5** | Caché, cuotas, 429 y componer varias fuentes en paralelo | [2. Servicios externos](02-consumir-servicios-externos.md) §4–7 |
+| **S6** | Taller: montar el cliente HTTP del proyecto propio | [Batería de ejercicios](ejercicios.md) |
+| **S7** | Taller: tolerancia a fallos sobre ese cliente | [Batería de ejercicios](ejercicios.md) |
+| **S8** | Ingerir: por qué, y las tres fases | [3. Tu repositorio](03-crear-tu-repositorio.md) §1–3 |
+| **S9** | Transformar datos sucios de verdad · normalizar categorías y la trampa de `split` | [3. Tu repositorio](03-crear-tu-repositorio.md) §4 |
+| **S10** | Cargar sin duplicar: **idempotencia** y *upsert* · lo que desaparece del origen | [3. Tu repositorio](03-crear-tu-repositorio.md) §5 |
+| **S11** | Automatizar con `@Scheduled` · registrar cada ejecución | [3. Tu repositorio](03-crear-tu-repositorio.md) §6–7 |
+| **S12** | Taller: ingerir un fichero abierto real de principio a fin | [Batería de ejercicios](ejercicios.md) |
+| **S13** | Taller: dejar la carga automatizada y con registro | [Batería de ejercicios](ejercicios.md) |
+| **S14** | Elegir una dependencia con criterio · licencias · **seguridad y Log4Shell** | [4. Librerías](04-librerias-y-dependencias.md) §1–4 |
+| **S15** | PDF, Excel, QR y mapas · **aislar la librería tras una interfaz propia** | [4. Librerías](04-librerias-y-dependencias.md) §5–6 |
+| **S16** | Taller: incorporar una librería y aislarla tras una interfaz | [Batería de ejercicios](ejercicios.md) |
+| **S17** | Dato, información, conocimiento · **agregar en SQL** | [5. Analítica](05-analitica-y-cuadros-de-mando.md) §1–3 |
+| **S18** | Cruzar fuentes · el cuadro de mando · cuándo esto deja de valer | [5. Analítica](05-analitica-y-cuadros-de-mando.md) §4–7 |
+| **S19** | Probar sin internet · documentar · desplegar | [6. Probar y desplegar](06-probar-documentar-desplegar.md) |
+| **S20** | Proyecto integrador: cerrar la aplicación híbrida completa y el README | [Reto con tests](practicas.md) |
+| **S21** | :material-laptop: **Examen práctico de RA9 (100 %)** · 1.ª sesión | [Preparar el examen](examen.md) |
+| **S22** | :material-laptop: **Examen práctico de RA9 (100 %)** · 2.ª sesión | — |
 
 ## Cómo se evalúa
 

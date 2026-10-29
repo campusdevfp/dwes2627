@@ -1,6 +1,6 @@
 # UT2 — Java moderno: el lenguaje del servidor
 
-**8 h · 8 sesiones · Trimestre 1.º** · Evaluación: :material-form-select: **test aplicado (100 %)**
+**10 h · 10 sesiones · Trimestre 1.º** · Evaluación: :material-form-select: **test aplicado (100 %)**
 
 > **RA2:** Escribe sentencias ejecutables por un servidor web, reconociendo y aplicando procedimientos de integración del código.
 
@@ -29,14 +29,16 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 | **S2** | Clases, encapsulación, **`record`** y `enum`, en `jshell` | [3. POO en Java](03-poo-en-java.md) §1–4 |
 | **S3** | **Interfaces** y el ejemplo largo de pedidos, paso a paso | [3. POO en Java](03-poo-en-java.md) §5–6 |
 | **S4** | Colecciones: `List`, `Set`, `Map`, cuál elegir y cómo recorrerlas | [4. Colecciones y streams](04-colecciones-y-funcional.md) §1–4 |
-| **S5** | **Streams** paso a paso: `filter`, `map`, ordenar y `groupingBy` | [4. Colecciones y streams](04-colecciones-y-funcional.md) §5–7 |
-| **S6** | Excepciones y `Optional`: cuándo cada uno | [5. Excepciones y Optional](05-excepciones-y-optional.md) |
-| **S7** | **Proyecto Maven paso a paso**: se junta toda la unidad | [6. Un proyecto Maven](06-proyecto-maven.md) |
-| **S8** | :material-form-select: **Test de RA2 (100 %)** — 30 preguntas | [Simulacro](autoevaluacion.md) |
+| **S5** | **Streams** paso a paso: `filter`, `map` y ordenar | [4. Colecciones y streams](04-colecciones-y-funcional.md) §5–6 |
+| **S6** | `groupingBy` y los recolectores que de verdad se usan | [4. Colecciones y streams](04-colecciones-y-funcional.md) §7 |
+| **S7** | Excepciones y `Optional`: cuándo cada uno | [5. Excepciones y Optional](05-excepciones-y-optional.md) |
+| **S8** | **Proyecto Maven paso a paso**: se junta toda la unidad | [6. Un proyecto Maven](06-proyecto-maven.md) |
+| **S9** | Laboratorio: la batería de ejercicios, con corrección en común | [Batería de ejercicios](ejercicios.md) |
+| **S10** | :material-form-select: **Test de RA2 (100 %)** — 30 preguntas | [Simulacro](autoevaluacion.md) |
 
 Cada página incluye **Pruébalo ahora** —código que se teclea en `jshell`— y **Ejercicios con solución**.
 
-!!! tip "Las sesiones 2 a 6 se dan con `jshell` en pantalla"
+!!! tip "Las sesiones 2 a 7 se dan con `jshell` en pantalla"
     Los temas 3, 4 y 5 están escritos para eso: cada concepto lleva un fragmento que se teclea y devuelve el resultado al instante. Abre una terminal, escribe `jshell` y ve copiando.
 
 ## Antes de la S1

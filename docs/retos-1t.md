@@ -119,7 +119,7 @@ Además de los micro-retos, cada unidad tiene **un reto de dos sesiones** que se
 
 ## Resumen
 
-| | UT1–UT3 | UT4–UT6 | UT7–UT9 |
+| | UT1–UT3 | UT4–UT5 | UT6–UT9 |
 |---|---|---|---|
 | **Formato** | Micro-retos de 25 min + 1 reto largo | Reto con tests por unidad | Proyecto en sprints |
 | **Agrupación** | Parejas | Parejas o individual | Equipos de tres |

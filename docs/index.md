@@ -27,16 +27,16 @@ Los RA **no pesan lo mismo**: cada uno lleva un peso según su dificultad, y ese
 | Trim. | UT | RA | Qué aprendes | Horas | Peso |
 |:-:|---|---|---|---|---:|
 | **1º** | **UT1** | RA1 | Cómo funciona la web por dentro: HTTP, arquitecturas, APIs, despliegue | 6 h | 5 % |
-| **1º** | **UT2** | RA2 | Java moderno en el servidor: sintaxis, POO, colecciones, excepciones | 8 h | 5 % |
-| **1º** | **UT3** | RA3 | Estructuras de datos, ficheros y JSON | 10 h | 6 % |
-| **1º** | **UT4** | RA5 | Spring Boot: capas, REST, DTOs, validación y caché | 18 h | 11 % |
-| **1º** | **UT5** | RA6 | Spring Data con JPA y SQL: entidades, relaciones y consultas | 20 h | 13 % |
-| **1º** | **UT6** | RA7 | Servicios web: WebSockets, GraphQL y documentación | 18 h | 11 % |
-| | | | *Total primer trimestre* | *80 h* | *51 %* |
+| **1º** | **UT2** | RA2 | Java moderno en el servidor: sintaxis, POO, colecciones, excepciones | 10 h | 5 % |
+| **1º** | **UT3** | RA3 | Estructuras de datos, ficheros y JSON | 12 h | 6 % |
+| **1º** | **UT4** | RA5 | Spring Boot: capas, REST, DTOs, validación y caché | 24 h | 11 % |
+| **1º** | **UT5** | RA6 | Spring Data con JPA y SQL: entidades, relaciones y consultas | 28 h | 13 % |
+| | | | *Total primer trimestre* | *80 h* | *40 %* |
+| **2º** | **UT6** | RA7 | Servicios web: WebSockets, GraphQL y documentación | 18 h | 11 % |
 | **2º** | **UT7** | RA4 | Estado, sesiones, cookies y autenticación | 20 h | 12 % |
-| **2º** | **UT8** | RA8 | Páginas dinámicas generadas en el servidor (Thymeleaf) | 26 h | 17 % |
-| **2º** | **UT9** | RA9 | Aplicaciones web híbridas y tiempo real | 34 h | 10 % |
-| | | | *Total segundo trimestre* | *80 h* | *39 %* |
+| **2º** | **UT8** | RA8 | Páginas dinámicas generadas en el servidor (Thymeleaf) | 20 h | 17 % |
+| **2º** | **UT9** | RA9 | Aplicaciones web híbridas y tiempo real | 22 h | 10 % |
+| | | | *Total segundo trimestre* | *80 h* | *50 %* |
 | | | | *Suma de los nueve RA* | *160 h* | *90 %* |
 | | | **FFE** | *Formación y Fomento del Emprendimiento* | — | *10 %* |
 |  |  |  |  | **160 h** | **100 %** |

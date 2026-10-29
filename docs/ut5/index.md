@@ -1,6 +1,6 @@
 # UT5 — Spring Data con JPA y SQL
 
-**20 h · 20 sesiones · Trimestre 1.º** · **RA6** · Evaluación: :material-laptop: **examen práctico (100 %)**
+**28 h · 28 sesiones · Trimestre 1.º** · **RA6** · Evaluación: :material-laptop: **examen práctico (100 %)**
 
 > Desarrolla aplicaciones web de acceso a almacenes de datos, aplicando medidas para mantener la seguridad y la integridad de la información.
 

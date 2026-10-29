@@ -169,11 +169,13 @@ public class FunkosRepositoryJdbc implements FunkosRepository {
             .param("categoria", f.categoria())
             .param("creado", f.createdAt())
             .param("actualizado", f.updatedAt())
-            .update(keys);
+            .update(keys, "ID");                 // ← el nombre de la columna, en MAYUSCULAS
 
-        Long id = ((Number) keys.getKeys().get("id")).longValue();
-        return new Funko(id, f.nombre(), f.precio(), f.cantidad(),
-                         f.categoria(), f.createdAt(), f.updatedAt());
+        Number id = (Number) keys.getKeys().get("ID");
+        if (id == null) {
+            throw new IllegalStateException("La base de datos no ha devuelto la clave ID");
+        }
+        return findById(id.longValue()).orElseThrow();
     }
 
     @Override
@@ -211,7 +213,20 @@ public class FunkosRepositoryJdbc implements FunkosRepository {
 | Uno obligatorio | `.query(rowMapper).single()` |
 | Un número o un texto | `.query(Integer.class).single()` |
 | Escribir | `.update()` → **`int` de filas afectadas** |
-| Escribir y recuperar el id | `.update(keys)` con `GeneratedKeyHolder` |
+| Escribir y recuperar el id | **`.update(keys, "ID")`** con `GeneratedKeyHolder` |
+
+!!! danger "El `update(keys, \"ID\")` lleva el nombre de la columna, y en MAYÚSCULAS"
+    ```java
+    .update(keys, "ID");                             // ✅
+    Number id = (Number) keys.getKeys().get("ID");
+    ```
+
+    | Si escribes | Qué pasa |
+    |---|---|
+    | `.update(keys)` a secas | H2 devuelve el mapa de claves **vacío o con otro nombre**, y `getKey()` revienta con `InvalidDataAccessApiUsageException` o devuelve `null` |
+    | `.get("id")` en minúsculas | **`null`**: H2 guarda los identificadores en mayúsculas |
+
+    Por eso se pide la columna por su nombre, se comprueba que no es `null` y **se relee el registro con `findById`**: así el objeto que devuelves trae también las fechas que ha puesto la base de datos, no las que tenías en memoria.
 
 !!! danger "Los `:param` no son plantillas de texto"
     Por debajo son `PreparedStatement`: el valor viaja aparte y la base de datos **nunca lo interpreta como SQL**. Lo que no se hace jamás:

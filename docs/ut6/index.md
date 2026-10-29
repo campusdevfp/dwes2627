@@ -1,6 +1,6 @@
 # UT6 — Servicios web: WebSockets, GraphQL y documentación
 
-**18 h · 18 sesiones · Trimestre 1.º** · **RA7** · Evaluación: :material-laptop: **examen práctico (100 %)**
+**18 h · 18 sesiones · Trimestre 2.º** · **RA7** · Evaluación: :material-laptop: **examen práctico (100 %)**
 
 > Desarrolla servicios web reutilizables y accesibles mediante protocolos web, verificando su funcionamiento.
 

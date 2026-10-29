@@ -21,7 +21,7 @@ Los **dos proyectos de la UT4**, migrados a Spring Data JPA. Mismas APIs, una fr
     | UT4 · `JdbcClient` + `RowMapper` | ~95 |
     | **UT5 · Spring Data JPA** | **0** |
 
-    Y comprobar que **el controlador, el servicio, los DTOs y los tests de capa web no se tocan**.
+    Y comprobar que **el controlador, el servicio, los DTOs y el manejador de errores no se tocan**.
 
 ---
 
@@ -277,7 +277,7 @@ spring.profiles.active=${SPRING_PROFILES_ACTIVE:dev}
 !!! danger "`update` en `dev`, no `create-drop`"
     La base de datos es un **fichero** y la gracia es que los datos persistan. `create-drop` los tiraría en cada reinicio.
 
-    En los tests sí se usa `create-drop`, porque allí la base es `mem:` y se quiere limpia.
+    El perfil `test` sí usa `create-drop`, porque allí la base es `mem:` y se quiere limpia en cada arranque.
 
     Y el límite de `update`: **no sabe renombrar ni borrar**. Si cambias un campo de nombre, crea la columna nueva y **deja la vieja con los datos dentro**. Para producción, `validate` y migraciones.
 
@@ -950,7 +950,7 @@ curl -s "localhost:8080/api/v1/funkos?page=0&size=2&sort=precio,desc" | jq
      6 files changed, 70 insertions(+), 275 deletions(-)
     ```
 
-    **Ni el controlador, ni los DTOs, ni el manejador de errores, ni los tests de capa web aparecen en ese diff.**
+    **Ni el controlador, ni los DTOs, ni el manejador de errores aparecen en ese diff.**
 
 === "Paginación y orden"
 
@@ -1526,112 +1526,6 @@ private Pageable sanear(Pageable p) {
 
     Uno de los dos devuelve **409** con el mensaje de recargar. Sin `@Version`, los dos devolverían 200 y **uno de los cambios se perdería en silencio**.
 
-## Paso 6 · Los tests
-
-```java title="Repositorio · @DataJpaTest"
-@DataJpaTest
-@ActiveProfiles("test")
-class ProductosRepositoryTest {
-
-    @Autowired ProductosRepository repositorio;
-    @Autowired TestEntityManager em;
-
-    private Categoria informatica;
-
-    @BeforeEach
-    void preparar() {
-        informatica = em.persistAndFlush(new Categoria("INFORMATICA"));
-    }
-
-    @Test
-    void noDevuelveLosBorradosLogicamente() {
-        em.persistAndFlush(new Producto("SKU-001", "Visible",
-                new BigDecimal("10.00"), 5, informatica));
-
-        var borrado = new Producto("SKU-002", "Oculto",
-                new BigDecimal("10.00"), 5, informatica);
-        borrado.setDeleted(true);
-        em.persistAndFlush(borrado);
-        em.clear();
-
-        assertThat(repositorio.findByDeletedFalse(PageRequest.of(0, 10)))
-                .extracting(Producto::getNombre)
-                .containsExactly("Visible");
-    }
-
-    @Test
-    void elDescuentoFallaSiNoHayStockSuficiente() {
-        var p = em.persistAndFlush(new Producto("SKU-003", "Monitor",
-                new BigDecimal("229.00"), 1, informatica));
-        em.clear();
-
-        assertEquals(0, repositorio.descontarStock(p.getId(), 5));   // no hay bastante
-        assertEquals(1, repositorio.descontarStock(p.getId(), 1));   // sí
-    }
-
-    @Test
-    void elSkuUnicoLoImponeLaBaseDeDatos() {
-        em.persistAndFlush(new Producto("SKU-004", "Uno",
-                new BigDecimal("1.00"), 1, informatica));
-
-        assertThatThrownBy(() -> em.persistAndFlush(new Producto("SKU-004", "Otro",
-                new BigDecimal("1.00"), 1, informatica)))
-                .isInstanceOf(PersistenceException.class);
-    }
-}
-```
-
-```java title="La transacción · @SpringBootTest"
-@SpringBootTest
-@ActiveProfiles("test")
-class VentaTransaccionTest {
-
-    @Autowired ProductosService servicio;
-    @Autowired ProductosRepository productos;
-    @Autowired CategoriasRepository categorias;
-
-    @Test
-    void siFallaLaVentaNoCambiaNingunaDeLasDosTablas() {
-        var stockAntes = productos.findByIdAndDeletedFalse(3L).orElseThrow().getStock();
-        var vendidasAntes = categorias.findById(1L).orElseThrow().getUnidadesVendidas();
-
-        assertThrows(ProductoConflictException.class,
-                () -> servicio.vender(3L, new VentaRequest(999)));
-
-        assertEquals(stockAntes,
-                productos.findByIdAndDeletedFalse(3L).orElseThrow().getStock(),
-                "El stock no puede haber cambiado");
-        assertEquals(vendidasAntes,
-                categorias.findById(1L).orElseThrow().getUnidadesVendidas(),
-                "El contador de la categoría no puede haber cambiado");
-    }
-
-    @Test
-    void dosEdicionesSimultaneasProvocanConflicto() {
-        var a = productos.findById(1L).orElseThrow();   // version = 0
-        var b = productos.findById(1L).orElseThrow();   // version = 0
-
-        a.setNombre("Teclado A");
-        productos.saveAndFlush(a);                      // version → 1
-
-        b.setNombre("Teclado B");
-        assertThrows(ObjectOptimisticLockingFailureException.class,
-                () -> productos.saveAndFlush(b));       // version 0 ≠ 1
-    }
-}
-```
-
-!!! success "Los tres niveles de test"
-    | | Qué prueba | Tarda | Caza |
-    |---|---|---|---|
-    | **Mockito** | Reglas de negocio | ms | Un 409 que falta |
-    | **`@DataJpaTest`** | Mapeo, relaciones y consultas | ~1 s | Un `mappedBy` mal, un `AndDeletedFalse` olvidado |
-    | **`@SpringBootTest`** | Todo junto | ~3 s | El cableado y **las transacciones** |
-
-    El **`em.clear()`** es importante: sin él lees el objeto de la caché de primer nivel y el test pasa aunque el mapeo esté mal. Hay que forzar que vuelva a la base de datos.
-
----
-
 ## Lo que has construido
 
 ```mermaid
@@ -1650,7 +1544,7 @@ flowchart TB
 !!! success "Comprueba los dos proyectos"
     **Comunes**
 
-    - [ ] `./mvnw clean package` en verde con los tres tipos de test
+    - [ ] `./mvnw clean package` en verde y el `.jar` arranca
     - [ ] Los datos **sobreviven** a parar y arrancar
     - [ ] `spring.jpa.open-in-view=false` y **ningún** `LazyInitializationException`
     - [ ] `grep -rn "FetchType.EAGER" src/` → **vacío**

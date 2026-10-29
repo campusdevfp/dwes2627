@@ -43,7 +43,6 @@ Recibes un proyecto que **arranca y se conecta a la base de datos**, con estos f
 | 5 | **El servicio** | Interfaz e implementación, con todas las reglas |
 | 6 | **El controlador** | Los seis endpoints |
 | 7 | **El manejador de errores** | `@RestControllerAdvice` |
-| 8 | **Dos tests** | Uno de servicio con Mockito, uno de capa web con `MockMvc` |
 
 Se entrega comprimido, **sin `target/` ni `datos/`**, con un `README.md` de diez líneas que diga cómo arrancar.
 
@@ -121,8 +120,6 @@ public interface LibrosRepository {
 
     /** Descuenta un ejemplar SOLO si queda alguno. Devuelve las filas afectadas. */
     int descontarEjemplar(Long id);
-    /** Devuelve un ejemplar al fondo. */
-    int devolverEjemplar(Long id);
     /** Suma uno al contador de prestamos del socio. */
     int sumarPrestamo(Long socioId);
     /** Cuantos libros tiene prestados ese socio. */
@@ -180,8 +177,13 @@ public class LibrosRepositoryJdbc implements LibrosRepository {
                 .param("autor", libro.autor())
                 .param("ejemplares", libro.ejemplares())
                 .param("socioId", libro.socioId())
-                .update(keys);
-        return findById(keys.getKey().longValue()).orElseThrow();
+                .update(keys, "ID");             // ← el nombre de la columna, en MAYUSCULAS
+
+        Number id = (Number) keys.getKeys().get("ID");
+        if (id == null) {
+            throw new IllegalStateException("La base de datos no ha devuelto la clave ID");
+        }
+        return findById(id.longValue()).orElseThrow();
     }
 
     @Override
@@ -214,15 +216,6 @@ public class LibrosRepositoryJdbc implements LibrosRepository {
                 UPDATE libros SET ejemplares = ejemplares - 1,
                                   updated_at = CURRENT_TIMESTAMP
                  WHERE id = :id AND ejemplares >= 1
-                """).param("id", id).update();
-    }
-
-    @Override
-    public int devolverEjemplar(Long id) {
-        return jdbc.sql("""
-                UPDATE libros SET ejemplares = ejemplares + 1,
-                                  updated_at = CURRENT_TIMESTAMP
-                 WHERE id = :id
                 """).param("id", id).update();
     }
 
@@ -352,7 +345,6 @@ public class LibroMapper {
 | 3 | Los seis endpoints, con sus códigos de estado y la cabecera `Location` | **2,0** |
 | 4 | Las reglas R1 a R6, las excepciones propias y el manejador de errores | **2,5** |
 | 5 | Uso correcto del código entregado y `@Transactional` en la operación de prestar | **1,0** |
-| 6 | Los dos tests | **1,0** |
 | | | **10,0** |
 
 ## 7 · Cómo se comprueba
@@ -515,8 +507,13 @@ public class ReservasRepositoryJdbc implements ReservasRepository {
                 .param("dia", r.dia())
                 .param("horaInicio", r.horaInicio())
                 .param("horaFin", r.horaFin())
-                .update(keys);
-        return findById(keys.getKey().longValue()).orElseThrow();
+                .update(keys, "ID");             // ← el nombre de la columna, en MAYUSCULAS
+
+        Number id = (Number) keys.getKeys().get("ID");
+        if (id == null) {
+            throw new IllegalStateException("La base de datos no ha devuelto la clave ID");
+        }
+        return findById(id.longValue()).orElseThrow();
     }
 
     @Override
@@ -674,7 +671,6 @@ public class ReservaMapper {
 | 3 | Los seis endpoints, con sus códigos de estado y la cabecera `Location` | **2,0** |
 | 4 | Las reglas R1 a R6, con **la R4 correcta en los cinco casos** de la tabla de abajo | **2,5** |
 | 5 | Uso correcto del código entregado, incluido el `aulaCodigo` del `Response` | **1,0** |
-| 6 | Los dos tests, uno de ellos del solape | **1,0** |
 | | | **10,0** |
 
 ## 7 · Cómo se comprueba
@@ -854,8 +850,13 @@ public class ReparacionesRepositoryJdbc implements ReparacionesRepository {
                 .param("descripcion", r.descripcion())
                 .param("importe", r.importe())
                 .param("estado", r.estado())
-                .update(keys);
-        return findById(keys.getKey().longValue()).orElseThrow();
+                .update(keys, "ID");             // ← el nombre de la columna, en MAYUSCULAS
+
+        Number id = (Number) keys.getKeys().get("ID");
+        if (id == null) {
+            throw new IllegalStateException("La base de datos no ha devuelto la clave ID");
+        }
+        return findById(id.longValue()).orElseThrow();
     }
 
     @Override
@@ -1006,7 +1007,6 @@ public class ReparacionMapper {
 | 3 | Los seis endpoints, con sus códigos de estado y la cabecera `Location` | **2,0** |
 | 4 | Las reglas R1 a R6, con **las transiciones resueltas con una tabla** y no con una cadena de `if` | **2,5** |
 | 5 | Uso correcto del código entregado y `@Transactional` en el cambio a `REPARADA` | **1,0** |
-| 6 | Los dos tests, uno de ellos de una transición inválida | **1,0** |
 | | | **10,0** |
 
 ## 7 · Cómo se comprueba
@@ -1118,14 +1118,6 @@ curl -s -X POST localhost:8080/api/v1/reparaciones/1/estado \
 | 5.2 | El servicio **mira el valor devuelto** por el método atómico (`== 0` → 409), en vez de leer, comprobar y escribir | 0,4 |
 | 5.3 | El mapeo va **siempre** por el mapeador. `grep -rn "new .*Response(" src/main/java/**/services/ src/main/java/**/controllers/` → **vacío** | 0,2 |
 
-## Bloque 6 · Tests — 1,0 punto
-
-| | Se comprueba con | Puntos |
-|---|---|:-:|
-| 6.1 | `./mvnw clean test` acaba en **BUILD SUCCESS**. Si no compila o hay tests comentados → **0 en el bloque** | 0,3 |
-| 6.2 | **Un test de servicio** con Mockito de una de las reglas de negocio | 0,4 |
-| 6.3 | **Un test de capa web** con `MockMvc` del **400 de validación** o del **404** | 0,3 |
-
 ## Penalizaciones
 
 | | |
@@ -1147,14 +1139,13 @@ curl -s -X POST localhost:8080/api/v1/reparaciones/1/estado \
 | 3 · API REST | 20 % |
 | 4 · Reglas y errores | 25 % |
 | 5 · Uso del código entregado | 10 % |
-| 6 · Tests | 10 % |
 
 Se aprueba con **5,0**, y **el bloque 1 no puede quedar en 0**: el RA5 es literalmente *«separar el código de presentación de la lógica de negocio»*.
 
 ## Orden de corrección
 
 1. `git diff` del repositorio y del mapeador → bloque 5.1 y la penalización mayor.
-2. `./mvnw clean test` → bloque 6.1.
+2. `./mvnw clean package` → que compile y genere el `.jar`.
 3. **Los tres `grep`** de los bloques 1, 4.2 y 5.3.
 4. `java -jar` y las peticiones del punto 7 del enunciado → bloques 3 y 4.1.
 5. Un POST inválido → bloques 2.4 y 4.3.

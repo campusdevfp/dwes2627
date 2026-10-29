@@ -35,7 +35,6 @@ public class App {
 | `spring-boot-starter-cache` | `@Cacheable`, `@CacheEvict` |
 | **`spring-boot-starter-jdbc`** | `DataSource`, HikariCP, **`JdbcClient`**, `@Transactional` |
 | `com.h2database:h2` | La base de datos *(scope `runtime`)* |
-| `spring-boot-starter-test` | JUnit 5, Mockito, AssertJ, `MockMvc` |
 
 :material-alert: `starter-jdbc`, **NO** `starter-data-jpa`: en la UT4 el SQL lo escribes tú. JPA es la UT5.
 :material-alert: El `spring-boot-maven-plugin` es el que hace el `.jar` ejecutable.
@@ -349,8 +348,9 @@ public class R {
     var keys = new GeneratedKeyHolder();
     jdbc.sql("INSERT INTO funkos (nombre, precio) VALUES (:nombre, :precio)")
         .param("nombre", f.nombre()).param("precio", f.precio())
-        .update(keys);
-    return findById(keys.getKey().longValue()).orElseThrow();   // se relee con su id
+        .update(keys, "ID");                       // ← nombre de la columna, MAYUSCULAS
+    Number id = (Number) keys.getKeys().get("ID");
+    return findById(id.longValue()).orElseThrow();   // se relee con su id
 
     // UPDATE / DELETE: devuelven filas afectadas
     int filas = jdbc.sql("DELETE FROM funkos WHERE id = :id").param("id", id).update();
@@ -462,80 +462,7 @@ public CommandLineRunner datos(S servicio) { return args -> { … }; }
 **`.env`** → `.gitignore`. **`.env.example`** con las claves vacías → sí a Git.
 **IntelliJ:** *Edit Configurations → Environment variables*, o el plugin **EnvFile** apuntando al `.env`.
 
-## 11 · Tests
-
-```java
-// 1 · Servicio, sin Spring: milisegundos
-@ExtendWith(MockitoExtension.class)
-class STest {
-    @Mock Repo repo;
-    @Spy  Mapper mapper = new Mapper();
-    @InjectMocks ServiceImpl servicio;
-
-    @Test void noExisteLanza404() {
-        when(repo.findById(99L)).thenReturn(Optional.empty());
-        assertThrows(NotFoundException.class, () -> servicio.findById(99L));
-        verify(repo, times(1)).findById(99L);
-        verify(repo, never()).save(any());
-    }
-}
-```
-
-```java
-// 2 · Capa web, con MockMvc: caza el @Valid olvidado
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-class CTest {
-    @Autowired MockMvc mockMvc;
-    @MockitoBean Service servicio;          // NO @MockBean: obsoleta desde 3.4
-
-    @Test void postInvalidoDa400() throws Exception {
-        mockMvc.perform(post("/api/v1/funkos")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {"nombre":"","precio":-1}"""))
-               .andExpect(status().isBadRequest())
-               .andExpect(jsonPath("$.campos.nombre").exists());
-    }
-}
-```
-
-```java
-status().isOk()  isCreated()  isNoContent()  isBadRequest()  isNotFound()  isConflict()
-jsonPath("$.nombre").value("Casco")   jsonPath("$").isArray()   jsonPath("$", hasSize(3))
-header().string("Location", "/api/v1/funkos/1")
-```
-
-```java
-// 3 · La transacción: comparar LAS DOS TABLAS antes y después de un fallo
-@SpringBootTest
-@ActiveProfiles("test")
-class VentaTest {
-    @Autowired ProductosService servicio;
-    @Autowired ProductosRepository productos;
-    @Autowired CategoriasRepository categorias;
-
-    @Test void siFallaLaVentaNoCambiaNingunaDeLasDos() {
-        var stockAntes    = productos.findById(3L).orElseThrow().stock();
-        var vendidasAntes = categorias.findById(1L).orElseThrow().unidadesVendidas();
-
-        assertThrows(ProductoConflictException.class,
-                () -> servicio.vender(3L, new VentaRequest(999)));
-
-        assertEquals(stockAntes,    productos.findById(3L).orElseThrow().stock());
-        assertEquals(vendidasAntes, categorias.findById(1L).orElseThrow().unidadesVendidas());
-    }
-}
-```
-
-```bash
-./mvnw test
-./mvnw test -Dtest="FunkosServiceImplTest"
-./mvnw test -Dtest="FunkosServiceImplTest#noExisteLanza404"
-```
-
-## 12 · `curl`
+## 11 · `curl`
 
 ```bash
 curl -i localhost:8080/api/v1/funkos
@@ -548,7 +475,7 @@ curl -i -X PATCH localhost:8080/api/v1/funkos/1 \
 curl -i -X DELETE localhost:8080/api/v1/funkos/1
 ```
 
-## 13 · En el examen te dan esto hecho
+## 12 · En el examen te dan esto hecho
 
 | Entregado | Lo escribes tú |
 |---|---|
@@ -558,7 +485,6 @@ curl -i -X DELETE localhost:8080/api/v1/funkos/1
 | | **Las excepciones** con `@ResponseStatus` |
 | | **El servicio** con las reglas |
 | | **El controlador** y el `@RestControllerAdvice` |
-| | **Dos tests** |
 
 :material-alert: El proyecto **no compila al abrirlo**: el repositorio y el mapeador usan el modelo y los DTOs, que no existen aún. **Eso es la especificación**: de ahí sale el nombre de cada clase y el orden de los componentes de cada `record`.
 :material-alert: **No se toca ni una línea** del repositorio ni del mapeador. Si los cambias para que encajen con tus clases, la penalización es de **1,5 puntos**.

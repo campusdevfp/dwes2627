@@ -1,6 +1,6 @@
 # UT3 — Datos: intercambio, validación y base de datos
 
-**10 h · 10 sesiones · Trimestre 1.º** · Evaluación: :material-form-select: **test práctico (100 %)**
+**12 h · 12 sesiones · Trimestre 1.º** · Evaluación: :material-form-select: **test práctico (100 %)**
 
 > **RA3:** Escribe bloques de sentencias embebidos en lenguajes de marcas, seleccionando y utilizando las estructuras de programación.
 
@@ -36,9 +36,11 @@ Marca cada casilla cuando puedas hacerlo **sin mirar los apuntes**. Lo que quede
 | **S5** | De CSV a JSON: el programa completo, con los descartes contados | [1. CSV y JSON](01-csv-y-json.md) §8 |
 | **S6** | `java.time`: inmutabilidad, rangos y formatos | [2. Fechas y validación](02-fechas-y-validacion.md) §1–4 |
 | **S7** | Validar en el constructor · expresiones regulares · **`BigDecimal`** | [2. Fechas y validación](02-fechas-y-validacion.md) §5–8 |
-| **S8** | **JDBC y un CRUD con H2**, con la inyección SQL provocada en clase | [3. CRUD contra base de datos](03-base-de-datos.md) §1–7 |
-| **S9** | **MySQL en Docker** y las fuentes de datos en IntelliJ | [3. CRUD contra base de datos](03-base-de-datos.md) §8–9 |
-| **S10** | :material-form-select: **Test práctico de RA3 (100 %)** | [Simulacro de test](autoevaluacion.md) |
+| **S8** | **JDBC**: conexión, `PreparedStatement` y la inyección SQL provocada en clase | [3. CRUD contra base de datos](03-base-de-datos.md) §1–4 |
+| **S9** | **El CRUD completo con H2**, de principio a fin | [3. CRUD contra base de datos](03-base-de-datos.md) §5–7 |
+| **S10** | **MySQL en Docker** y las fuentes de datos en IntelliJ | [3. CRUD contra base de datos](03-base-de-datos.md) §8–9 |
+| **S11** | Laboratorio: la batería de ejercicios, con corrección en común | [Batería de ejercicios](ejercicios.md) |
+| **S12** | :material-form-select: **Test práctico de RA3 (100 %)** | [Simulacro de test](autoevaluacion.md) |
 
 ## Cómo se evalúa
 

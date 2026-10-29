@@ -1,6 +1,6 @@
 # UT4 — Spring Boot: capas, REST y JDBC
 
-**18 h · 18 sesiones · Trimestre 1.º** · **RA5** · Evaluación: :material-laptop: **examen práctico (100 %)**
+**24 h · 24 sesiones · Trimestre 1.º** · **RA5** · Evaluación: :material-laptop: **examen práctico (100 %)**
 
 > Desarrolla aplicaciones web, identificando y aplicando mecanismos para separar el código de presentación de la lógica de negocio.
 
@@ -32,7 +32,7 @@
 
 **Se te da** el proyecto que arranca (`pom.xml`, los `application*.properties`, `schema.sql`, `data.sql` y la clase de arranque) **y, ya escritos, el repositorio —interfaz, implementación con `JdbcClient` y `RowMapper`— y el mapeador**.
 
-**Escribes tú** las carpetas por capas, los modelos, los DTOs, las excepciones, el servicio con las reglas, el controlador, el manejador global y dos tests.
+**Escribes tú** las carpetas por capas, los modelos, los DTOs, las excepciones, el servicio con las reglas, el controlador y el manejador global.
 
 !!! success "El código dado es la especificación"
     El repositorio y el mapeador **no compilan** al abrir el proyecto, porque usan clases que tú no has creado. De ellos sale **el nombre de cada clase y el orden de los componentes de cada `record`**.
@@ -50,7 +50,6 @@ Es un enunciado **del mismo formato y tamaño** que los del [examen práctico](e
 | 3 | API REST y códigos de estado | 2,0 |
 | 4 | **Reglas de negocio y errores** | **2,5** |
 | 5 | Uso correcto del código dado | 1,0 |
-| 6 | Tests | 1,0 |
 
 Se aprueba con **5,0**. Cada ítem se comprueba con un comando o una petición concreta: la rúbrica completa, con las penalizaciones, está en [Examen práctico](examen.md).
 
